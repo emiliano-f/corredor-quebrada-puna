@@ -1,13 +1,17 @@
 """Paso de Jama status snapshot collectors (one request per source per run).
 
 Each collector fetches its source once with the PoliteFetcher (cache bypassed: these are
-live status endpoints), keeps only the raw Jama record(s) and returns one JamaEstado row.
-A failed request or an unexpected payload never raises: it becomes a row with `error`.
+live status endpoints), keeps only the Jama record(s) and returns one JamaEstado row.
+Only the allowlisted status/schedule/timestamp fields (`FIELDS`) are stored: the rest
+(e.g. operator usernames in MOP's CREATEDBY/RESPONSABLE) is dropped and only the NAMES of
+the dropped fields are logged, never their values. A failed request or an unexpected
+payload never raises: it becomes a row with `error`.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
@@ -20,6 +24,8 @@ from corredor.models import FuenteJama, JamaEstado, SourceConfig
 
 JsonRecord = dict[str, Any]
 
+log = logging.getLogger(__name__)
+
 
 class PayloadError(ValueError):
     """The source answered, but not with the expected Jama record."""
@@ -27,7 +33,8 @@ class PayloadError(ValueError):
 
 class JamaCollector(ABC):
     FUENTE: ClassVar[FuenteJama]
-    PARSER_VERSION: ClassVar[int] = 1
+    FIELDS: ClassVar[frozenset[str]]
+    PARSER_VERSION: ClassVar[int] = 2
 
     def __init__(
         self,
@@ -57,7 +64,7 @@ class JamaCollector(ABC):
         except FetchError as exc:
             return self._error(f"{type(exc).__name__}: {exc}", self._now())
         try:
-            payload = self.records(_decode(result))
+            payload = self.allowlisted(self.records(_decode(result)))
         except PayloadError as exc:
             return self._error(str(exc), result.fetched_at)
         except (TypeError, ValueError, KeyError, AttributeError) as exc:
@@ -70,6 +77,17 @@ class JamaCollector(ABC):
             payload_json=json.dumps(payload, ensure_ascii=False, sort_keys=True),
         )
 
+    def allowlisted(self, records: list[JsonRecord]) -> list[JsonRecord]:
+        """Keep only FIELDS; log the names (never the values) of everything dropped."""
+        dropped = sorted({k for r in records for k in r if k not in self.FIELDS})
+        if dropped:
+            log.info(
+                "%s: campos fuera de la allowlist (no se guardan): %s",
+                self.source_id,
+                ", ".join(dropped),
+            )
+        return [{k: v for k, v in r.items() if k in self.FIELDS} for r in records]
+
     def _error(self, message: str, at: datetime) -> JamaEstado:
         return JamaEstado(fuente=self.FUENTE, fetched_at=at.astimezone(UTC), error=message)
 
@@ -78,6 +96,23 @@ class MopChileJama(JamaCollector):
     """ArcGIS MapServer layer of Vialidad MOP Chile; Jama is one OBJECTID."""
 
     FUENTE = "mop_cl"
+    # Only numeric/date fields and ArcGIS coded-domain values (no free text).
+    FIELDS = frozenset(
+        {
+            "OBJECTID",
+            "TRANSITABILIDAD",
+            "ESTADOTIEMPO",
+            "ESTADOCALZADA",
+            "CADENAS",
+            "RESTRICCIONES",
+            "HABILITADO",
+            "ESTADOINFORME",
+            "FECHA",
+            "HORA",
+            "ADESDE",
+            "AHASTA",
+        }
+    )
 
     @property
     def objectid(self) -> int:
@@ -112,6 +147,17 @@ class ArgentinaGobArJama(JamaCollector):
     """
 
     FUENTE = "argentina_gob_ar"
+    FIELDS = frozenset(
+        {
+            "id",
+            "nombre_paso",
+            "estado_prioridad",
+            "estado_vialidad",
+            "fecha_schema",
+            "fecha_schema_cancilleria",
+            "fecha_hora_consulta",
+        }
+    )
 
     def url(self) -> str:
         return self.config.base_url

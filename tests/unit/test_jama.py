@@ -89,7 +89,7 @@ def test_mop_url(cfg: AppConfig) -> None:
     assert c.url() == MOP_QUERY
 
 
-def test_mop_records_keep_raw_attributes(cfg: AppConfig) -> None:
+def test_mop_records_are_the_raw_attributes(cfg: AppConfig) -> None:
     c = MopChileJama(source(cfg, "jama_mop_cl"), fetcher=object())  # type: ignore[arg-type]
     [rec] = c.records(fixture("mop_cl_query.json"))
     assert rec["OBJECTID"] == 7
@@ -125,6 +125,35 @@ def test_snapshot_ok_both_sources(cfg: AppConfig, tmp_path: Path) -> None:
     assert mop[0]["OBJECTID"] == 7
     ar = json.loads(rows[1].payload_json or "")
     assert [r["id"] for r in ar] == [19]
+    assert set(mop[0]) <= MopChileJama.FIELDS
+    assert set(ar[0]) <= ArgentinaGobArJama.FIELDS
+
+
+@respx.mock
+def test_personal_fields_are_never_stored(
+    cfg: AppConfig, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    mop = fixture("mop_cl_query.json")
+    mop["features"][0]["attributes"].update(
+        {"CREATEDBY": "NOMBRE.APELLIDO", "RESPONSABLE": "OTRA.PERSONA", "CAMPO_NUEVO": "x"}
+    )
+    listing = fixture("argentina_listado.json")
+    next(r for r in listing if r["id"] == 19)["responsable"] = "Nombre Apellido"
+    mock_robots()
+    respx.get(MOP_QUERY).respond(200, json=mop)
+    respx.get(AR_LIST).respond(200, json=listing)
+    with caplog.at_level("INFO", logger="corredor.sources.jama"):
+        rows = [c.snapshot() for c in build_collectors(cfg.fuentes, fetcher(tmp_path))]
+    stored = "".join(r.model_dump_json() for r in rows)
+    for value in ("NOMBRE.APELLIDO", "OTRA.PERSONA", "Nombre Apellido"):
+        assert value not in stored
+        assert value not in caplog.text
+    assert "CREATEDBY" not in stored
+    assert "CREATEDBY" in caplog.text
+    assert "RESPONSABLE" in caplog.text
+    assert "CAMPO_NUEVO" in caplog.text
+    assert "responsable" in caplog.text
+    assert json.loads(rows[0].payload_json or "")[0]["TRANSITABILIDAD"]
 
 
 @respx.mock

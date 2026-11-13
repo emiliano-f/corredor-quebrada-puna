@@ -51,9 +51,12 @@ the cache read is skipped because the endpoint is live).
 
 | Source (`config.yaml` id) | `fuente` | Request | Kept |
 |---|---|---|---|
-| `jama_mop_cl` (`MopChileJama`) | `mop_cl` | `GET {base_url}/query?where=OBJECTID=7&outFields=*&f=json` (ArcGIS MapServer of Vialidad MOP Chile; robots.txt 404 = no restrictions; `params.objectid`) | `attributes` of the OBJECTID 7 feature, all fields as returned (dates are epoch ms). Geometry is dropped. |
-| `jama_argentina_gob_ar` (`ArgentinaGobArJama`) | `argentina_gob_ar` | `GET {base_url}` (JSON list of every crossing; robots allows it with `Crawl-delay: 10`) | The record(s) in `params.ids` (Jama, id 19), always. The ids in `params.ids_si_cambian` (Jama Norte 100, Jama Sur 101, not open to traffic) only while any field in `params.estado_base` differs from that baseline. The other ~150 crossings are discarded. |
+| `jama_mop_cl` (`MopChileJama`) | `mop_cl` | `GET {base_url}/query?where=OBJECTID=7&outFields=*&f=json` (ArcGIS MapServer of Vialidad MOP Chile; robots.txt 404 = no restrictions; `params.objectid`) | Allowlisted `attributes` of the OBJECTID 7 feature (status, schedule and timestamp fields; see [DATOS.md](DATOS.md#jama_estado--paso-de-jama-status-snapshots)). Geometry and every other field (including `CREATEDBY`/`RESPONSABLE`, which hold operator usernames) are dropped. |
+| `jama_argentina_gob_ar` (`ArgentinaGobArJama`) | `argentina_gob_ar` | `GET {base_url}` (JSON list of every crossing; robots allows it with `Crawl-delay: 10`) | The record(s) in `params.ids` (Jama, id 19), always. The ids in `params.ids_si_cambian` (Jama Norte 100, Jama Sur 101, not open to traffic) only while any field in `params.estado_base` differs from that baseline. Only the allowlisted status/schedule/timestamp fields are kept. The other ~150 crossings are discarded. |
 
+- Field allowlist: each collector keeps only `FIELDS`. Fields outside it are dropped and
+  only their NAMES are logged (`INFO corredor.sources.jama: … campos fuera de la allowlist`),
+  never their values, so new fields can be reviewed and added on purpose.
 - Command: `make snapshot-jama`, i.e. `uv run corredor snapshot-jama [--config config.yaml] [--salida snapshots/jama_estado.jsonl]`
   appends one JSON line per enabled snapshot source (`JamaEstado`, see
   [DATOS.md](DATOS.md#jama_estado--paso-de-jama-status-snapshots)).
