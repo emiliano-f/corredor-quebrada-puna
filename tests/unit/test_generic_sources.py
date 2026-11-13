@@ -519,8 +519,9 @@ def test_index_children_for_keeps_children_after_an_edited_one() -> None:
 
 def test_entry_month_prefers_the_url_date() -> None:
     assert entry_month(SitemapEntry(f"{BASE}/2017/01/11/alud/", "2019-05-01")) == "2017-01"
-    assert entry_month(SitemapEntry(f"{BASE}/alud-n1", "2019-05-01T10:00:00Z")) == "2019-05"
-    assert entry_month(SitemapEntry(f"{BASE}/alud-n1")) is None
+    news = SitemapEntry(f"{BASE}/alud-n1", "2019-05-01", news_date="2017-01-11T08:00:00Z")
+    assert entry_month(news) == "2017-01"
+    assert entry_month(SitemapEntry(f"{BASE}/alud-n1", "2019-05-01T10:00:00Z")) is None
 
 
 INDEX = """<?xml version="1.0" encoding="UTF-8"?>

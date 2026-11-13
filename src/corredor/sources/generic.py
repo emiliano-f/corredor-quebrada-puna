@@ -437,11 +437,14 @@ def index_children_for(children: list[IndexChild], month: str) -> list[str]:
 
 
 def entry_month(entry: SitemapEntry) -> str | None:
-    """ "YYYY-MM" of a sitemap URL: /YYYY/MM/ in its path, else news date, else lastmod."""
+    """Publication "YYYY-MM" of a sitemap URL: /YYYY/MM/ in its path, else the news date.
+
+    `lastmod` is not used: it is the last edit, which can be any time after publication.
+    """
     m = _URL_DATE.search(urlsplit(entry.loc).path)
     if m:
         return f"{m[1]}-{m[2]}"
-    day = parse_iso_date(entry.news_date) or parse_iso_date(entry.lastmod)
+    day = parse_iso_date(entry.news_date)
     return f"{day:%Y-%m}" if day else None
 
 

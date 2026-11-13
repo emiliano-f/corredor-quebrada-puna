@@ -124,9 +124,9 @@ only through `config.yaml` (`metodo` + `params`); there is no per-outlet code.
     newest change (an edit to an old post raises it), so it is only an upper bound,
     made monotonic with a suffix minimum: a month skips the children whose bound is
     before it (`index_children_for`), then reads the rest in order and stops at the
-    first child listing a post dated after the month. Inside each child only URLs dated in that month are kept
-    (`/YYYY/MM/` in the path, else `news:publication_date`/`lastmod`; undated URLs are
-    kept). The index is read once per run (refetched if older than a day); an incomplete
+    first child listing a post dated after the month. Inside each child only URLs
+    published in that month are kept (`/YYYY/MM/` in the path, else
+    `news:publication_date`, never `lastmod`; undated URLs are kept). The index is read once per run (refetched if older than a day); an incomplete
     index or a listed child that fails marks the month `error`.
   Plain or gzip (decompression capped at 64 MiB). Parsed with regexes, so no XML entity
   expansion.
