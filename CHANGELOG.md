@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format follows
   `PoliteFetcher` (robots.txt RFC 9309, Crawl-delay, rate limit, retries, disk cache),
   shared extraction regexes, DuckDB repository, lineage manifest and `corredor` CLI.
 - Tooling: Makefile, pre-commit (identity guard, ruff, mypy, detect-secrets), docs guard,
-  two-step release (`make release` opens a release PR, `make tag` pushes the tag), CI, release, CodeQL and Dependabot workflows, PR and issue templates.
+  two-step release (`make release` opens a release PR, `make tag` pushes the tag), CI and
+  release workflows, Dependabot, PR and issue templates. CodeQL (Python + Actions) runs via
+  GitHub default setup.
 - Docs: README (es-AR), AGENTS.md, CONTRIBUTING.md, FUENTES.md, SCRAPING.md, DATOS.md,
   ADR 0001 and playbooks.
