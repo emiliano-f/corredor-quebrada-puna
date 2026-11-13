@@ -272,3 +272,9 @@ def test_geocoder_fallback_is_never_verified(geodata: GeoData) -> None:
     (c,) = reg.verify({}, geodata.routes)
     assert (c.point.lat, c.point.lon) == (-23.7, -65.5)
     assert "sin resultado" in c.point.nota_geo
+
+
+def test_report_cell_escapes_pipes_and_newlines() -> None:
+    from corredor.geo.points import _md_cell
+
+    assert _md_cell("a | b\nc") == "a \\| b c"

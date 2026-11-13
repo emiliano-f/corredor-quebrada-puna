@@ -184,7 +184,7 @@ def verification_report(checks: Sequence[PointCheck], current: Sequence[Critical
         same = _same(p, cur.get(p.id))
         dist = "—" if c.distancia_m is None else f"{c.distancia_m:.0f}"
         km = "—" if p.km is None else f"{p.km:.1f}"
-        obs = "; ".join(c.problemas) or "—"
+        obs = _md_cell("; ".join(c.problemas)) or "—"
         lines.append(
             f"| {p.id} | {p.ruta} | {km} | {p.lat:.5f}, {p.lon:.5f} | {dist} | "
             f"{'sí' if p.verificado else 'no'} | {'sí' if same else '**no**'} | {obs} |"
@@ -193,6 +193,10 @@ def verification_report(checks: Sequence[PointCheck], current: Sequence[Critical
     lines.append("")
     lines.append(f"Puntos verificados: {n} de {len(checks)}.")
     return "\n".join(lines) + "\n"
+
+
+def _md_cell(text: str) -> str:
+    return " ".join(text.split()).replace("|", "\\|")
 
 
 def _same(a: CriticalPoint, b: CriticalPoint | None) -> bool:

@@ -1,6 +1,6 @@
 # Verificación de puntos críticos (OpenStreetMap)
 
-> Generado: 2026-11-13 22:03 UTC · versión `0.1.0.dev0` · commit `ac498df` · SCHEMA_VERSION 1 · fuentes `a64a00201b6ace4f`
+> Generado: 2026-11-13 22:20 UTC · versión `0.1.0.dev0` · commit `adf9f91` · SCHEMA_VERSION 1 · fuentes `69a5852fb79566d2`
 
 | id | ruta | km | lat, lon | dist. traza (m) | verificado | coincide con config.yaml | observaciones |
 |---|---|---|---|---|---|---|---|
