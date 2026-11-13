@@ -309,7 +309,10 @@ class WordPressApiSource(_GenericSource):
                 return
             if not result.ok:
                 raise FetchError(f"HTTP {result.status} for {result.url}")
-            posts = json.loads(result.content)
+            try:
+                posts = json.loads(result.content)
+            except ValueError as exc:
+                raise FetchError(f"invalid WP JSON for {result.url}: {exc}") from exc
             if not isinstance(posts, list):
                 raise FetchError(f"unexpected WP payload for {result.url}")
             if page == 1:

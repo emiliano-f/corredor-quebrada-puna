@@ -436,3 +436,16 @@ def test_sitemap_invalid_listing_is_an_error(
     assert list(source.list_articles(date(2016, 1, 1))) == []
     assert source.stats.units == {"2024-02": "error"}
     assert not source.checkpoint.is_done("2024-02")
+
+
+@respx.mock
+def test_wp_invalid_json_is_a_window_error(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(API).respond(200, text="<html>no es JSON</html>")
+    options = GenericOptions(today=date(2025, 3, 1))
+    source = WordPressApiSource(
+        cfg("wordpress_api", params={"terms": ["Jama"]}), make_fetcher(), options
+    )
+    assert list(source.list_articles(date(2025, 1, 1))) == []
+    assert source.stats.units == {"2025": "error"}
+    assert "invalid WP JSON" in source.stats.errors[0]
