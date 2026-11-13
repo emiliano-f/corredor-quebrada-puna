@@ -27,7 +27,8 @@ El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cad
 con un workflow de GitHub Actions en la rama `data-snapshots`. Ninguna de las dos fuentes
 tiene historial: los datos empiezan el día en que arrancó el colector.
 
-Etapas (una por target de Make): `make datos`, `make calibrar`, `make precision`,
+Etapas (una por target de Make): `make geo` (rutas, Tren Solar y puntos críticos desde
+OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make datos`, `make calibrar`, `make precision`,
 `make reporte`. `make tablero` queda para el día 2.
 
 La configuración vive en [`config.yaml`](config.yaml) (puntos críticos y fuentes). Ninguna
@@ -61,7 +62,11 @@ de entorno `LLM_API_KEY`.
   algunos medios tienen archivo solo desde años recientes.
 - **Umbrales simples:** una regla por causa, igual para todos los puntos; no es un modelo
   hidrológico ni un pronóstico oficial.
-- **Puntos críticos provisionales:** las coordenadas de `config.yaml` están marcadas
-  `verificado: false` hasta que se verifican contra OpenStreetMap.
+- **Puntos críticos:** las coordenadas salen de un objeto de OpenStreetMap y solo se marcan
+  `verificado: true` si están a menos de 500 m de la traza (ver
+  [reports/geo_verificacion.md](reports/geo_verificacion.md)). Los km son distancias medidas
+  sobre la geometría de OSM: en RN 9 se calibran con hitos kilométricos cercanos a San
+  Salvador de Jujuy y hacia el norte son extrapolados; en RN 52 el km 0 es el empalme con
+  RN 9 (supuesto). Pueden diferir de la progresiva oficial de Vialidad Nacional.
 - **Clima de grilla:** Open-Meteo devuelve valores de una celda de grilla cuya elevación
   puede diferir de la del punto real, sobre todo en la Puna.

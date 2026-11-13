@@ -1,4 +1,4 @@
-.PHONY: setup lint format typecheck test docs-check audit check snapshot-jama datos calibrar precision reporte tablero release tag
+.PHONY: setup lint format typecheck test docs-check audit check geo snapshot-jama datos calibrar precision reporte tablero release tag
 
 UV ?= uv
 BUMP ?=
@@ -29,6 +29,9 @@ audit:
 	$(UV) run pip-audit --disable-pip --no-deps -r .audit-requirements.txt
 
 check: lint typecheck test docs-check audit
+
+geo:
+	$(UV) run corredor geo
 
 snapshot-jama:
 	$(UV) run corredor snapshot-jama

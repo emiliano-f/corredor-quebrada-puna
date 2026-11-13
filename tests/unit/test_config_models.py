@@ -24,7 +24,6 @@ def cfg() -> AppConfig:
 
 def test_repo_config_loads(cfg: AppConfig) -> None:
     assert 8 <= len(cfg.puntos) <= 14
-    assert all(not p.verificado for p in cfg.puntos)
     assert {p.ruta for p in cfg.puntos} == {"RN9", "RN52"}
     assert len({s.id for s in cfg.fuentes}) == len(cfg.fuentes)
 

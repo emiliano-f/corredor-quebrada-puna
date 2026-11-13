@@ -20,99 +20,153 @@ backfill:
 # (feature/geo) verifies order, km and coordinates and sets `verificado: true`.
 # km values are deliberately left empty until verified (do not trust the plan's km).
 puntos:
-  # --- RN 9 (Quebrada de Humahuaca), south to north ---
-  - id: rn9_volcan
-    nombre: "Volcán / Quebrada de los Filtros"
-    ruta: RN9
-    lat: -23.91709
-    lon: -65.46402
-    verificado: false
-    fuente_geo: "OSM relation/4473252 (Municipio de Volcán, punto de etiqueta); 'Quebrada de los Filtros' sin resultado en Nominatim"
+  # Generated values (lat, lon, km, verificado, fuente_geo, fuente_km) are derived from the
+  # `osm` object by `make geo` (see reports/geo_verificacion.md); `nota_geo` is manual.
+  # --- RN 9 (Quebrada de Humahuaca), south to north (increasing km) ---
   - id: rn9_cuesta_barcena
     nombre: "Cuesta de Bárcena"
     ruta: RN9
-    lat: -23.96844
-    lon: -65.45131
-    verificado: false
-    fuente_geo: "OSM node/13770515998 (Parador Cuesta de Bárcena, sobre RN 9)"
+    km: 1723.0
+    lat: -23.968435
+    lon: -65.451305
+    osm: node/13770515998
+    verificado: true
+    fuente_geo: "OSM node/13770515998 ('Parador Cuesta de Barcena'), a 22 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: ""
+  - id: rn9_volcan
+    nombre: "Volcán / Quebrada de los Filtros"
+    ruta: RN9
+    km: 1730.9
+    lat: -23.917098
+    lon: -65.464021
+    osm: node/198436752
+    verificado: true
+    fuente_geo: "OSM node/198436752 ('Volcán'), a 335 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: "'Quebrada de los Filtros' no figura en OSM; se usa el nodo del pueblo de Volcán"
   - id: rn9_tumbaya
     nombre: "Tumbaya"
     ruta: RN9
-    lat: -23.85754
-    lon: -65.46701
-    verificado: false
-    fuente_geo: "OSM relation/4473251 (Municipio de Tumbaya)"
+    km: 1737.9
+    lat: -23.85755
+    lon: -65.46702
+    osm: node/198431687
+    verificado: true
+    fuente_geo: "OSM node/198431687 ('Tumbaya'), a 109 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: ""
   - id: rn9_maimara
     nombre: "Maimará"
     ruta: RN9
-    lat: -23.62450
-    lon: -65.40860
-    verificado: false
-    fuente_geo: "OSM relation/4484386 (Municipio de Maimará)"
+    km: 1766.3
+    lat: -23.624503
+    lon: -65.408602
+    osm: node/198401184
+    verificado: true
+    fuente_geo: "OSM node/198401184 ('Maimará'), a 364 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: ""
   - id: rn9_tilcara
     nombre: "Tilcara"
     ruta: RN9
-    lat: -23.57690
-    lon: -65.39339
+    km: 1772.7
+    lat: -23.576901
+    lon: -65.393396
+    osm: node/198429516
     verificado: false
-    fuente_geo: "OSM relation/4484387 (Municipio de Tilcara)"
+    fuente_geo: "OSM node/198429516 ('Tilcara'), a 661 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: "a 661 m de la traza (> 500 m)"
   - id: rn9_huacalera
     nombre: "Huacalera"
     ruta: RN9
-    lat: -23.43352
-    lon: -65.35096
-    verificado: false
-    fuente_geo: "OSM relation/4484385 (Municipio de Huacalera)"
-  # --- RN 52 (Purmamarca → Paso de Jama), east to west ---
+    km: 1789.4
+    lat: -23.433528
+    lon: -65.35097
+    osm: node/198452296
+    verificado: true
+    fuente_geo: "OSM node/198452296 ('Huacalera'), a 66 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: ""
+  # --- RN 52 (Purmamarca → Paso de Jama), east to west (km from the RN 9 junction) ---
   - id: rn52_purmamarca_chalala
     nombre: "Purmamarca / Chalala"
     ruta: RN52
-    lat: -23.73405
-    lon: -65.51658
-    verificado: false
-    fuente_geo: "OSM node/5112503888 (Chalala)"
+    km: 5.8
+    lat: -23.734053
+    lon: -65.516582
+    osm: node/5112503888
+    verificado: true
+    fuente_geo: "OSM node/5112503888 ('Chalala'), a 340 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_lipan_bajo
     nombre: "Cuesta de Lipán — tramo bajo (aluvión)"
     ruta: RN52
-    lat: -23.70529
-    lon: -65.53675
-    verificado: false
-    fuente_geo: "OSM way/297669793 (RN 52 'Cuesta de Lipán', Patacal; centro del tramo)"
+    km: 9.9
+    lat: -23.704888
+    lon: -65.536294
+    osm: way/297669793
+    verificado: true
+    fuente_geo: "OSM way/297669793 ('Cuesta de Lipán'), a 0 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_abra_potrerillos
     nombre: "Abra de Potrerillos — cumbre de Lipán (nieve)"
     ruta: RN52
-    lat: -23.69915
-    lon: -65.65954
-    verificado: false
-    fuente_geo: "OSM node/2795046332 (natural=saddle 'Abra Potrerillos')"
+    km: 37.5
+    lat: -23.699154
+    lon: -65.659549
+    osm: node/2795046332
+    verificado: true
+    fuente_geo: "OSM node/2795046332 ('Abra Potrerillos'), a 3 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_ronqui_angosto
     nombre: "Ronqui Angosto"
     ruta: RN52
-    lat: -23.69812
-    lon: -65.73511
-    verificado: false
-    fuente_geo: "OSM node/5112503898 (Ronqui Angosto)"
+    km: 49.7
+    lat: -23.698123
+    lon: -65.735114
+    osm: node/5112503898
+    verificado: true
+    fuente_geo: "OSM node/5112503898 ('Ronqui Angosto'), a 212 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_salinas_grandes
     nombre: "Salinas Grandes"
     ruta: RN52
-    lat: -23.59642
-    lon: -65.88232
-    verificado: false
-    fuente_geo: "OSM relation/12345428 (Salinas Grandes; punto representativo, no sobre la ruta)"
+    km: 69.7
+    lat: -23.59682
+    lon: -65.885575
+    osm: node/14054411901
+    verificado: true
+    fuente_geo: "OSM node/14054411901 ('Cartel Salinas Grandes'), a 175 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_susques
     nombre: "Susques"
     ruta: RN52
-    lat: -23.39917
-    lon: -66.36756
-    verificado: false
-    fuente_geo: "OSM relation/4503752 (Municipio de Susques)"
+    km: 136.4
+    lat: -23.399177
+    lon: -66.367568
+    osm: node/198427794
+    verificado: true
+    fuente_geo: "OSM node/198427794 ('Susques'), a 292 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
   - id: rn52_paso_jama
     nombre: "Paso de Jama"
     ruta: RN52
-    lat: -23.22658
-    lon: -67.06292
-    verificado: false
-    fuente_geo: "OSM node/311458189 (Paso de Jama, RN 52)"
+    km: 257.0
+    lat: -23.226585
+    lon: -67.062922
+    osm: node/311458189
+    verificado: true
+    fuente_geo: "OSM node/311458189 ('Paso de Jama'), a 0 m de la traza RN52"
+    fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
+    nota_geo: ""
 
 # Sources from the approved survey (docs/FUENTES.md). Generic outlets are added here,
 # not in code. `archivo_desde` = first month with archive; `republica: true` = mostly

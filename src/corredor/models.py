@@ -86,6 +86,10 @@ class CriticalPoint(_Model):
     verificado: bool = False
     fuente_geo: str = ""
     fuente_km: str = ""
+    # Added by Child C (geo): OSM object the coordinate comes from ("node/123", "way/456")
+    # and a free-text note flagging uncertainty.
+    osm: str = ""
+    nota_geo: str = ""
 
 
 class WeatherDay(_Model):
