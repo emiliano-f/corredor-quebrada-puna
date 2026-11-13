@@ -18,6 +18,11 @@ Recorded on 2026-11-13 with the production `PoliteFetcher`, then trimmed:
 - `<outlet>_wp_posts.json`: one WP API page (`url`, `headers`, `body`), at most 4 posts,
   `_fields=id,date,link,title,excerpt`, excerpts cut to 400 characters.
 - `<outlet>_sitemap.xml[.gz]`: one monthly sitemap cut to 5–6 `<url>` entries.
+- `jujuyaldia_sitemap_index.xml`: its Yoast `wp-sitemap.xml` cut to 5 `<sitemap>` children
+  (`post-sitemap.xml`, `post-sitemap48–50.xml`, `category-sitemap.xml`);
+  `jujuyaldia_sitemap.xml` is `post-sitemap49.xml` cut to 7 `<url>` entries (2016-12 to
+  2017-02) without `<image:image>`; `jujuyaldia_pages.json` also names `index_url` and
+  `month`.
 - `<outlet>_pages.json`: for each selected sitemap URL, a `<head>` rebuilt from that page's
   metadata only (`og:*`, `article:published_time`, minimal JSON-LD). No `<body>`.
 - `elsubmarino_feed.xml`: the RSS feed with 4 items, without `content:encoded`, images,

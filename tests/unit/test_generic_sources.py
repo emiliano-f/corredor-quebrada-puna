@@ -15,10 +15,14 @@ from corredor.models import Article, SourceConfig
 from corredor.sources.generic import (
     BAJADA_MAX_CHARS,
     GenericOptions,
+    IndexChild,
     RssSource,
+    SitemapEntry,
     SitemapSource,
     WordPressApiSource,
     decompress_if_gzip,
+    entry_month,
+    index_children_for,
     parse_article_meta,
     parse_sitemap,
     plain_text,
@@ -482,3 +486,102 @@ def test_open_year_resumes_from_todays_cache_after_the_cap(
     list(second.list_articles(date(1970, 1, 1)))
     assert second.stats.units == {"1970": "ok"}
     assert route.call_count == 3  # Jama, Lipán, Lipan: the first two came from cache
+
+
+# --------------------------------------------------------------------------- sitemap index
+def test_index_children_for_uses_monotonic_lastmod_bounds() -> None:
+    children = [
+        IndexChild(f"{BASE}/post-sitemap.xml", date(2026, 11, 13)),  # old page, edited post
+        IndexChild(f"{BASE}/post-sitemap2.xml", date(2016, 12, 23)),
+        IndexChild(f"{BASE}/post-sitemap3.xml", date(2017, 2, 8)),
+        IndexChild(f"{BASE}/post-sitemap4.xml", None),
+        IndexChild(f"{BASE}/post-sitemap5.xml", date(2017, 3, 30)),
+    ]
+
+    def pick(month: str) -> list[str]:
+        return [u.rsplit("/", 1)[-1] for u in index_children_for(children, month)]
+
+    assert pick("2016-06") == ["post-sitemap.xml"]
+    assert pick("2017-01") == ["post-sitemap3.xml"]
+    assert pick("2017-03") == ["post-sitemap4.xml", "post-sitemap5.xml"]
+    assert pick("2018-01") == []
+
+
+def test_entry_month_prefers_the_url_date() -> None:
+    assert entry_month(SitemapEntry(f"{BASE}/2017/01/11/alud/", "2019-05-01")) == "2017-01"
+    assert entry_month(SitemapEntry(f"{BASE}/alud-n1", "2019-05-01T10:00:00Z")) == "2019-05"
+    assert entry_month(SitemapEntry(f"{BASE}/alud-n1")) is None
+
+
+INDEX = """<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<sitemap><loc>{base}/post-sitemap.xml</loc><lastmod>2016-12-23T10:00:00Z</lastmod></sitemap>
+<sitemap><loc>{base}/post-sitemap2.xml</loc><lastmod>2017-02-08T10:00:00Z</lastmod></sitemap>
+<sitemap><loc>{base}/category-sitemap.xml</loc><lastmod>2026-11-13T10:00:00Z</lastmod></sitemap>
+<sitemap><loc>https://otro.example/post-sitemap9.xml</loc></sitemap>
+</sitemapindex>"""
+CHILD = """<urlset>
+<url><loc>{base}/2016/12/30/alud-en-volcan-ruta-9/</loc></url>
+<url><loc>{base}/2017/01/11/alud-en-jujuy-la-ruta-9-intransitable/</loc></url>
+<url><loc>{base}/2017/01/12/feria-del-libro/</loc></url>
+<url><loc>{base}/2017/02/01/corte-en-ruta-52-por-nieve/</loc></url>
+</urlset>"""
+
+
+def index_cfg(**params: object) -> SourceConfig:
+    return cfg("sitemap", params={"sitemap_indice": f"{BASE}/wp-sitemap.xml", **params})
+
+
+@respx.mock
+def test_sitemap_index_mode_lists_only_the_month(make_fetcher: Factory, tmp_path: Path) -> None:
+    no_robots()
+    respx.get(f"{BASE}/wp-sitemap.xml").respond(200, text=INDEX.format(base=BASE))
+    first = respx.get(f"{BASE}/post-sitemap.xml").respond(200, text="<urlset></urlset>")
+    respx.get(f"{BASE}/post-sitemap2.xml").respond(200, text=CHILD.format(base=BASE))
+    category = respx.get(f"{BASE}/category-sitemap.xml").respond(200, text="<urlset></urlset>")
+    published = '<meta property="article:published_time" content="2017-01-11T08:00:00-03:00">'
+    respx.get(f"{BASE}/2017/01/11/alud-en-jujuy-la-ruta-9-intransitable/").respond(
+        200, text=HEAD.format(t="Alud en Jujuy", d=published)
+    )
+    options = GenericOptions(
+        checkpoint_dir=tmp_path, sample_months=("2017-01",), today=date(2026, 11, 13)
+    )
+    source = SitemapSource(index_cfg(), make_fetcher(), options)
+    (art,) = list(source.list_articles(date(2016, 1, 1)))
+    assert (art.fecha, art.fecha_fuente, art.filtro_slug) == (
+        date(2017, 1, 11),
+        "published_time",
+        "B",
+    )
+    assert not first.called
+    assert not category.called
+    assert (source.stats.raw, source.stats.selected) == (2, 1)
+    assert source.stats.units == {"2017-01": "ok"}
+    assert source.checkpoint.get("2017-01")["sitemaps"] == 1  # type: ignore[index]
+
+
+@respx.mock
+def test_sitemap_index_errors_are_month_errors(make_fetcher: Factory, tmp_path: Path) -> None:
+    no_robots()
+    respx.get(f"{BASE}/wp-sitemap.xml").respond(200, text="<html>maintenance</html>")
+    options = GenericOptions(
+        checkpoint_dir=tmp_path, sample_months=("2017-01",), today=date(2026, 11, 13)
+    )
+    source = SitemapSource(index_cfg(), make_fetcher(), options)
+    assert list(source.list_articles(date(2016, 1, 1))) == []
+    assert source.stats.units == {"2017-01": "error"}
+    respx.get(f"{BASE}/wp-sitemap.xml").respond(200, text=INDEX.format(base=BASE))
+    respx.get(f"{BASE}/post-sitemap2.xml").respond(404)
+    again = SitemapSource(index_cfg(), make_fetcher(), options)
+    list(again.list_articles(date(2016, 1, 1)))
+    assert again.stats.units == {"2017-01": "error"}  # a listed child that 404s is an error
+
+
+def test_sitemap_index_and_template_are_exclusive() -> None:
+    with pytest.raises(ValueError, match="either"):
+        SitemapSource(
+            index_cfg(sitemap_mensual=BASE + "/s-{yyyymm}.xml"),
+            object(),  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="no monthly sitemap template"):
+        SitemapSource(index_cfg(), object()).month_url("2017-01")  # type: ignore[arg-type]

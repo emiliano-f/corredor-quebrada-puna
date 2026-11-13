@@ -109,14 +109,26 @@ only through `config.yaml` (`metodo` + `params`); there is no per-outlet code.
   published_time`; `filtro_slug` is empty.
 - Checkpoint unit = year.
 - Enabled outlets: `elsubmarino`, `radioazultilcara`, `jujuyonline` (`republica: true`,
-  does not count as an independent outlet). `jujuyaldia` is disabled: its robots.txt
-  disallows `/wp-json/` (see [FUENTES.md](FUENTES.md)).
+  does not count as an independent outlet). `jujuyaldia` is not collected this way: its
+  robots.txt disallows `/wp-json/`, so it uses `SitemapSource` with `sitemap_indice` (see
+  [FUENTES.md](FUENTES.md)).
 
 ### `SitemapSource` (`metodo: sitemap`, `PARSER_VERSION = 1`)
 
-- Monthly sitemap from `params.sitemap_mensual` (`{yyyymm}`, `{yyyy}`, `{mm}`
-  placeholders). Plain or gzip (decompression capped at 64 MiB). Parsed with regexes, so
-  no XML entity expansion.
+- Exactly one of:
+  - `params.sitemap_mensual`: one sitemap per month (`{yyyymm}`, `{yyyy}`, `{mm}`
+    placeholders);
+  - `params.sitemap_indice`: a sitemap index of paginated, date-ordered children (e.g.
+    Yoast `post-sitemapN.xml`), kept by the `params.sitemap_hijos` regex (default
+    `post-sitemap\d*\.xml$`) and only on the outlet's host. A child's `lastmod` is its
+    newest change, so the bounds are made monotonic with a suffix minimum and a month
+    lists only the children whose span can hold it (`index_children_for`); undated
+    children are always listed. Inside each child only URLs dated in that month are kept
+    (`/YYYY/MM/` in the path, else `news:publication_date`/`lastmod`; undated URLs are
+    kept). The index is read once per run (refetched if older than a day); an incomplete
+    index or a listed child that fails marks the month `error`.
+  Plain or gzip (decompression capped at 64 MiB). Parsed with regexes, so no XML entity
+  expansion.
 - By default only the months in `backfill.muestra_sitemaps`; `--completo` walks every
   month since `archivo_desde`. Months before `archivo_desde` are reported as
   `before_archive` and not requested.
@@ -128,7 +140,8 @@ only through `config.yaml` (`metodo` + `params`); there is no per-outlet code.
   datePublished` → JSON-LD `datePublished` → sitemap `news:publication_date` /
   `lastmod` with `fecha_fuente = fallback`.
 - Checkpoint unit = month.
-- Enabled outlets: `todojujuy`, `jujuyalmomento`, `somosjujuy`, `prensajujuy`.
+- Enabled outlets: `todojujuy`, `jujuyalmomento`, `somosjujuy`, `prensajujuy` (monthly);
+  `jujuyaldia` (index).
 
 ### `RssSource` (`metodo: rss`, `PARSER_VERSION = 1`)
 

@@ -206,14 +206,19 @@ fuentes:
     tier: 1
     enabled: true
     archivo_desde: 2013-07-01
-  # Disabled: robots.txt disallows /wp-json/ for every agent (checked 2026-11-13); see docs/FUENTES.md.
+  # robots.txt disallows /wp-json/ and /?rest_route= for every agent (rechecked 2026-11-13
+  # with the production parser); the declared sitemap index is allowed. See docs/FUENTES.md.
   - id: jujuyaldia
     nombre: "Jujuy al Día"
     base_url: "https://www.jujuyaldia.com.ar"
-    metodo: wordpress_api
+    metodo: sitemap
     tier: 1
-    enabled: false
+    enabled: true
     archivo_desde: 2010-01-01
+    params:
+      sitemap_indice: "https://www.jujuyaldia.com.ar/wp-sitemap.xml"
+      sitemap_hijos: 'post-sitemap\d*\.xml$'
+
   - id: radioazultilcara
     nombre: "Radio Azul Tilcara"
     base_url: "https://radioazultilcara.com.ar"

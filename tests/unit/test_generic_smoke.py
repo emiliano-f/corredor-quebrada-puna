@@ -1,5 +1,6 @@
 """One offline smoke test per configured generic outlet, on recorded and trimmed responses
-(tests/fixtures/generic: WP API pages, monthly sitemaps, and article <head> metadata)."""
+(tests/fixtures/generic: WP API pages, monthly sitemaps or a sitemap index with one child,
+and article <head> metadata)."""
 
 import json
 import re
@@ -29,6 +30,7 @@ EXPECTED_SITEMAP = {
     "jujuyalmomento": {"B": 2, "C_solo_ruta": 1},
     "somosjujuy": {"B": 2, "C_solo_ruta": 1},
     "prensajujuy": {"B": 2},
+    "jujuyaldia": {"B": 2, "C_solo_ruta": 1},
 }
 
 
@@ -86,14 +88,20 @@ def test_sitemap_outlet_smoke(
     respx.get(rec["sitemap_url"]).respond(200, content=sitemap_file.read_bytes())
     for url, head in rec["pages"].items():
         respx.get(url).respond(200, text=head, headers={"content-type": "text/html; charset=utf-8"})
-    yyyymm = re.search(r"(\d{4})(\d{2})", rec["sitemap_url"])
-    assert yyyymm is not None
-    month = f"{yyyymm[1]}-{yyyymm[2]}"
+    if "index_url" in rec:
+        index = (GENERIC / f"{source_id}_sitemap_index.xml").read_bytes()
+        respx.get(rec["index_url"]).respond(200, content=index)
+        month = rec["month"]
+    else:
+        yyyymm = re.search(r"(\d{4})(\d{2})", rec["sitemap_url"])
+        assert yyyymm is not None
+        month = f"{yyyymm[1]}-{yyyymm[2]}"
     options = GenericOptions(
         checkpoint_dir=tmp_path, sample_months=(month,), today=date(2026, 11, 13)
     )
     source = SitemapSource(config, make_fetcher(), options)
-    assert source.month_url(month) == rec["sitemap_url"]
+    if source.index_url is None:
+        assert source.month_url(month) == rec["sitemap_url"]
     articles = list(source.list_articles(date(2016, 1, 1)))
     assert dict(source.stats.by_level) == EXPECTED_SITEMAP[source_id]
     assert source.stats.errors == []

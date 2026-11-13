@@ -392,6 +392,59 @@ def parse_sitemap(xml: str) -> list[SitemapEntry]:
     return entries
 
 
+_INDEX_END: Final = re.compile(r"</(?:\w+:)?sitemapindex\s*>", re.I)
+_URL_DATE: Final = re.compile(r"/((?:19|20)\d{2})/(0[1-9]|1[0-2])/")
+
+
+@dataclass(frozen=True)
+class IndexChild:
+    loc: str
+    lastmod: date | None = None
+
+
+def parse_sitemap_index(xml: str) -> list[IndexChild]:
+    """`<sitemap>` children of a sitemap index, in document order."""
+    children = []
+    for block in _xml_blocks(xml, "sitemap"):
+        loc = _xml_field(block, "loc")
+        if loc:
+            children.append(IndexChild(loc.strip(), parse_iso_date(_xml_field(block, "lastmod"))))
+    return children
+
+
+def index_children_for(children: list[IndexChild], month: str) -> list[str]:
+    """Children of a paginated, date-ordered index that can list posts of `month`.
+
+    A child's `lastmod` is the latest change among its posts, so editing an old post
+    raises it; a suffix minimum makes the bounds monotonic (later children only hold
+    later posts). Child i then covers (u[i-1], u[i]]. Undated children are kept.
+    """
+    start, end = date.fromisoformat(f"{month}-01"), _month_end(month)
+    bounds: list[date | None] = []
+    running: date | None = None
+    for child in reversed(children):
+        if child.lastmod is not None:
+            running = child.lastmod if running is None else min(running, child.lastmod)
+        bounds.append(running)
+    bounds.reverse()
+    selected, prev = [], None
+    for child, upper in zip(children, bounds, strict=True):
+        if (upper is None or upper >= start) and (prev is None or prev < end):
+            selected.append(child.loc)
+        if upper is not None:
+            prev = upper
+    return selected
+
+
+def entry_month(entry: SitemapEntry) -> str | None:
+    """ "YYYY-MM" of a sitemap URL: /YYYY/MM/ in its path, else news date, else lastmod."""
+    m = _URL_DATE.search(urlsplit(entry.loc).path)
+    if m:
+        return f"{m[1]}-{m[2]}"
+    day = parse_iso_date(entry.news_date) or parse_iso_date(entry.lastmod)
+    return f"{day:%Y-%m}" if day else None
+
+
 @dataclass(frozen=True)
 class PageMeta:
     titular: str = ""
@@ -464,27 +517,50 @@ def _month_end(month: str) -> date:
 
 
 class SitemapSource(_GenericSource):
-    """Monthly sitemap → slug filter C (patterns.slug_level) → article page <head> metadata.
+    """Sitemaps → slug filter C (patterns.slug_level) → article page <head> metadata.
 
-    params.sitemap_mensual: URL template with {yyyymm} (also {yyyy} and {mm}). Months
-    come from GenericOptions.sample_months when given, otherwise every month from
+    Two ways to find a month's URLs (exactly one is required in `params`):
+    - `sitemap_mensual`: URL template with {yyyymm} (also {yyyy} and {mm}), one sitemap
+      per month.
+    - `sitemap_indice`: a sitemap index of paginated child sitemaps (e.g. Yoast
+      `post-sitemapN.xml`, children filtered by the `sitemap_hijos` regex). The children
+      whose `lastmod` span can cover the month are listed (see `index_children_for`) and
+      only their URLs dated in that month are kept (`entry_month`).
+    Months come from GenericOptions.sample_months when given, otherwise every month from
     max(since, archivo_desde) to today. Each month is checkpointed (ok | empty | missing |
     error); the current month is always re-run. URLs outside the outlet's site are skipped.
     """
 
     PARSER_VERSION: ClassVar[int] = 1
+    DEFAULT_CHILDREN: ClassVar[str] = r"post-sitemap\d*\.xml$"
 
     def __init__(
         self, config: SourceConfig, fetcher: Fetcher, options: GenericOptions | None = None
     ) -> None:
         super().__init__(config, fetcher, options)
         template = config.params.get("sitemap_mensual")
-        if not isinstance(template, str) or not any(t in template for t in ("{yyyymm}", "{yyyy}")):
-            raise ValueError(f"{config.id}: params.sitemap_mensual with {{yyyymm}} is required")
-        self.template = template
+        index = config.params.get("sitemap_indice")
+        if index is not None:
+            if template is not None or not isinstance(index, str):
+                raise ValueError(f"{config.id}: use either sitemap_mensual or sitemap_indice")
+            self.template: str | None = None
+            self.index_url: str | None = index
+            self.children_re = re.compile(
+                str(config.params.get("sitemap_hijos", self.DEFAULT_CHILDREN))
+            )
+        elif isinstance(template, str) and any(t in template for t in ("{yyyymm}", "{yyyy}")):
+            self.template, self.index_url = template, None
+        else:
+            raise ValueError(
+                f"{config.id}: params.sitemap_mensual with {{yyyymm}} "
+                "(or params.sitemap_indice) is required"
+            )
         self._seen: set[str] = set()
+        self._index: list[IndexChild] | None = None
 
     def month_url(self, month: str) -> str:
+        if self.template is None:
+            raise ValueError(f"{self.source_id}: no monthly sitemap template (sitemap_indice)")
         yyyy, mm = month.split("-")
         return self.template.format(yyyymm=yyyy + mm, yyyy=yyyy, mm=mm)
 
@@ -514,36 +590,23 @@ class SitemapSource(_GenericSource):
     def _month(
         self, month: str, *, fresh_after: date | None = None, closed: bool = True
     ) -> Iterator[Article]:
-        url = self.month_url(month)
         try:
-            result = self._get(url, fresh_after=fresh_after)
+            listings = self._listing_urls(month)
         except DisallowedByRobots:
             raise
         except FetchError as exc:
             self._error(f"{month}: {exc}")
             self._mark(month, "error", closed=closed, error=str(exc))
             return
-        if result.status == 404:
-            self._mark(month, "missing", closed=closed, http_status=404)
-            return
-        if not result.ok:
-            self._error(f"{month}: HTTP {result.status}")
-            self._mark(month, "error", closed=closed, http_status=result.status)
-            return
-        try:
-            xml = decompress_if_gzip(result.content).decode("utf-8", errors="replace")
-        except (ValueError, zlib.error) as exc:
-            self._error(f"{month}: {exc}")
-            self._mark(month, "error", closed=closed, error=str(exc))
-            return
-        if not _URLSET_END.search(xml):
-            self._error(f"{month}: not a complete sitemap (no closing </urlset>)")
-            self._mark(month, "error", closed=closed, error="incomplete sitemap")
-            return
-        entries = parse_sitemap(xml)
+        entries: list[SitemapEntry] = []
+        for url in listings:
+            got = self._listing(url, month, fresh_after=fresh_after, closed=closed)
+            if got is None:
+                return
+            entries.extend(got)
         self.stats.raw += len(entries)
         if not entries:
-            self._mark(month, "empty", closed=closed, urls=0)
+            self._mark(month, "empty", closed=closed, urls=0, sitemaps=len(listings))
             return
         failed, selected = 0, 0
         for entry in entries:
@@ -564,8 +627,68 @@ class SitemapSource(_GenericSource):
                 yield article
         status: CheckpointStatus = "error" if failed else "ok"
         self._mark(
-            month, status, closed=closed, urls=len(entries), selected=selected, page_errors=failed
+            month,
+            status,
+            closed=closed,
+            urls=len(entries),
+            selected=selected,
+            page_errors=failed,
+            sitemaps=len(listings),
         )
+
+    def _listing_urls(self, month: str) -> list[str]:
+        if self.index_url is None:
+            return [self.month_url(month)]
+        if self._index is None:
+            result = self._get(self.index_url, fresh_after=self.today)
+            if not result.ok:
+                raise FetchError(f"sitemap index {self.index_url}: HTTP {result.status}")
+            try:
+                xml = decompress_if_gzip(result.content).decode("utf-8", errors="replace")
+            except (ValueError, zlib.error) as exc:
+                raise FetchError(f"sitemap index {self.index_url}: {exc}") from exc
+            if not _INDEX_END.search(xml):
+                raise FetchError(f"sitemap index {self.index_url}: incomplete (no </sitemapindex>)")
+            self._index = [
+                c
+                for c in parse_sitemap_index(xml)
+                if self.children_re.search(c.loc) and _same_site(c.loc, self.config.base_url)
+            ]
+        return index_children_for(self._index, month)
+
+    def _listing(
+        self, url: str, month: str, *, fresh_after: date | None, closed: bool
+    ) -> list[SitemapEntry] | None:
+        """Entries of one sitemap; None if the month was marked (missing or error)."""
+        try:
+            result = self._get(url, fresh_after=fresh_after)
+        except DisallowedByRobots:
+            raise
+        except FetchError as exc:
+            self._error(f"{month}: {exc}")
+            self._mark(month, "error", closed=closed, error=str(exc))
+            return None
+        if result.status == 404 and self.index_url is None:
+            self._mark(month, "missing", closed=closed, http_status=404)
+            return None
+        if not result.ok:
+            self._error(f"{month}: HTTP {result.status} for {url}")
+            self._mark(month, "error", closed=closed, http_status=result.status)
+            return None
+        try:
+            xml = decompress_if_gzip(result.content).decode("utf-8", errors="replace")
+        except (ValueError, zlib.error) as exc:
+            self._error(f"{month}: {exc}")
+            self._mark(month, "error", closed=closed, error=str(exc))
+            return None
+        if not _URLSET_END.search(xml):
+            self._error(f"{month}: not a complete sitemap (no closing </urlset>)")
+            self._mark(month, "error", closed=closed, error="incomplete sitemap")
+            return None
+        entries = parse_sitemap(xml)
+        if self.index_url is None:
+            return entries
+        return [e for e in entries if entry_month(e) in (None, month)]
 
     def _page(self, entry: SitemapEntry, level: FiltroSlug) -> tuple[Article | None, bool]:
         """Article metadata for one selected URL; (article, fetched_without_error)."""
