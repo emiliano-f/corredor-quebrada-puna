@@ -45,7 +45,8 @@ class LLMExtractor(EventExtractor):
         self.point_ids = point_ids
 
     def _cache_path(self, article: Article) -> Path:
-        key = hashlib.sha256(f"{PROMPT_VERSION}|{article.url}".encode()).hexdigest()
+        raw = json.dumps([PROMPT_VERSION, article.url, article.titular, article.bajada])
+        key = hashlib.sha256(raw.encode()).hexdigest()
         return self.cache_dir / f"{key}.json"
 
     def _user_prompt(self, article: Article) -> str:

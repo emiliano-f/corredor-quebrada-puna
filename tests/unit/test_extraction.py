@@ -178,3 +178,12 @@ def test_review_csv_neutralises_formulas(tmp_path: Path) -> None:
     path = tmp_path / "r.csv"
     write_review([ev("1", 10, None, "u1")], {"u1": ArticleRef("a", '=HYPERLINK("x")')}, path)
     assert "'=HYPERLINK" in path.read_text()
+
+
+def test_llm_cache_tracks_metadata(tmp_path: Path) -> None:
+    client = FakeLLM("[]")
+    llm = LLMExtractor(client, tmp_path)
+    llm.extract(art("Ruta 52 cortada"))
+    llm.extract(art("Ruta 52 cortada"))
+    llm.extract(art("Ruta 52 habilitada"))
+    assert len(client.calls) == 2
