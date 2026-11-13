@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -104,6 +105,32 @@ def write_outputs(run: WeatherRun, clima_dir: Path) -> list[Path]:
     paths.append(clima_dir / "grilla.parquet")
     _with_mates(_merge(paths[-1], grid_table(run.cells))).to_parquet(paths[-1], index=False)
     return paths
+
+
+def saved_cells(clima_dir: Path, point_ids: Sequence[str]) -> list[GridCell]:
+    """Grid cells in grilla.parquet (all runs merged) for the configured points, in order."""
+    path = clima_dir / "grilla.parquet"
+    if not path.exists():
+        return []
+    rank = {pid: i for i, pid in enumerate(point_ids)}
+    grid = pd.read_parquet(path)
+    grid = grid[grid["punto_id"].isin(rank)]
+    cells = [
+        GridCell(
+            punto_id=str(r["punto_id"]),
+            modelo=str(r["modelo"]),
+            lat_grilla=float(r["lat_grilla"]),
+            lon_grilla=float(r["lon_grilla"]),
+            elev_grilla_m=_opt_float(r["elev_grilla_m"]),
+            elev_punto_m=_opt_float(r["elev_punto_m"]),
+        )
+        for r in grid.to_dict("records")
+    ]
+    return sorted(cells, key=lambda c: rank[c.punto_id])
+
+
+def _opt_float(value: Any) -> float | None:
+    return None if value is None or pd.isna(value) else float(value)
 
 
 def _with_mates(grid: pd.DataFrame) -> pd.DataFrame:

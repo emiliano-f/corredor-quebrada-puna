@@ -7,7 +7,7 @@ from corredor.config import ClimaConfig
 from corredor.models import CriticalPoint
 from corredor.reports import Lineage
 from corredor.storage.repository import DuckDBRepository
-from corredor.weather.backfill import fetch_points, grid_report, write_outputs
+from corredor.weather.backfill import fetch_points, grid_report, saved_cells, write_outputs
 from corredor.weather.openmeteo import GridCell, OpenMeteoClient
 
 from .test_openmeteo import NOW, POINT, FakeFetcher
@@ -77,3 +77,23 @@ def test_write_outputs_keeps_points_the_run_did_not_reach(tmp_path: Path) -> Non
     assert sorted(grid["punto_id"]) == ["rn9_twin"] * 2 + ["rn9_volcan"] * 2
     mates = dict(zip(grid["punto_id"], grid["comparte_celda_con"], strict=False))
     assert mates == {"rn9_volcan": "rn9_twin", "rn9_twin": "rn9_volcan"}
+
+
+def test_saved_cells_reports_every_configured_point_after_a_partial_run(tmp_path: Path) -> None:
+    client = OpenMeteoClient(FakeFetcher(), tmp_path / "clima", ClimaConfig(), now=lambda: NOW)
+    repo = DuckDBRepository(tmp_path / "db.duckdb")
+    write_outputs(
+        fetch_points(client, [POINT, TWIN], date(2016, 1, 1), date(2016, 1, 8), repo),
+        tmp_path / "out",
+    )
+    write_outputs(
+        fetch_points(client, [TWIN], date(2016, 1, 1), date(2016, 1, 8), repo), tmp_path / "out"
+    )
+    repo.close()
+    assert saved_cells(tmp_path / "nada", ["rn9_volcan"]) == []
+    cells = saved_cells(tmp_path / "out", ["rn9_volcan", "rn9_twin"])
+    assert [c.punto_id for c in cells] == ["rn9_volcan"] * 2 + ["rn9_twin"] * 2
+    report = grid_report(cells, INFO, "era5_seamless")
+    assert "| rn9_volcan |" in report
+    assert "| rn9_twin |" in report
+    assert [c.punto_id for c in saved_cells(tmp_path / "out", ["rn9_twin"])] == ["rn9_twin"] * 2

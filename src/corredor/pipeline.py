@@ -88,7 +88,7 @@ def clima(
 ) -> None:
     """Descarga el clima horario de Open-Meteo (2016→hoy) y calcula los antecedentes."""
     from corredor.storage.repository import DuckDBRepository
-    from corredor.weather.backfill import fetch_points, grid_report, write_outputs
+    from corredor.weather.backfill import fetch_points, grid_report, saved_cells, write_outputs
     from corredor.weather.openmeteo import OpenMeteoClient
 
     settings = Settings()
@@ -106,7 +106,12 @@ def clima(
     report = Path("reports") / "clima_grilla.md"
     report.parent.mkdir(exist_ok=True)
     report.write_text(
-        grid_report(run.cells, lineage(cfg), cfg.clima.modelo_historico), encoding="utf-8"
+        grid_report(
+            saved_cells(settings.data_dir / "clima", [p.id for p in cfg.puntos]),
+            lineage(cfg),
+            cfg.clima.modelo_historico,
+        ),
+        encoding="utf-8",
     )
     used = client.ledger.used_today()
     typer.echo(
