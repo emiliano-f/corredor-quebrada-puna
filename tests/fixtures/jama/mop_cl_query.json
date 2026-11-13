@@ -1,0 +1,50 @@
+{
+  "displayFieldName": "ID_IDE",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 5360,
+    "latestWkid": 5360
+  },
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 7,
+        "ID_IDE": "PASO_7",
+        "REGION": "REGIÓN DE ANTOFAGASTA",
+        "PROVINCIA": "EL LOA",
+        "COMUNA": "SAN PEDRO DE ATACAMA",
+        "FUENTE": "VIALIDAD",
+        "FECHA_ACTUALIZACION": 1754438400000,
+        "LEVANTAMIENTO": "SUBMETRICO",
+        "INFOPASOSID": 73960,
+        "PASO": "JAMA",
+        "DESCRIPTION": "Paso Fronterizo Jama",
+        "ACTUAL": 1794182400000,
+        "FECHA": 1794212069000,
+        "HORA": 28800000,
+        "ADESDE": 28800000,
+        "AHASTA": 64800000,
+        "ESTADOINFORME": "ACTUAL",
+        "ESTADOCALZADA": null,
+        "ESTADOTIEMPO": "PARCIAL NUBLADO",
+        "HABILITADO": null,
+        "RESTRICCIONES": null,
+        "TRANSITABILIDAD": "TRÁNSITO SIN RESTRICCIÓN",
+        "CREATEDBY": "REDACTADO",
+        "RESPONSABLE": "REDACTADO",
+        "SITEID": "VIALIDAD",
+        "DETALLE1": null,
+        "DETALLE2": null,
+        "HABILITACION": "Permanente",
+        "FECHAINICIER": null,
+        "FECHAPER": null,
+        "CADENAS": "PORTE OBLIGADO DE CADENAS",
+        "GlobalID": "{85773093-0128-4A51-97C7-91AE004EF1A2}"
+      },
+      "geometry": {
+        "x": -67.06285789999998,
+        "y": -23.22661065099993
+      }
+    }
+  ]
+}

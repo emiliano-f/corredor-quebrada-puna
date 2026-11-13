@@ -81,8 +81,13 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 |---|---|---|---|
 | `fuente` | `mop_cl` \| `argentina_gob_ar` | yes | |
 | `fetched_at` | datetime (UTC) | yes | |
-| `payload_json` | str | no | Raw Jama record as returned by the source. |
-| `error` | str | no | Set when the request failed. |
+| `payload_json` | str | no | JSON array with the raw Jama record(s) as returned by the source (keys sorted): `mop_cl` → the ArcGIS `attributes` of OBJECTID 7 (`TRANSITABILIDAD`, `ESTADOTIEMPO`, `CADENAS`, `RESTRICCIONES`, `HABILITADO`, `FECHA`, `HORA`, `ADESDE`, `AHASTA`, …; dates in epoch ms); `argentina_gob_ar` → the id 19 record (`estado_prioridad`, `estado_vialidad`, `fecha_schema`, `fecha_schema_cancilleria`, `fecha_hora_consulta`, …), plus ids 100/101 only while their status differs from `params.estado_base`. Null when `error` is set. |
+| `error` | str | no | Why the snapshot failed (e.g. `HTTP 503`, `FetchError: …`, `DisallowedByRobots: …`, `OBJECTID 7 no está en la respuesta`). |
+
+Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never on
+`main`), one `JamaEstado` JSON object per line, appended every 3 h by
+`.github/workflows/jama_snapshot.yml` (see [SCRAPING.md](SCRAPING.md#paso-de-jama-status-snapshots-srccorredorsourcesjamapy)).
+`corredor.sources.jama.read_jsonl(path)` parses it into rows for this table.
 
 ## Report rows
 
@@ -95,5 +100,6 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 | Path | Content |
 |---|---|
 | `data/` | Gitignored: DuckDB file, Parquet exports, HTTP cache. |
+| `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
 | `data/manifest.json` | Lineage of the last run: `version`, `git_commit`, `schema_version`, `sources_hash` (hash of `fuentes` in `config.yaml`), `generated_at`. |
 | `reports/*.md` | Generated reports; each starts with the same lineage header. |

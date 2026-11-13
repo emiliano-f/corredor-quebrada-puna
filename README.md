@@ -20,7 +20,12 @@ make setup          # uv sync + hooks de pre-commit
 make check          # lint, tipos, tests, docs-check y auditoría de dependencias
 uv run corredor --version
 uv run corredor manifest   # escribe data/manifest.json
+make snapshot-jama  # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
 ```
+
+El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
+con un workflow de GitHub Actions en la rama `data-snapshots`. Ninguna de las dos fuentes
+tiene historial: los datos empiezan el día en que arrancó el colector.
 
 Etapas (una por target de Make): `make datos`, `make calibrar`, `make precision`,
 `make reporte`. `make tablero` queda para el día 2.

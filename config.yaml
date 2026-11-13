@@ -208,7 +208,7 @@ fuentes:
     base_url: "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Pasos_Fronterizos/MapServer/0"
     metodo: snapshot
     tier: 1
-    enabled: false
+    enabled: true
     oficial: true
     params:
       objectid: 7
@@ -217,10 +217,14 @@ fuentes:
     base_url: "https://www.argentina.gob.ar/seguridad/pasosinternacionales/listado"
     metodo: snapshot
     tier: 1
-    enabled: false
+    enabled: true
     oficial: true
     params:
-      ids: [19, 100, 101]
+      ids: [19]                    # Jama: always stored
+      ids_si_cambian: [100, 101]   # Jama Norte / Sur (not open): stored only while their
+      estado_base:                 # status differs from this baseline
+        estado_prioridad: CERRADO
+        estado_vialidad: HABILITADA
   # --- Tier 2 (backlog; one GitHub issue each, label tier-2) ---
   - {id: infotilcara, nombre: "InfoTilcara / Radio RIN", base_url: "https://infotilcara.com.ar", metodo: wordpress_api, tier: 2, enabled: false, archivo_desde: 2023-06-01, local: true}
   - {id: pregon, nombre: "El Pregón", base_url: "https://www.pregon.com.ar", metodo: custom, tier: 2, enabled: false}

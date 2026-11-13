@@ -79,7 +79,7 @@ class FetchResult:
 class Fetcher(Protocol):
     """What sources depend on (lets tests inject a fake)."""
 
-    def get(self, url: str) -> FetchResult: ...
+    def get(self, url: str, *, refresh: bool = False) -> FetchResult: ...
 
 
 class RobotsRules:
@@ -192,9 +192,12 @@ class PoliteFetcher:
         self._hosts: dict[str, _HostState] = {}
 
     # ------------------------------------------------------------------ public API
-    def get(self, url: str) -> FetchResult:
-        """GET `url` politely. Raises DisallowedByRobots or FetchError."""
-        cached = self._cache_read(url)
+    def get(self, url: str, *, refresh: bool = False) -> FetchResult:
+        """GET `url` politely. Raises DisallowedByRobots or FetchError.
+
+        `refresh=True` skips the cache read (live status endpoints) but still caches.
+        """
+        cached = None if refresh else self._cache_read(url)
         if cached is not None:
             return cached
         if not self.allowed(url):

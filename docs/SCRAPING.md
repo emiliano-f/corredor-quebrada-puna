@@ -16,7 +16,7 @@ Every production HTTP request goes through `PoliteFetcher.get(url) -> FetchResul
 | TLS | Certificate verification always on. |
 | Redirects | Followed by hand, at most 5 hops; each hop is checked against robots.txt (`DisallowedByRobots`) and throttled. A redirected robots.txt is followed too (5 hops; more counts as "no rules"). Paths are compared percent-decoded. |
 | Retries | 429, 5xx and transport errors: up to `http.retries` retries with exponential backoff, never sooner than `Retry-After`. A `Retry-After` above 600 s fails the request instead of retrying early. |
-| Cache | Under `data/cache/` (gitignored), one folder per host, keyed by SHA-256 of the URL. Only 2xx/304 are cached; 404 is cached for 1 hour; 429/5xx are never cached. |
+| Cache | Under `data/cache/` (gitignored), one folder per host, keyed by SHA-256 of the URL. Only 2xx/304 are cached; 404 is cached for 1 hour; 429/5xx are never cached. `get(url, refresh=True)` skips the cache read (live status endpoints) but still writes the cache. |
 
 ## What is stored
 
@@ -42,7 +42,34 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 ## Implemented sources
 
-None yet.
+### Paso de Jama status snapshots (`src/corredor/sources/jama.py`)
+
+Not news: live status of the border crossing, stored raw so the history starts accumulating
+(neither source keeps an archive). One request per source per run, through
+`PoliteFetcher.get(url, refresh=True)` (robots.txt, Crawl-delay and User-Agent as above;
+the cache read is skipped because the endpoint is live).
+
+| Source (`config.yaml` id) | `fuente` | Request | Kept |
+|---|---|---|---|
+| `jama_mop_cl` (`MopChileJama`) | `mop_cl` | `GET {base_url}/query?where=OBJECTID=7&outFields=*&f=json` (ArcGIS MapServer of Vialidad MOP Chile; robots.txt 404 = no restrictions; `params.objectid`) | `attributes` of the OBJECTID 7 feature, all fields as returned (dates are epoch ms). Geometry is dropped. |
+| `jama_argentina_gob_ar` (`ArgentinaGobArJama`) | `argentina_gob_ar` | `GET {base_url}` (JSON list of every crossing; robots allows it with `Crawl-delay: 10`) | The record(s) in `params.ids` (Jama, id 19), always. The ids in `params.ids_si_cambian` (Jama Norte 100, Jama Sur 101, not open to traffic) only while any field in `params.estado_base` differs from that baseline. The other ~150 crossings are discarded. |
+
+- Command: `make snapshot-jama`, i.e. `uv run corredor snapshot-jama [--config config.yaml] [--salida snapshots/jama_estado.jsonl]`
+  appends one JSON line per enabled snapshot source (`JamaEstado`, see
+  [DATOS.md](DATOS.md#jama_estado--paso-de-jama-status-snapshots)).
+- Failures never stop the run: a network error, robots.txt refusal, non-2xx status,
+  invalid JSON, an ArcGIS `error` object, a malformed payload or a missing Jama record
+  becomes a line with `error` set and `payload_json` empty; the command still exits 0.
+- Schedule: [`.github/workflows/jama_snapshot.yml`](../.github/workflows/jama_snapshot.yml),
+  `cron: "17 */3 * * *"` (UTC; GitHub may delay scheduled runs by some minutes) plus
+  `workflow_dispatch`. It checks out the orphan branch `data-snapshots` (creating it if
+  missing), runs the command, commits only `snapshots/jama_estado.jsonl` as
+  `github-actions[bot]`, then fetches + rebases (JSONL appends merge with `merge=union`) and
+  pushes, retrying once. Concurrency group `jama-snapshot` (`cancel-in-progress: false`);
+  `contents: write` only on that job; actions pinned by SHA. Snapshots never land on
+  `main`, so they do not trigger CI. GitHub disables scheduled workflows after 60 days
+  without repository activity.
+- Read the data: `git fetch origin data-snapshots && git show origin/data-snapshots:snapshots/jama_estado.jsonl`.
 
 ## Adding a source
 

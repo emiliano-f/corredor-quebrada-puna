@@ -1,0 +1,56 @@
+[
+  {
+    "estado_prioridad": "CERRADO",
+    "latitud": -30.32783,
+    "longitud": -69.23614,
+    "nombre_paso": "Agua Negra",
+    "provincia": "SAN JUAN",
+    "pais": "CHILE",
+    "origen": 2,
+    "id": 27,
+    "fecha_schema": "Mo-Su 09:00-20:00 open \"Ingreso de 9 a 20 h. || Egreso de 9 a 17 h.\"; Jun-Oct off",
+    "fecha_hora_consulta": "2026-11-13 17:45:20"
+  },
+  {
+    "estado_prioridad": "ABIERTO",
+    "latitud": -23.23721,
+    "longitud": -67.02301,
+    "nombre_paso": "Jama",
+    "provincia": "JUJUY",
+    "pais": "CHILE",
+    "origen": 0,
+    "id": 19,
+    "fecha_schema": "09:00-19:15",
+    "fecha_hora_consulta": "2026-11-13 17:45:20",
+    "fecha_schema_cancilleria": "Mo-Su 08:00-20:00",
+    "estado_vialidad": "HABILITADA"
+  },
+  {
+    "estado_prioridad": "CERRADO",
+    "latitud": -23.227301,
+    "longitud": -67.063069,
+    "nombre_paso": "Jama Norte",
+    "provincia": "JUJUY",
+    "pais": "CHILE",
+    "origen": 0,
+    "id": 100,
+    "fecha_schema": "24/7 off",
+    "fecha_hora_consulta": "2026-11-13 17:45:20",
+    "fecha_schema_cancilleria": "24/7 off \"Paso fronterizo no habilitado.\"",
+    "estado_vialidad": "HABILITADA"
+  },
+  {
+    "estado_prioridad": "CERRADO",
+    "latitud": -23.2330264,
+    "longitud": -67.0648152,
+    "nombre_paso": "Jama Sur",
+    "provincia": "JUJUY",
+    "pais": "CHILE",
+    "origen": 0,
+    "id": 101,
+    "fecha_schema": "24/7 off",
+    "fecha_hora_consulta": "2026-11-13 17:45:20",
+    "fecha_schema_cancilleria": "24/7 off \"Paso fronterizo no habilitado.\"",
+    "estado_vialidad": "HABILITADA"
+  }
+]
