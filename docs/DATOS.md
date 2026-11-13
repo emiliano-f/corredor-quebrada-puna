@@ -119,8 +119,10 @@ Open-Meteo), 2 m temperature from ERA5-Land, downscaled by Open-Meteo to the poi
 elevation of its 90 m DEM (Copernicus GLO-90). `OpenMeteoClient.grid_cells` records,
 per model in `clima.modelos_grilla`, the cell centre and the cell elevation
 (`elevation=nan`, downscaling off) vs that point elevation. The generated table is
-`reports/clima_grilla.md`; snapshot of 2026-11-13 for the provisional points of
-`config.yaml` (cells change if Child C moves a point):
+`reports/clima_grilla.md`; snapshot of 2026-11-13 for the verified coordinates of
+`config.yaml` (Geo, PR #23). Only Lipán bajo (~60 m) and Salinas Grandes (~330 m) moved
+enough to change elevations; both stay in the same cells. The other points moved ≤ 1 m
+(re-rounding), so their cached archives are reused (cells change if a point moves):
 
 | Point | ERA5 cell (precip., snow) | ERA5 cell elev. − point (m) | ERA5-Land cell (temp.) | ERA5-Land cell elev. − point (m) | Point elev. (m) |
 |---|---|---:|---|---:|---:|
@@ -131,10 +133,10 @@ per model in `clima.modelos_grilla`, the cell centre and the cell elevation
 | `rn9_tilcara` | −23.50, −65.50 (C) | +1112 | −23.60, −65.40 (b) | +948 | 2472 |
 | `rn9_huacalera` | −23.50, −65.25 | +450 | −23.40, −65.40 | +749 | 2656 |
 | `rn52_purmamarca_chalala` | −23.75, −65.50 (B) | +863 | −23.70, −65.50 (c) | +738 | 2428 |
-| `rn52_lipan_bajo` | −23.75, −65.50 (B) | +674 | −23.70, −65.50 (c) | +549 | 2617 |
+| `rn52_lipan_bajo` | −23.75, −65.50 (B) | +698 | −23.70, −65.50 (c) | +573 | 2593 |
 | `rn52_abra_potrerillos` | −23.75, −65.75 (D) | −349 | −23.70, −65.70 (d) | −328 | 4204 |
 | `rn52_ronqui_angosto` | −23.75, −65.75 (D) | +145 | −23.70, −65.70 (d) | +166 | 3710 |
-| `rn52_salinas_grandes` | −23.50, −66.00 | +86 | −23.60, −65.90 | −1 | 3407 |
+| `rn52_salinas_grandes` | −23.50, −66.00 | +87 | −23.60, −65.90 | 0 | 3406 |
 | `rn52_susques` | −23.50, −66.25 | +31 | −23.40, −66.40 | +250 | 3608 |
 | `rn52_paso_jama` | −23.25, −67.00 | +36 | −23.20, −67.10 | −9 | 4281 |
 
