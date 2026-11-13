@@ -97,7 +97,11 @@ def test_history_one_request_full_range_and_parquet_cache(
     assert len(df) == 8 * 24
     assert df["time"].iloc[0] == pd.Timestamp("2016-01-01 00:00")
     cache = (
-        tmp_path / "archivo" / "era5_seamless" / "-23.91709_-65.46402_2016-01-01_2016-01-08.parquet"
+        tmp_path
+        / "archivo"
+        / "era5_seamless"
+        / "America_Argentina_Jujuy"
+        / "-23.91709_-65.46402_2016-01-01_2016-01-08.parquet"
     )
     assert cache.exists()
     again = client.history(POINT, date(2016, 1, 2), date(2016, 1, 3))
@@ -225,6 +229,36 @@ def test_client_counts_weighted_calls_and_refunds_http_cache(tmp_path: Path) -> 
     cached = OpenMeteoClient(CachedFetcher(), tmp_path / "b", ClimaConfig(), now=lambda: NOW)
     cached.grid_cells(POINT)
     assert cached.ledger.used_today() == 0
+
+
+def test_http_cache_hits_bypass_an_exhausted_cap(tmp_path: Path) -> None:
+    class PeekFetcher(FakeFetcher):
+        def __init__(self) -> None:
+            super().__init__()
+            self.store: dict[str, FetchResult] = {}
+
+        def cached(self, url: str) -> FetchResult | None:
+            return self.store.get(url)
+
+        def get(self, url: str) -> FetchResult:
+            r = super().get(url)
+            self.store[url] = FetchResult(r.url, r.status, r.content, r.headers, r.fetched_at, True)
+            return r
+
+    f = PeekFetcher()
+    make(tmp_path, f, max_llamadas_diarias=3).grid_cells(POINT)
+    exhausted = make(tmp_path, f, max_llamadas_diarias=3)
+    assert exhausted.ledger.used_today() == 3
+    assert len(exhausted.grid_cells(POINT)) == 2
+    assert len(f.urls) == 3
+    assert exhausted.ledger.used_today() == 3
+
+
+def test_archive_cache_is_keyed_by_time_zone(tmp_path: Path, fetcher: FakeFetcher) -> None:
+    make(tmp_path, fetcher).history(POINT, date(2016, 1, 1), date(2016, 1, 3))
+    make(tmp_path, fetcher, zona_horaria="UTC").history(POINT, date(2016, 1, 1), date(2016, 1, 3))
+    assert len(fetcher.urls) == 2
+    assert fetcher.params()["timezone"] == "UTC"
 
 
 def test_history_splits_by_year_only_if_rejected(tmp_path: Path) -> None:

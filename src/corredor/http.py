@@ -250,6 +250,10 @@ class PoliteFetcher:
             return self.min_interval_s
         return max(self.min_interval_s, entry.parser.crawl_delay)
 
+    def cached(self, url: str) -> FetchResult | None:
+        """The unexpired cached response for `url`, without touching the network."""
+        return self._cache_read(url)
+
     def close(self) -> None:
         self._client.close()
 

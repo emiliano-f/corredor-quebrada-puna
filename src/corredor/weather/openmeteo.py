@@ -310,11 +310,15 @@ class OpenMeteoClient:
     def _get_json(
         self, base_url: str, params: dict[str, str], n_variables: int, n_days: float
     ) -> tuple[dict[str, Any], ResponseMeta]:
-        weight = call_weight(n_variables, n_days)
-        self.ledger.reserve(weight)
-        result = self.fetcher.get(f"{base_url}?{urlencode(params)}")
-        if result.from_cache:
-            self.ledger.refund(weight)
+        url = f"{base_url}?{urlencode(params)}"
+        peek = getattr(self.fetcher, "cached", None)
+        result = peek(url) if callable(peek) else None
+        if result is None:
+            weight = call_weight(n_variables, n_days)
+            self.ledger.reserve(weight)
+            result = self.fetcher.get(url)
+            if result.from_cache:
+                self.ledger.refund(weight)
         data = _decode(result)
         return data, _response_meta(data)
 
@@ -322,7 +326,11 @@ class OpenMeteoClient:
         self, kind: str, point: CriticalPoint, model: str, start: str, end: str
     ) -> Path:
         name = f"{_coord(point.lat)}_{_coord(point.lon)}_{start}_{end}.parquet"
-        return self.cache_dir / kind / model / name
+        return self._cache_folder(kind, model) / name
+
+    def _cache_folder(self, kind: str, model: str) -> Path:
+        """Hourly series depend on the timezone, so it is part of the cache key."""
+        return self.cache_dir / kind / model / self.config.zona_horaria.replace("/", "_")
 
     def _write_cache(
         self, point: CriticalPoint, model: str, start: date, end: date, frame: pd.DataFrame
@@ -334,7 +342,7 @@ class OpenMeteoClient:
     def _find_cached(
         self, point: CriticalPoint, model: str, start: date, end: date
     ) -> tuple[pd.DataFrame, date] | None:
-        folder = self.cache_dir / "archivo" / model
+        folder = self._cache_folder("archivo", model)
         prefix = f"{_coord(point.lat)}_{_coord(point.lon)}_"
         best: tuple[date, Path] | None = None
         for path in folder.glob(f"{prefix}*.parquet") if folder.exists() else ():
