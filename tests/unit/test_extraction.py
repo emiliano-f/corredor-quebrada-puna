@@ -204,3 +204,8 @@ def test_rules_corto_plazo_is_not_a_closure(rules: RuleBasedExtractor) -> None:
 def test_rules_named_route_wins_over_place(rules: RuleBasedExtractor) -> None:
     (event,) = rules.extract(art("Cortan la ruta 9 a la altura de Purmamarca"))
     assert (event.ruta, event.punto_id) == ("RN9", None)
+
+
+def test_rules_reopening_is_not_total(rules: RuleBasedExtractor) -> None:
+    (event,) = rules.extract(art("Habilitan ambos carriles en la ruta 52 en Lipán con precaución"))
+    assert event.tipo_corte == "precaucion"

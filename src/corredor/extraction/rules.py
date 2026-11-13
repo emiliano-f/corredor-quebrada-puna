@@ -106,7 +106,7 @@ class RuleBasedExtractor(EventExtractor):
                 km=km,
                 paraje=", ".join(places),
                 causa=causa,
-                tipo_corte=self._kind(cleaned),
+                tipo_corte=self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text)),
                 fuentes=[article.url],
                 n_medios=1,
                 metodo="reglas",
@@ -160,8 +160,8 @@ class RuleBasedExtractor(EventExtractor):
         return min(candidates)[2] if candidates else None
 
     @staticmethod
-    def _kind(cleaned: str) -> TipoCorte:
-        if TOTAL.search(cleaned):
+    def _kind(cleaned: str, reopening_only: bool = False) -> TipoCorte:
+        if not reopening_only and TOTAL.search(cleaned):
             return "total"
         if PARTIAL.search(cleaned):
             return "parcial"
