@@ -76,7 +76,7 @@
     "km": 1766.3,
     "verificado": true,
     "osm": "node/198401184",
-    "fuente_geo": "OSM node/198401184 ('Maimará'), a 364 m de la traza RN9",
+    "fuente_geo": "OSM node/198401184 ('Maimará'), a 363 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
     "nota_geo": ""
    },
@@ -139,7 +139,7 @@
     "km": 5.8,
     "verificado": true,
     "osm": "node/5112503888",
-    "fuente_geo": "OSM node/5112503888 ('Chalala'), a 340 m de la traza RN52",
+    "fuente_geo": "OSM node/5112503888 ('Chalala'), a 337 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
     "nota_geo": ""
    },
@@ -160,7 +160,7 @@
     "km": 9.9,
     "verificado": true,
     "osm": "way/297669793",
-    "fuente_geo": "OSM way/297669793 ('Cuesta de Lipán'), a 0 m de la traza RN52",
+    "fuente_geo": "OSM way/297669793 ('Cuesta de Lipán'), a 58 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
     "nota_geo": ""
    },
@@ -220,7 +220,7 @@
     "id": "rn52_salinas_grandes",
     "nombre": "Salinas Grandes",
     "ruta": "RN52",
-    "km": 69.7,
+    "km": 69.8,
     "verificado": true,
     "osm": "node/14054411901",
     "fuente_geo": "OSM node/14054411901 ('Cartel Salinas Grandes'), a 175 m de la traza RN52",

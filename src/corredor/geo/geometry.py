@@ -79,15 +79,26 @@ def stitch(
         adj.setdefault(a, []).append((b, w))
         adj.setdefault(b, []).append((a, w))
 
+    root: dict[LatLon, LatLon] = {}
+
+    def find(v: LatLon) -> LatLon:
+        while root.setdefault(v, v) != v:
+            root[v] = root[root[v]]
+            v = root[v]
+        return v
+
     for seg in segments:
         for a, b in itertools.pairwise(seg):
             link(a, b, haversine_m(a, b))
+            root[find(a)] = find(b)
     ends = [v for seg in segments if seg for v in (seg[0], seg[-1])]
     for i, a in enumerate(ends):
         for b in ends[i + 1 :]:
             d = haversine_m(a, b)
-            if 0 < d <= gap_m:
+            # Bridge only separate pieces: a bridge inside a connected piece would cut curves.
+            if 0 < d <= gap_m and find(a) != find(b):
                 link(a, b, d)
+                root[find(a)] = find(b)
     if not adj:
         raise ValueError("no geometry to stitch")
     source = min(adj, key=lambda v: haversine_m(v, start))

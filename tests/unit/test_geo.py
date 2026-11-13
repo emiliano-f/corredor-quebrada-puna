@@ -93,6 +93,13 @@ def test_stitch_orders_reversed_segments_and_bridges_gaps() -> None:
         stitch([a, [(1.0, 1.0), (1.0, 1.01)]], (0.0, 0.0), (1.0, 1.01), gap_m=50)
 
 
+def test_stitch_does_not_bridge_inside_a_connected_way() -> None:
+    hairpin = [(0.0, 0.0), (0.001, 0.0), (0.002, 0.0), (0.002, 0.0001), (0.0, 0.0001)]
+    nxt = [(0.0, 0.0001), (0.0, 0.01)]  # ends ~11 m from the hairpin start
+    line = stitch([hairpin, nxt], start=(0.0, 0.0), end=(0.0, 0.01), gap_m=50)
+    assert line[:5] == hairpin
+
+
 # ------------------------------------------------------------------ Overpass client
 def test_parse_ref() -> None:
     assert parse_ref("way/297669793") == ("way", 297669793)
@@ -111,6 +118,21 @@ def test_client_raises_when_all_endpoints_fail() -> None:
     client = OverpassClient(FixtureFetcher(fail_hosts=("overpass.test",)), [ENDPOINT])
     with pytest.raises(OverpassError, match="todos los endpoints"):
         client.query(Q_MILESTONES)
+
+
+class HtmlThenFixtureFetcher(FixtureFetcher):
+    def get(self, url: str) -> FetchResult:
+        if urlsplit(url).hostname == "html.test":
+            self.urls.append(url)
+            return _result(url, b"<html>busy</html>")
+        return super().get(url)
+
+
+def test_client_skips_endpoint_with_non_json_answer() -> None:
+    fetcher = HtmlThenFixtureFetcher()
+    client = OverpassClient(fetcher, ["https://html.test/api/interpreter", ENDPOINT])
+    assert client.query(Q_MILESTONES)
+    assert [urlsplit(u).hostname for u in fetcher.urls] == ["html.test", "overpass.test"]
 
 
 class RemarkFetcher:
@@ -247,7 +269,8 @@ def test_verify_flags_wrong_route_order(geodata: GeoData) -> None:
         [_point("abra", "node/2795046332"), _point("chalala", "node/5112503888")]
     )
     checks = reg.verify(_elements(), geodata.routes)
-    assert any(p.startswith("orden") for p in checks[1].problemas)
+    assert checks[1].order_problem
+    assert not checks[0].order_problem
     report = verification_report(checks, [_point("abra", "node/2795046332")])
     assert "| chalala |" in report
     assert "**no**" in report
