@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>El Submarino Jujuy</title>
+	<atom:link href="https://elsubmarinojujuy.com.ar/feed/" rel="self" type="application/rss+xml" />
+	<link>https://elsubmarinojujuy.com.ar</link>
+	<description>Noticias de Jujuy, Argentina y el mundo</description>
+	<lastBuildDate>Fri, 13 Nov 2026 20:16:45 +0000</lastBuildDate>
+	<language>es</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=7.1.4</generator>
+
+<image>
+	<url>https://elsubmarinojujuy.com.ar/wp-content/uploads/cropped-periscopio512-32x32.png</url>
+	<title>El Submarino Jujuy</title>
+	<link>https://elsubmarinojujuy.com.ar</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>La inflación en Jujuy fue de 1,8 por ciento en octubre y acumuló 25,8% en el año</title>
+		<link>https://elsubmarinojujuy.com.ar/la-inflacion-en-jujuy-fue-de-18-por-ciento-en-octubre-y-acumulo-258-en-el-ano/</link>
+		<pubDate>Fri, 13 Nov 2026 20:14:28 +0000</pubDate>
+
+					<description><![CDATA[El costo de vida en la provincia registró una variación mensual del 1,8 por ciento durante octubre, de acuerdo con el informe difundido por la Dipec.]]></description>
+		
+		
+			</item>
+<item>
+		<title>Más de 11.500 chicos de primaria rinden las pruebas Aprender en Jujuy</title>
+		<link>https://elsubmarinojujuy.com.ar/mas-de-11-500-chicos-de-primaria-rinden-las-pruebas-aprender-en-jujuy/</link>
+		<pubDate>Fri, 13 Nov 2026 19:29:06 +0000</pubDate>
+
+					<description><![CDATA[El Ministerio de Educación de Jujuy realizará el Operativo Aprender Censal Primaria 2026 los próximos días lunes 16 y martes 17 de noviembre.]]></description>
+		
+		
+			</item>
+<item>
+		<title>Jujuy midió su infancia: Pobreza y deserción escolar debajo de la media nacional</title>
+		<link>https://elsubmarinojujuy.com.ar/jujuy-midio-su-infancia-pobreza-y-desercion-escolar-debajo-de-la-media-nacional/</link>
+		<pubDate>Fri, 13 Nov 2026 19:09:36 +0000</pubDate>
+
+					<description><![CDATA[Jujuy y Unicef presentaron el Índice Provincial de Niñez, un relevamiento estadístico que detalla las condiciones socioeconómicas, sanitarias y educativas de niñas, niños y adolescentes.]]></description>
+		
+		
+			</item>
+<item>
+		<title>Concesionarán con peaje tramos de las rutas nacionales 9 y 34 en Jujuy </title>
+		<link>https://elsubmarinojujuy.com.ar/concesionaran-con-peaje-tramos-de-las-rutas-nacionales-9-y-34-en-jujuy/</link>
+		<pubDate>Fri, 13 Nov 2026 18:32:17 +0000</pubDate>
+
+					<description><![CDATA[Tramos de las rutas nacionales 9 y 34 en Jujuy figuran en el listado publicado por el Gobierno nacional de nuevas concesiones por peaje a empresas privadas en el marco del proyecto «Red Federal de Concesiones». Mediante el decreto 1358 publicado este viernes en el Boletín Oficial, la Secretaría de Transporte deberá convocar a una &#8230;]]></description>
+		
+		
+			</item>
+</channel>
+</rss>

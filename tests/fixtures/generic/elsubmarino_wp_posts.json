@@ -1,0 +1,58 @@
+{
+ "url": "https://elsubmarinojujuy.com.ar/wp-json/wp/v2/posts?search=Volc%C3%A1n&after=2016-12-31T23%3A59%3A59&before=2018-01-01T00%3A00%3A00&per_page=100&page=1&orderby=date&order=asc&_fields=id%2Cdate%2Clink%2Ctitle%2Cexcerpt",
+ "headers": {
+  "x-wp-total": "4",
+  "x-wp-totalpages": "1",
+  "content-type": "application/json; charset=UTF-8"
+ },
+ "body": [
+  {
+   "id": 35282,
+   "date": "2017-01-10T16:17:21",
+   "link": "https://elsubmarinojujuy.com.ar/las-lluvias-afectan-a-varias-localidades-y-se-mantiene-cortada-la-ruta-9/",
+   "title": {
+    "rendered": "Las lluvias afectan a varias localidades y se mantiene cortada la Ruta 9"
+   },
+   "excerpt": {
+    "rendered": "<p>Las intensas lluvias provocaron el desplazamiento de agua y barro, por lo que la Ruta Nacional 9 quedó interrumpida a la altura de León. El gobierno de la provincia emitió un alerta en el que solicita a la comunidad evitar la circulación por esa vía hacia el norte. A los que vienen bajando les recomiendan &hellip;</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 35292,
+   "date": "2017-01-10T20:52:03",
+   "link": "https://elsubmarinojujuy.com.ar/hallaron-en-barcena-a-una-pareja-sin-vida-dentro-de-un-auto-que-fue-arrastrado-por-el-alud/",
+   "title": {
+    "rendered": "Hallaron en Bárcena a una pareja sin vida dentro de un auto que fue arrastrado por el alud"
+   },
+   "excerpt": {
+    "rendered": "<p>El alud que azotó la zona desde Volcán hasta Tumbaya se cobró las vidas de un hombre y una mujer, cuyos cuerpos fueron hallados dentro de un auto que había sido arrastrado por el barro a la altura de Bárcena.&nbsp;</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 35114,
+   "date": "2017-01-04T23:34:51",
+   "link": "https://elsubmarinojujuy.com.ar/dan-mas-plazo-para-participar-del-concurso-de-estaciones-de-ferrocarril/",
+   "title": {
+    "rendered": "Dan más plazo, para participar del Concurso de Estaciones de Ferrocarril"
+   },
+   "excerpt": {
+    "rendered": "<p>El 23 de enero es la fecha límite, para presentar los anteproyectos para participar del Concurso de Estaciones de Ferrocarril. La convocatoria es para arquitectos jujeños que deseen presentar ideas para la refuncionalización de las ocho estaciones por las que transitará el tren turístico que unirá Volcán con Humahuaca.</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 35126,
+   "date": "2017-01-05T17:28:51",
+   "link": "https://elsubmarinojujuy.com.ar/nacion-manda-10-millones-de-pesos-para-el-tren-turistico-entre-volcan-y-humahuaca/",
+   "title": {
+    "rendered": "Nación manda 10 millones de pesos para el tren turístico entre Volcán y Humahuaca"
+   },
+   "excerpt": {
+    "rendered": "<p>En el vivac montado en la Ciudad Cultural por el Dakar 2017, se firmó el convenio mediante el cual el estado provincial recibirá los ya anunciados 10 millones de pesos que aporta el Ministerio de Turismo de la Nación para la puesta en marcha del tren turístico que unirá las ciudades de Volcán y Humahuaca.&nbsp;</p>\n",
+    "protected": false
+   }
+  }
+ ]
+}

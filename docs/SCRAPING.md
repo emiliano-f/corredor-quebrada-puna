@@ -58,7 +58,80 @@ Implemented in `src/corredor/extraction/patterns.py`:
 - Dates: sitemap `lastmod` is a modification date. Prefer `article:published_time`;
   otherwise mark `fecha_fuente = fallback`.
 
+## Running a collection
+
+```bash
+uv run corredor recolectar                       # every enabled source; sitemaps: sample months only
+uv run corredor recolectar --fuente todojujuy    # one source (repeatable)
+uv run corredor recolectar --completo            # sitemaps: every month since archivo_desde
+```
+
+Articles are upserted into the DuckDB table `articulos` (`data/corredor.duckdb`). Each run
+writes the per-source counts (`CollectionStats`) to `data/recoleccion/<source_id>.json`
+and resumable checkpoints to `data/checkpoints/<source_id>.json`. `backfill.desde` is the
+global start date; a source never goes before its `archivo_desde`. A run stops a source
+after `backfill.max_requests_per_run` network requests (cache hits are free); the next run
+resumes from the checkpoint.
+
+Checkpoint unit status: `ok` (listed and every selected page fetched), `empty` (the
+listing exists and has no entries), `missing` (the listing answered 404), `error`
+(network/HTTP error on the listing or on a selected page). `ok`, `empty` and `missing`
+are not repeated in later runs; `error` is retried. The current unit (month or year) is
+always re-run. An empty month and a month with an error are never confused.
+
+Counts in `CollectionStats`: `raw` = entries listed by the outlet (WP: sum of
+`X-WP-Total` over every search, with duplicates between terms; sitemap: URLs in the
+monthly files; RSS: feed items), `unique` = distinct entries, `selected` = articles kept
+after the filter, `by_level` = sitemap `filtro_slug` counts, `pages_missing` = selected
+sitemap URLs that answered 404/410 (dropped unless the sitemap carries a headline).
+
 ## Implemented sources
+
+All three generic classes live in `src/corredor/sources/generic.py` and are configured
+only through `config.yaml` (`metodo` + `params`); there is no per-outlet code.
+
+### `WordPressApiSource` (`metodo: wordpress_api`, `PARSER_VERSION = 1`)
+
+- Endpoint `<base_url>/wp-json/wp/v2/posts` (`params.api_path` overrides it).
+- One window per calendar year (`after`/`before`), from `max(backfill.desde,
+  archivo_desde)` to today; never deep pagination over the whole archive.
+- Searches each term of `patterns.WP_SEARCH_TERMS` (or `params.terms`) with and without
+  accents (`patterns.search_variants`), `per_page=100` (`params.per_page`), follows
+  `X-WP-TotalPages`, asks only for `_fields=id,date,link,title,excerpt`.
+- Results are merged by post id and kept only if `patterns.is_candidate(headline +
+  excerpt)` passes. HTML in headline/excerpt is reduced to plain text (entities decoded,
+  `<script>`/`<style>` dropped); the excerpt is cut to 300 characters.
+- `fecha` = the post `date` (publication date in site time), `fecha_fuente =
+  published_time`; `filtro_slug` is empty.
+- Checkpoint unit = year.
+- Enabled outlets: `elsubmarino`, `radioazultilcara`, `jujuyonline` (`republica: true`,
+  does not count as an independent outlet). `jujuyaldia` is disabled: its robots.txt
+  disallows `/wp-json/` (see [FUENTES.md](FUENTES.md)).
+
+### `SitemapSource` (`metodo: sitemap`, `PARSER_VERSION = 1`)
+
+- Monthly sitemap from `params.sitemap_mensual` (`{yyyymm}`, `{yyyy}`, `{mm}`
+  placeholders). Plain or gzip (decompression capped at 64 MiB). Parsed with regexes, so
+  no XML entity expansion.
+- By default only the months in `backfill.muestra_sitemaps`; `--completo` walks every
+  month since `archivo_desde`. Months before `archivo_desde` are reported as
+  `before_archive` and not requested.
+- URLs on another host are skipped. Each URL goes through `patterns.slug_level` (filter C:
+  `B` or `C_solo_ruta`); only selected URLs are fetched.
+- From each selected page only the `<head>` metadata is read: headline (`og:title` →
+  `twitter:title` → JSON-LD `headline` → `<title>`), lede (`og:description` →
+  `description`), and date. Date order: `article:published_time` → `itemprop=
+  datePublished` → JSON-LD `datePublished` → sitemap `news:publication_date` /
+  `lastmod` with `fecha_fuente = fallback`.
+- Checkpoint unit = month.
+- Enabled outlets: `todojujuy`, `jujuyalmomento`, `somosjujuy`, `prensajujuy`.
+
+### `RssSource` (`metodo: rss`, `PARSER_VERSION = 1`)
+
+- Feed `params.feed_url` (default `<base_url>/feed/`), RSS 2.0 `<item>`s only: a feed has
+  no archive, so it is for recent items. `pubDate` (RFC 822) is required; items without a
+  parseable date are dropped. Same `patterns.is_candidate` filter as WordPress.
+- No outlet uses it yet.
 
 ### Paso de Jama status snapshots (`src/corredor/sources/jama.py`)
 

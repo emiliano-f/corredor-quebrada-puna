@@ -1,0 +1,46 @@
+{
+ "url": "https://radioazultilcara.com.ar/wp-json/wp/v2/posts?search=Maimara&after=2019-12-31T23%3A59%3A59&before=2021-01-01T00%3A00%3A00&per_page=100&page=1&orderby=date&order=asc&_fields=id%2Cdate%2Clink%2Ctitle%2Cexcerpt",
+ "headers": {
+  "x-wp-total": "3",
+  "x-wp-totalpages": "1",
+  "content-type": "application/json; charset=UTF-8"
+ },
+ "body": [
+  {
+   "id": 897,
+   "date": "2020-11-07T12:31:29",
+   "link": "https://radioazultilcara.com.ar/sumalawa-vecinos-cortaron-la-ruta-9-para-pedir-agua-potable/",
+   "title": {
+    "rendered": "Sumalawa: Vecinos cortaron la Ruta 9 para pedir agua potable."
+   },
+   "excerpt": {
+    "rendered": "<p>Un grupo de vecinos de la comunidad Sumalawa Maimara, cortaron de forma total el transito sobre Ruta Nacional 9 en protesta para obras de agua. Afirmaron que solo cuentan con un tanque comunitario y pasan semanas sin &nbsp;el elemental servicio de agua para vivir. En dialogo con el jefe &nbsp;de la Seccional 37 Comisario José [&hellip;]</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 861,
+   "date": "2020-10-15T01:36:42",
+   "link": "https://radioazultilcara.com.ar/bomberos-de-tilcara-combaten-frente-a-frente-contra-el-fuego-en-el-bananal/",
+   "title": {
+    "rendered": "Bomberos de Tilcara Combaten frente a frente contra el Fuego en el Bananal."
+   },
+   "excerpt": {
+    "rendered": "<p>Las llamas son bastantes intensas, el fuego avanza de punta a punta y más allá del cansancio el agotamiento que tenemos del calor que sufrimos todos los días, felices por que hacemos los que nos gusta, felices de estar aquí apoyando a los compañeros y brigadistas que llegan desde otras Provincias expreso el Sargento Primero [&hellip;]</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 894,
+   "date": "2020-11-05T00:41:02",
+   "link": "https://radioazultilcara.com.ar/conmemoracion-de-los-fieles-difuntos-en-maimara/",
+   "title": {
+    "rendered": "Conmemoración de los fieles Difuntos en Maimara."
+   },
+   "excerpt": {
+    "rendered": "<p>El Día de las almas se conmemora el 02 de Noviembre en los pueblos de raíz andina. Es una ceremonia intima donde participan todos los miembros de la familia, elaborando “ofrendas” de pan, saladas y dulces con diversas formas de animales, ángeles, objetos y una escalera que facilitará al alma nueva su ascenso al cielo. [&hellip;]</p>\n",
+    "protected": false
+   }
+  }
+ ]
+}

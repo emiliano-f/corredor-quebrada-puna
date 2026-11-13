@@ -8,7 +8,7 @@ http:
   timeout_s: 30
   retries: 3
   robots_ttl_h: 24
-  not_found_ttl_h: 24
+  not_found_ttl_h: 1
   # Documented public APIs whose robots.txt (`Disallow: /`) targets crawlers. For these
   # exact hosts ONLY the robots.txt check is skipped; rate limit, User-Agent, TLS,
   # timeouts, retries and cache still apply. Scope and limits: docs/adr/0002. A new host
@@ -206,12 +206,13 @@ fuentes:
     tier: 1
     enabled: true
     archivo_desde: 2013-07-01
+  # Disabled: robots.txt disallows /wp-json/ for every agent (checked 2026-11-13); see docs/FUENTES.md.
   - id: jujuyaldia
     nombre: "Jujuy al Día"
     base_url: "https://www.jujuyaldia.com.ar"
     metodo: wordpress_api
     tier: 1
-    enabled: true
+    enabled: false
     archivo_desde: 2010-01-01
   - id: radioazultilcara
     nombre: "Radio Azul Tilcara"

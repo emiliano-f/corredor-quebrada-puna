@@ -9,13 +9,13 @@ Relevamiento hecho con robots.txt, APIs, feeds y sitemaps (más unas pocas pági
 | # | Fuente | URL | robots.txt | Método | Archivo desde | Estado | `republica` | Motivo / nota |
 |---|---|---|---|---|---|---|---|---|
 | 1 | El Submarino Jujuy | elsubmarinojujuy.com.ar | Permite (solo bloquea Bytespider) | WP REST API | 2013-07 | **Tier 1 genérica** | no | Estable |
-| 2 | Jujuy al Día | jujuyaldia.com.ar | Permite; `Content-Signal: ai-train=no, use=reference` | WP REST API | 2010-01 | **Tier 1 genérica** | no | Estable. Solo metadatos (compatible con `use=reference`) |
+| 2 | Jujuy al Día | jujuyaldia.com.ar | **Bloquea `/wp-json/`** (2026-11-13): un segundo grupo `User-agent: *` tiene `Disallow: /wp-json/` y `/?rest_route=` (el script del relevamiento solo leía el primer grupo); `Content-Signal: ai-train=no, use=reference` | WP REST API | 2010-01 | **Tier 1 genérica, desactivada** (`enabled: false`) | no | El fetcher de producción (RFC 9309, combina grupos) la rechaza. Pendiente de decisión: evaluar otro método permitido (sitemap/RSS) |
 | 3 | Radio Azul Tilcara | radioazultilcara.com.ar | Permite | WP REST API | 2018-12 | **Tier 1 genérica** | no | Fuente nueva (posterior a 2016) |
 | 4 | Jujuy Online | jujuyonline.com | Permite | WP REST API | 2026-04 | **Tier 1 genérica** | **sí** | 29/100 titulares coinciden con Somos Jujuy / Todo Jujuy / Jujuy al Momento; no cuenta en `n_medios` |
 | 5 | Todo Jujuy | todojujuy.com | Permite | Sitemap mensual | 2012-01 | **Tier 1 genérica** | no | Estable |
 | 6 | Jujuy al Momento | jujuyalmomento.com | Permite | Sitemap mensual | 2011 | **Tier 1 genérica** | no | Estable |
 | 7 | Somos Jujuy | somosjujuy.com.ar | Permite | Sitemap mensual (AmuraCMS) | 2018-01 | **Tier 1 genérica** | no | Fuente nueva; falta 2022-09 |
-| 8 | Prensa Gobierno de Jujuy | prensa.jujuy.gob.ar | Permite | Sitemap mensual | 2016-05 | **Tier 1 genérica** | no | Fuente nueva (oficial) |
+| 8 | Prensa Gobierno de Jujuy | prensa.jujuy.gob.ar | Permite | Sitemap mensual | 2016-05 | **Tier 1 genérica** | no | Fuente nueva (oficial). Los sitemaps viejos (p. ej. 2017-01) listan URLs `/AAAA/MM/DD/slug` que hoy responden 404: esas notas quedan en `pages_missing` |
 | 9 | El Tribuno de Jujuy | eltribunodejujuy.com | Permite; `Crawl-delay: 10` | RSS + sitemaps recientes; probar listados de sección | — (sin archivo visible) | **Tier 1 custom (Hijo B)** | no | Si no aparece archivo, pasa a Tier 2 |
 | 10 | Vialidad Nacional (noticias) | argentina.gob.ar/node/96178/noticias | Permite; `Crawl-delay: 10` | Listado HTML `?page=N`, filtrar Jujuy/RN 9/RN 52 | años (paginado) | **Tier 1 custom (Hijo B)** | no | Feed nacional |
 | 11 | Vialidad MOP Chile — ArcGIS Pasos Fronterizos (Jama, OBJECTID 7) | rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Pasos_Fronterizos/MapServer/0 | 404 (sin restricciones) | Query JSON cada 3 h → tabla `jama_estado` (campos crudos + `fetched_at`) | solo estado actual | **Tier 1 snapshot** | no | Arranca al mergear foundation |
@@ -87,8 +87,8 @@ Candidato = slug con lugar/ruta del corredor **y** término de causa/cierre.
 - B ≈ 892 páginas ≈ 37 min a 2,5 s/página. C ≈ 1.900 páginas ≈ 80 min.
 - **Elegido: C.** Cada artículo registra `filtro_slug` (B | C_solo_ruta); el reporte de calidad mide cuántos eventos aportan solo las páginas C_solo_ruta. Si son menos del 5 %, se propone volver a B.
 - El filtro por slug pierde notas con slug genérico; el chequeo de recall (§5) lo mide.
-- **Los conteos A/B/C subestiman.** La regex del relevamiento no reconocía "Nº"/"nro"/"número" en la ruta, formas como "cierran"/"cortaron", ni causas como viento blanco o temporal, y descartaba las URLs con barra final. La versión corregida (HANDOFF §7.1–7.2) va a dar más candidatos; recalcular el estimado al implementar `SitemapSource`.
-- Los meses vacíos (Somos Jujuy 2022-09, Prensa 2016-01→04) pueden ser errores de red cacheados como vacío: re-verificar.
+- **Los conteos A/B/C subestiman.** La regex del relevamiento no reconocía "Nº"/"nro"/"número" en la ruta, formas como "cierran"/"cortaron", ni causas como viento blanco o temporal, y descartaba las URLs con barra final. La versión corregida (HANDOFF §7.1–7.2) está en `patterns.slug_level` y la usa `SitemapSource`; los conteos reales por corrida quedan en `data/recoleccion/<fuente>.json`.
+- Los meses vacíos (Somos Jujuy 2022-09, Prensa 2016-01→04) pueden ser errores de red cacheados como vacío: re-verificar. En producción el checkpoint distingue `empty`, `missing` (404) y `error` ([SCRAPING.md](SCRAPING.md#running-a-collection)).
 - `lastmod` no es la fecha de publicación: se usa `article:published_time` y se marca el fallback.
 
 ## 4. Paso de Jama — snapshots de estado

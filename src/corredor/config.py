@@ -38,7 +38,7 @@ class HttpConfig(BaseModel):
     timeout_s: float = 30.0
     retries: int = Field(default=3, ge=0)
     robots_ttl_h: float = 24.0
-    not_found_ttl_h: float = 24.0
+    not_found_ttl_h: float = 1.0
     robots_exempt_hosts: list[RobotsExemption] = Field(default_factory=list)
 
     @field_validator("robots_exempt_hosts")

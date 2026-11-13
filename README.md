@@ -22,6 +22,7 @@ uv run corredor --version
 uv run corredor manifest   # escribe data/manifest.json
 make snapshot-jama  # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
 make clima          # clima horario de Open-Meteo 2016→hoy por punto + antecedentes
+uv run corredor recolectar # metadatos de notas de las fuentes activas → data/corredor.duckdb
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
