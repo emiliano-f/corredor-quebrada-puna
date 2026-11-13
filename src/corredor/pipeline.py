@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -96,6 +97,7 @@ def snapshot_jama(
     Una request por fuente; si una fuente falla se guarda la línea con `error` y el
     comando termina igual con código 0.
     """
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = Settings()
     cfg = load_config(config or settings.config_path)
     fetcher = PoliteFetcher(

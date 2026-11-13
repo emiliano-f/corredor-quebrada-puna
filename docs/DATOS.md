@@ -81,7 +81,7 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 |---|---|---|---|
 | `fuente` | `mop_cl` \| `argentina_gob_ar` | yes | |
 | `fetched_at` | datetime (UTC) | yes | |
-| `payload_json` | str | no | JSON array with the raw Jama record(s) as returned by the source (keys sorted): `mop_cl` → the ArcGIS `attributes` of OBJECTID 7 (`TRANSITABILIDAD`, `ESTADOTIEMPO`, `CADENAS`, `RESTRICCIONES`, `HABILITADO`, `FECHA`, `HORA`, `ADESDE`, `AHASTA`, …; dates in epoch ms); `argentina_gob_ar` → the id 19 record (`estado_prioridad`, `estado_vialidad`, `fecha_schema`, `fecha_schema_cancilleria`, `fecha_hora_consulta`, …), plus ids 100/101 only while their status differs from `params.estado_base`. Null when `error` is set. |
+| `payload_json` | str | no | JSON array with the Jama record(s), keys sorted, **allowlisted fields only** (`FIELDS` in `src/corredor/sources/jama.py`; anything else, e.g. MOP's `CREATEDBY`/`RESPONSABLE` operator usernames, is never stored). `mop_cl` → ArcGIS attributes of OBJECTID 7: `OBJECTID`, `PASO`, `TRANSITABILIDAD`, `ESTADOTIEMPO`, `ESTADOCALZADA`, `CADENAS`, `RESTRICCIONES`, `HABILITADO`, `HABILITACION`, `ESTADOINFORME`, `FECHA`, `HORA`, `ADESDE`, `AHASTA` (dates/times in epoch ms). `argentina_gob_ar` → the id 19 record: `id`, `nombre_paso`, `estado_prioridad`, `estado_vialidad`, `fecha_schema`, `fecha_schema_cancilleria`, `fecha_hora_consulta`; plus ids 100/101 only while their status differs from `params.estado_base`. Null when `error` is set. |
 | `error` | str | no | Why the snapshot failed (e.g. `HTTP 503`, `FetchError: …`, `DisallowedByRobots: …`, `OBJECTID 7 no está en la respuesta`). |
 
 Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never on

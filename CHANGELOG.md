@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Jama snapshots store only allowlisted status/schedule/timestamp fields per source; other
+  fields (e.g. MOP `CREATEDBY`/`RESPONSABLE` operator usernames) are dropped and only their
+  names are logged. `JamaCollector.PARSER_VERSION` 1 → 2.
+
 ### Added
 - Repository foundation: uv project (Python 3.11), typed models (`SCHEMA_VERSION = 1`),
   `config.yaml` with provisional critical points and the approved source survey,
