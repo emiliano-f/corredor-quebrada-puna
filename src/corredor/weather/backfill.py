@@ -92,17 +92,28 @@ def grid_table(cells: Sequence[GridCell]) -> pd.DataFrame:
 
 
 def write_outputs(run: WeatherRun, clima_dir: Path) -> list[Path]:
+    """Write the run's points, keeping rows of points this run did not reach."""
     clima_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     if run.hourly:
-        hourly = pd.concat(run.hourly, ignore_index=True)
+        hourly = _merge(clima_dir / "horario.parquet", pd.concat(run.hourly, ignore_index=True))
         paths.append(clima_dir / "horario.parquet")
         hourly.to_parquet(paths[-1], index=False)
         paths.append(clima_dir / "antecedentes.parquet")
         antecedent_features(hourly).to_parquet(paths[-1], index=False)
     paths.append(clima_dir / "grilla.parquet")
-    grid_table(run.cells).to_parquet(paths[-1], index=False)
+    _merge(paths[-1], grid_table(run.cells)).to_parquet(paths[-1], index=False)
     return paths
+
+
+def _merge(path: Path, fresh: pd.DataFrame) -> pd.DataFrame:
+    if not path.exists():
+        return fresh
+    old = pd.read_parquet(path)
+    keep = old[~old["punto_id"].isin(fresh["punto_id"].unique())]
+    if keep.empty:
+        return fresh
+    return pd.concat([keep, fresh], ignore_index=True)
 
 
 def _fmt(value: float | None, digits: int = 0) -> str:

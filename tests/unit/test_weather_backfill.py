@@ -60,3 +60,17 @@ def test_grid_report_without_shared_cells_or_elevation() -> None:
     report = grid_report(cells, INFO, "era5_seamless")
     assert "Ningún punto comparte celda." in report
     assert "| a | -24.00, -65.50 | s/d | 2000 | s/d | — |" in report
+
+
+def test_write_outputs_keeps_points_the_run_did_not_reach(tmp_path: Path) -> None:
+    client = OpenMeteoClient(FakeFetcher(), tmp_path / "clima", ClimaConfig(), now=lambda: NOW)
+    repo = DuckDBRepository(tmp_path / "db.duckdb")
+    full = fetch_points(client, [POINT, TWIN], date(2016, 1, 1), date(2016, 1, 8), repo)
+    write_outputs(full, tmp_path / "out")
+    partial = fetch_points(client, [TWIN], date(2016, 1, 1), date(2016, 1, 8), repo)
+    repo.close()
+    paths = write_outputs(partial, tmp_path / "out")
+    hourly = pd.read_parquet(paths[0])
+    assert hourly.groupby("punto_id").size().to_dict() == {"rn9_volcan": 192, "rn9_twin": 192}
+    assert set(pd.read_parquet(paths[1])["punto_id"]) == {"rn9_volcan", "rn9_twin"}
+    assert sorted(pd.read_parquet(paths[2])["punto_id"]) == ["rn9_twin"] * 2 + ["rn9_volcan"] * 2
