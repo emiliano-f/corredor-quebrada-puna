@@ -18,3 +18,7 @@ All notable changes to this project are documented here. The format follows
   GitHub default setup.
 - Docs: README (es-AR), AGENTS.md, CONTRIBUTING.md, FUENTES.md, SCRAPING.md, DATOS.md,
   ADR 0001 and playbooks.
+- Paso de Jama snapshots: `corredor snapshot-jama` (collectors for Vialidad MOP Chile
+  ArcGIS and argentina.gob.ar, one request each, failures recorded as `error` lines) and
+  the `jama_snapshot.yml` workflow that appends to `snapshots/jama_estado.jsonl` on the
+  `data-snapshots` branch every 3 h. `PoliteFetcher.get` gains `refresh=True`.
