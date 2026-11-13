@@ -413,27 +413,27 @@ def parse_sitemap_index(xml: str) -> list[IndexChild]:
 
 
 def index_children_for(children: list[IndexChild], month: str) -> list[str]:
-    """Children of a paginated, date-ordered index that can list posts of `month`.
+    """Children of a paginated, publication-ordered index, from the first that can list
+    posts of `month` on.
 
-    A child's `lastmod` is the latest change among its posts, so editing an old post
-    raises it; a suffix minimum makes the bounds monotonic (later children only hold
-    later posts). Child i then covers (u[i-1], u[i]]. Undated children are kept.
+    A child's `lastmod` is the latest change among its posts: never before any of their
+    publication dates, but an edit can raise it arbitrarily. So `lastmod` only bounds a
+    child from above, made monotonic by a suffix minimum; children whose bound is before
+    the month are skipped. There is no lower bound: the caller reads the children in order
+    and stops at the first one listing a post dated after the month.
     """
-    start, end = date.fromisoformat(f"{month}-01"), _month_end(month)
-    bounds: list[date | None] = []
+    start = date.fromisoformat(f"{month}-01")
     running: date | None = None
-    for child in reversed(children):
-        if child.lastmod is not None:
-            running = child.lastmod if running is None else min(running, child.lastmod)
-        bounds.append(running)
-    bounds.reverse()
-    selected, prev = [], None
-    for child, upper in zip(children, bounds, strict=True):
-        if (upper is None or upper >= start) and (prev is None or prev < end):
-            selected.append(child.loc)
-        if upper is not None:
-            prev = upper
-    return selected
+    first = len(children)
+    for i in range(len(children) - 1, -1, -1):
+        lastmod = children[i].lastmod
+        if lastmod is not None:
+            running = lastmod if running is None else min(running, lastmod)
+        if running is None or running >= start:
+            first = i
+        else:
+            break
+    return [c.loc for c in children[first:]]
 
 
 def entry_month(entry: SitemapEntry) -> str | None:
@@ -523,9 +523,10 @@ class SitemapSource(_GenericSource):
     - `sitemap_mensual`: URL template with {yyyymm} (also {yyyy} and {mm}), one sitemap
       per month.
     - `sitemap_indice`: a sitemap index of paginated child sitemaps (e.g. Yoast
-      `post-sitemapN.xml`, children filtered by the `sitemap_hijos` regex). The children
-      whose `lastmod` span can cover the month are listed (see `index_children_for`) and
-      only their URLs dated in that month are kept (`entry_month`).
+      `post-sitemapN.xml`, children filtered by the `sitemap_hijos` regex). Children are
+      read in order from the first whose `lastmod` bound reaches the month (see
+      `index_children_for`) until one lists a post dated after it; only URLs dated in
+      the month are kept (`entry_month`).
     Months come from GenericOptions.sample_months when given, otherwise every month from
     max(since, archivo_desde) to today. Each month is checkpointed (ok | empty | missing |
     error); the current month is always re-run. URLs outside the outlet's site are skipped.
@@ -599,14 +600,22 @@ class SitemapSource(_GenericSource):
             self._mark(month, "error", closed=closed, error=str(exc))
             return
         entries: list[SitemapEntry] = []
+        read = 0
         for url in listings:
             got = self._listing(url, month, fresh_after=fresh_after, closed=closed)
             if got is None:
                 return
-            entries.extend(got)
+            read += 1
+            if self.index_url is None:
+                entries.extend(got)
+                continue
+            months = [entry_month(e) for e in got]
+            entries.extend(e for e, m in zip(got, months, strict=True) if m in (None, month))
+            if any(m is not None and m > month for m in months):
+                break
         self.stats.raw += len(entries)
         if not entries:
-            self._mark(month, "empty", closed=closed, urls=0, sitemaps=len(listings))
+            self._mark(month, "empty", closed=closed, urls=0, sitemaps=read)
             return
         failed, selected = 0, 0
         for entry in entries:
@@ -633,7 +642,7 @@ class SitemapSource(_GenericSource):
             urls=len(entries),
             selected=selected,
             page_errors=failed,
-            sitemaps=len(listings),
+            sitemaps=read,
         )
 
     def _listing_urls(self, month: str) -> list[str]:
@@ -685,10 +694,7 @@ class SitemapSource(_GenericSource):
             self._error(f"{month}: not a complete sitemap (no closing </urlset>)")
             self._mark(month, "error", closed=closed, error="incomplete sitemap")
             return None
-        entries = parse_sitemap(xml)
-        if self.index_url is None:
-            return entries
-        return [e for e in entries if entry_month(e) in (None, month)]
+        return parse_sitemap(xml)
 
     def _page(self, entry: SitemapEntry, level: FiltroSlug) -> tuple[Article | None, bool]:
         """Article metadata for one selected URL; (article, fetched_without_error)."""

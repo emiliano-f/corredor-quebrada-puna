@@ -121,9 +121,10 @@ only through `config.yaml` (`metodo` + `params`); there is no per-outlet code.
   - `params.sitemap_indice`: a sitemap index of paginated, date-ordered children (e.g.
     Yoast `post-sitemapN.xml`), kept by the `params.sitemap_hijos` regex (default
     `post-sitemap\d*\.xml$`) and only on the outlet's host. A child's `lastmod` is its
-    newest change, so the bounds are made monotonic with a suffix minimum and a month
-    lists only the children whose span can hold it (`index_children_for`); undated
-    children are always listed. Inside each child only URLs dated in that month are kept
+    newest change (an edit to an old post raises it), so it is only an upper bound,
+    made monotonic with a suffix minimum: a month skips the children whose bound is
+    before it (`index_children_for`), then reads the rest in order and stops at the
+    first child listing a post dated after the month. Inside each child only URLs dated in that month are kept
     (`/YYYY/MM/` in the path, else `news:publication_date`/`lastmod`; undated URLs are
     kept). The index is read once per run (refetched if older than a day); an incomplete
     index or a listed child that fails marks the month `error`.

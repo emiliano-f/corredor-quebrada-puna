@@ -501,10 +501,20 @@ def test_index_children_for_uses_monotonic_lastmod_bounds() -> None:
     def pick(month: str) -> list[str]:
         return [u.rsplit("/", 1)[-1] for u in index_children_for(children, month)]
 
-    assert pick("2016-06") == ["post-sitemap.xml"]
-    assert pick("2017-01") == ["post-sitemap3.xml"]
+    assert len(pick("2016-06")) == 5
+    assert pick("2017-01") == ["post-sitemap3.xml", "post-sitemap4.xml", "post-sitemap5.xml"]
     assert pick("2017-03") == ["post-sitemap4.xml", "post-sitemap5.xml"]
     assert pick("2018-01") == []
+
+
+def test_index_children_for_keeps_children_after_an_edited_one() -> None:
+    # post-sitemap.xml holds early-January posts, one edited in 2020; post-sitemap2.xml
+    # holds the rest of January and early February.
+    children = [
+        IndexChild(f"{BASE}/post-sitemap.xml", date(2020, 1, 1)),
+        IndexChild(f"{BASE}/post-sitemap2.xml", date(2017, 2, 8)),
+    ]
+    assert index_children_for(children, "2017-01") == [c.loc for c in children]
 
 
 def test_entry_month_prefers_the_url_date() -> None:
@@ -517,6 +527,7 @@ INDEX = """<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <sitemap><loc>{base}/post-sitemap.xml</loc><lastmod>2016-12-23T10:00:00Z</lastmod></sitemap>
 <sitemap><loc>{base}/post-sitemap2.xml</loc><lastmod>2017-02-08T10:00:00Z</lastmod></sitemap>
+<sitemap><loc>{base}/post-sitemap3.xml</loc><lastmod>2017-03-01T10:00:00Z</lastmod></sitemap>
 <sitemap><loc>{base}/category-sitemap.xml</loc><lastmod>2026-11-13T10:00:00Z</lastmod></sitemap>
 <sitemap><loc>https://otro.example/post-sitemap9.xml</loc></sitemap>
 </sitemapindex>"""
@@ -539,6 +550,7 @@ def test_sitemap_index_mode_lists_only_the_month(make_fetcher: Factory, tmp_path
     first = respx.get(f"{BASE}/post-sitemap.xml").respond(200, text="<urlset></urlset>")
     respx.get(f"{BASE}/post-sitemap2.xml").respond(200, text=CHILD.format(base=BASE))
     category = respx.get(f"{BASE}/category-sitemap.xml").respond(200, text="<urlset></urlset>")
+    later = respx.get(f"{BASE}/post-sitemap3.xml").respond(200, text="<urlset></urlset>")
     published = '<meta property="article:published_time" content="2017-01-11T08:00:00-03:00">'
     respx.get(f"{BASE}/2017/01/11/alud-en-jujuy-la-ruta-9-intransitable/").respond(
         200, text=HEAD.format(t="Alud en Jujuy", d=published)
@@ -555,6 +567,7 @@ def test_sitemap_index_mode_lists_only_the_month(make_fetcher: Factory, tmp_path
     )
     assert not first.called
     assert not category.called
+    assert not later.called  # post-sitemap2.xml already lists a February post
     assert (source.stats.raw, source.stats.selected) == (2, 1)
     assert source.stats.units == {"2017-01": "ok"}
     assert source.checkpoint.get("2017-01")["sitemaps"] == 1  # type: ignore[index]
