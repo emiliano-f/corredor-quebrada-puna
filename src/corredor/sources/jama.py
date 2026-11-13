@@ -96,17 +96,16 @@ class MopChileJama(JamaCollector):
     """ArcGIS MapServer layer of Vialidad MOP Chile; Jama is one OBJECTID."""
 
     FUENTE = "mop_cl"
+    # Only numeric/date fields and ArcGIS coded-domain values (no free text).
     FIELDS = frozenset(
         {
             "OBJECTID",
-            "PASO",
             "TRANSITABILIDAD",
             "ESTADOTIEMPO",
             "ESTADOCALZADA",
             "CADENAS",
             "RESTRICCIONES",
             "HABILITADO",
-            "HABILITACION",
             "ESTADOINFORME",
             "FECHA",
             "HORA",
