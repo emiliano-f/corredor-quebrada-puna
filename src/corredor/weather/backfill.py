@@ -102,8 +102,22 @@ def write_outputs(run: WeatherRun, clima_dir: Path) -> list[Path]:
         paths.append(clima_dir / "antecedentes.parquet")
         antecedent_features(hourly).to_parquet(paths[-1], index=False)
     paths.append(clima_dir / "grilla.parquet")
-    _merge(paths[-1], grid_table(run.cells)).to_parquet(paths[-1], index=False)
+    _with_mates(_merge(paths[-1], grid_table(run.cells))).to_parquet(paths[-1], index=False)
     return paths
+
+
+def _with_mates(grid: pd.DataFrame) -> pd.DataFrame:
+    """Recompute `comparte_celda_con` over every row, kept and fresh."""
+    key = ["modelo", "lat_grilla", "lon_grilla"]
+    members: dict[tuple[object, ...], list[str]] = {}
+    for row in grid[[*key, "punto_id"]].itertuples(index=False):
+        members.setdefault(tuple(row[:3]), []).append(str(row[3]))
+    grid = grid.copy()
+    grid["comparte_celda_con"] = [
+        ", ".join(m for m in members[tuple(r[:3])] if m != r[3])
+        for r in grid[[*key, "punto_id"]].itertuples(index=False)
+    ]
+    return grid
 
 
 def _merge(path: Path, fresh: pd.DataFrame) -> pd.DataFrame:

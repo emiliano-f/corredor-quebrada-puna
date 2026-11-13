@@ -73,4 +73,7 @@ def test_write_outputs_keeps_points_the_run_did_not_reach(tmp_path: Path) -> Non
     hourly = pd.read_parquet(paths[0])
     assert hourly.groupby("punto_id").size().to_dict() == {"rn9_volcan": 192, "rn9_twin": 192}
     assert set(pd.read_parquet(paths[1])["punto_id"]) == {"rn9_volcan", "rn9_twin"}
-    assert sorted(pd.read_parquet(paths[2])["punto_id"]) == ["rn9_twin"] * 2 + ["rn9_volcan"] * 2
+    grid = pd.read_parquet(paths[2])
+    assert sorted(grid["punto_id"]) == ["rn9_twin"] * 2 + ["rn9_volcan"] * 2
+    mates = dict(zip(grid["punto_id"], grid["comparte_celda_con"], strict=False))
+    assert mates == {"rn9_volcan": "rn9_twin", "rn9_twin": "rn9_volcan"}
