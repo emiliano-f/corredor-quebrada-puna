@@ -185,7 +185,13 @@ class _GenericSource(NewsSource):
         if cap is not None and self.stats.requests >= cap:
             self.stats.capped = True
             raise RequestCapReached(url)
-        result = self.fetcher.get(url, refresh=refresh)
+        try:
+            result = self.fetcher.get(url, refresh=refresh)
+        except DisallowedByRobots:
+            raise
+        except FetchError:
+            self.stats.requests += 1  # a failed request still counts against the cap
+            raise
         if not result.from_cache:
             self.stats.requests += 1
         return result

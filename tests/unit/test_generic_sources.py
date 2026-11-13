@@ -449,3 +449,17 @@ def test_wp_invalid_json_is_a_window_error(make_fetcher: Factory) -> None:
     assert list(source.list_articles(date(2025, 1, 1))) == []
     assert source.stats.units == {"2025": "error"}
     assert "invalid WP JSON" in source.stats.errors[0]
+
+
+@respx.mock
+def test_failed_requests_count_against_the_cap(make_fetcher: Factory) -> None:
+    no_robots()
+    route = respx.get(API).mock(side_effect=httpx.ConnectError("caído"))
+    options = GenericOptions(max_requests=3, today=date(2025, 3, 1))
+    source = WordPressApiSource(
+        cfg("wordpress_api", params={"terms": ["Jama", "Lipán"]}), make_fetcher(retries=0), options
+    )
+    assert list(source.list_articles(date(2024, 1, 1))) == []
+    assert source.stats.requests == 3
+    assert route.call_count == 3
+    assert source.stats.capped
