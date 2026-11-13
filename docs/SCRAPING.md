@@ -76,8 +76,11 @@ resumes from the checkpoint.
 Checkpoint unit status: `ok` (listed and every selected page fetched), `empty` (the
 listing exists and has no entries), `missing` (the listing answered 404), `error`
 (network/HTTP error on the listing or on a selected page). `ok`, `empty` and `missing`
-are not repeated in later runs; `error` is retried. The current unit (month or year) is
-always re-run. An empty month and a month with an error are never confused.
+are not repeated in later runs; `error` is retried. Each unit also stores `closed`
+(the month or year had already ended when it was collected). The current unit is always
+re-run with `refresh=True` (bypassing the HTTP cache), and a unit collected while still
+open is re-fetched once more after it ends before being skipped; the RSS feed is always
+refreshed. An empty month and a month with an error are never confused.
 
 Counts in `CollectionStats`: `raw` = entries listed by the outlet (WP: sum of
 `X-WP-Total` over every search, with duplicates between terms; sitemap: URLs in the

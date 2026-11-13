@@ -178,18 +178,28 @@ class _GenericSource(NewsSource):
         desde = self.config.archivo_desde
         return max(since, desde) if desde else since
 
-    def _get(self, url: str) -> FetchResult:
+    def _get(self, url: str, *, refresh: bool = False) -> FetchResult:
         cap = self.options.max_requests
         if cap is not None and self.stats.requests >= cap:
             self.stats.capped = True
             raise RequestCapReached(url)
-        result = self.fetcher.get(url)
+        result = self.fetcher.get(url, refresh=refresh)
         if not result.from_cache:
             self.stats.requests += 1
         return result
 
     def _error(self, message: str) -> None:
         self.stats.errors.append(message)
+
+    def _skip(self, key: str, open_now: bool) -> bool:
+        """Done units are skipped only if they were already closed when collected."""
+        entry = self.checkpoint.get(key)
+        return not open_now and self.checkpoint.is_done(key) and bool(entry and entry.get("closed"))
+
+    def _refresh(self, key: str, open_now: bool) -> bool:
+        """Bypass the HTTP cache for open units and for units last collected while open."""
+        entry = self.checkpoint.get(key)
+        return open_now or (entry is not None and not entry.get("closed", False))
 
     def _mark(self, key: str, status: CheckpointStatus, **info: Any) -> None:
         self.stats.units[key] = status
@@ -250,29 +260,35 @@ class WordPressApiSource(_GenericSource):
     def list_articles(self, since: date) -> Iterable[Article]:
         try:
             for key, lo, hi in self._windows(since):
-                if self.checkpoint.is_done(key) and int(key) < self.today.year:
+                open_now = hi > self.today
+                if self._skip(key, open_now):
                     self.stats.units[key] = "skipped"
                     continue
-                yield from self._window(key, lo, hi)
+                refresh = self._refresh(key, open_now)
+                yield from self._window(key, lo, hi, refresh=refresh, closed=not open_now)
         except RequestCapReached:
             return
 
-    def _window(self, key: str, lo: date, hi: date) -> Iterator[Article]:
+    def _window(
+        self, key: str, lo: date, hi: date, *, refresh: bool, closed: bool
+    ) -> Iterator[Article]:
         seen: set[int] = set()
         failed = False
         terms = self.config.params.get("terms", patterns.WP_SEARCH_TERMS)
         for term in terms:
             for variant in patterns.search_variants(str(term)):
                 try:
-                    yield from self._search(variant, lo, hi, seen)
+                    yield from self._search(variant, lo, hi, seen, refresh=refresh)
                 except FetchError as exc:
                     if isinstance(exc, DisallowedByRobots):
                         raise
                     failed = True
                     self._error(f"{key} {variant!r}: {exc}")
-        self._mark(key, "error" if failed else "ok", posts=len(seen))
+        self._mark(key, "error" if failed else "ok", closed=closed, posts=len(seen))
 
-    def _search(self, term: str, lo: date, hi: date, seen: set[int]) -> Iterator[Article]:
+    def _search(
+        self, term: str, lo: date, hi: date, seen: set[int], *, refresh: bool = False
+    ) -> Iterator[Article]:
         per_page = int(self.config.params.get("per_page", 100))
         page = 1
         while True:
@@ -286,7 +302,7 @@ class WordPressApiSource(_GenericSource):
                 "order": "asc",
                 "_fields": self.FIELDS,
             }
-            result = self._get(f"{self._api_url()}?{urlencode(query)}")
+            result = self._get(f"{self._api_url()}?{urlencode(query)}", refresh=refresh)
             if result.status == 400 and page > 1:  # rest_post_invalid_page_number
                 return
             if not result.ok:
@@ -461,40 +477,44 @@ class SitemapSource(_GenericSource):
         current = f"{self.today:%Y-%m}"
         try:
             for month in self.months(since):
-                if self.checkpoint.is_done(month) and month < current:
+                open_now = month >= current
+                if self._skip(month, open_now):
                     self.stats.units[month] = "skipped"
                     continue
-                yield from self._month(month)
+                refresh = self._refresh(month, open_now)
+                yield from self._month(month, refresh=refresh, closed=not open_now)
         except RequestCapReached:
             return
 
-    def _month(self, month: str) -> Iterator[Article]:
+    def _month(
+        self, month: str, *, refresh: bool = False, closed: bool = True
+    ) -> Iterator[Article]:
         url = self.month_url(month)
         try:
-            result = self._get(url)
+            result = self._get(url, refresh=refresh)
         except DisallowedByRobots:
             raise
         except FetchError as exc:
             self._error(f"{month}: {exc}")
-            self._mark(month, "error", error=str(exc))
+            self._mark(month, "error", closed=closed, error=str(exc))
             return
         if result.status == 404:
-            self._mark(month, "missing", http_status=404)
+            self._mark(month, "missing", closed=closed, http_status=404)
             return
         if not result.ok:
             self._error(f"{month}: HTTP {result.status}")
-            self._mark(month, "error", http_status=result.status)
+            self._mark(month, "error", closed=closed, http_status=result.status)
             return
         try:
             xml = decompress_if_gzip(result.content).decode("utf-8", errors="replace")
         except (ValueError, zlib.error) as exc:
             self._error(f"{month}: {exc}")
-            self._mark(month, "error", error=str(exc))
+            self._mark(month, "error", closed=closed, error=str(exc))
             return
         entries = parse_sitemap(xml)
         self.stats.raw += len(entries)
         if not entries:
-            self._mark(month, "empty", urls=0)
+            self._mark(month, "empty", closed=closed, urls=0)
             return
         failed, selected = 0, 0
         for entry in entries:
@@ -514,7 +534,9 @@ class SitemapSource(_GenericSource):
                 selected += 1
                 yield article
         status: CheckpointStatus = "error" if failed else "ok"
-        self._mark(month, status, urls=len(entries), selected=selected, page_errors=failed)
+        self._mark(
+            month, status, closed=closed, urls=len(entries), selected=selected, page_errors=failed
+        )
 
     def _page(self, entry: SitemapEntry, level: FiltroSlug) -> tuple[Article | None, bool]:
         """Article metadata for one selected URL; (article, fetched_without_error)."""
@@ -569,7 +591,7 @@ class RssSource(_GenericSource):
 
     def list_articles(self, since: date) -> Iterable[Article]:
         try:
-            result = self._get(self.feed_url())
+            result = self._get(self.feed_url(), refresh=True)
         except RequestCapReached:
             return
         if not result.ok:

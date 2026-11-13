@@ -169,7 +169,7 @@ def test_wp_yearly_windows_pagination_and_checkpoint(make_fetcher: Factory, tmp_
 
     def answer(request: httpx.Request) -> httpx.Response:
         q = parse_qs(urlsplit(str(request.url)).query)
-        seen.append((q["after"][0][:4], q["page"][0]))
+        seen.append((q["after"][0][:10], q["page"][0]))
         if q["page"] == ["1"]:
             posts = [post(i, f"Corte en Purmamarca {i}") for i in range(1, 3)]
             return wp_response(posts, pages=2)
@@ -187,8 +187,18 @@ def test_wp_yearly_windows_pagination_and_checkpoint(make_fetcher: Factory, tmp_
     seen.clear()
     again = WordPressApiSource(config, make_fetcher(), options)
     list(again.list_articles(date(2024, 5, 1)))
-    assert again.stats.units == {"2024": "skipped", "2025": "ok"}  # current year re-runs
-    assert seen == []  # ...answered by the PoliteFetcher disk cache
+    assert again.stats.units == {"2024": "skipped", "2025": "ok"}
+    assert {after for after, _ in seen} == {
+        "2024-12-31"
+    }  # open year 2025 re-fetched, bypassing the cache
+    seen.clear()
+    later = GenericOptions(checkpoint_dir=tmp_path / "ck", today=date(2026, 1, 10))
+    after_rollover = WordPressApiSource(config, make_fetcher(), later)
+    list(after_rollover.list_articles(date(2024, 5, 1)))
+    # 2025 was collected while open: re-fetched once more, then closed for good
+    assert after_rollover.stats.units == {"2024": "skipped", "2025": "ok", "2026": "ok"}
+    assert {after for after, _ in seen} == {"2024-12-31", "2025-12-31"}
+    assert after_rollover.checkpoint.get("2025")["closed"] is True  # type: ignore[index]
 
 
 @respx.mock
@@ -317,7 +327,7 @@ def test_sitemap_month_statuses_and_resume(make_fetcher: Factory, tmp_path: Path
     list(again.list_articles(date(2016, 1, 1)))
     assert again.stats.units["2024-01"] == again.stats.units["2024-02"] == "skipped"
     assert feb_error.call_count > calls_error  # error month retried
-    assert current.call_count >= calls_current  # current month re-listed (cache may answer)
+    assert current.call_count == calls_current + 1  # open month re-listed, never from cache
     assert again.stats.units["2024-04"] == "empty"
 
 
