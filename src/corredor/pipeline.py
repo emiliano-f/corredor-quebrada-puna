@@ -148,7 +148,7 @@ def recolectar(
     ] = True,
     lote: Annotated[int, typer.Option(help="Artículos por escritura en DuckDB.")] = 200,
 ) -> None:
-    """Recolecta metadatos de artículos (fuentes genéricas) y los guarda en `articulos`."""
+    """Recolecta metadatos de artículos (fuentes genéricas y custom) y los guarda en `articulos`."""
     settings = Settings()
     cfg = load_config(config or settings.config_path)
     options = GenericOptions(

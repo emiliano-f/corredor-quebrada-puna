@@ -183,6 +183,26 @@ the cache read is skipped because the endpoint is live).
   without repository activity.
 - Read the data: `git fetch origin data-snapshots && git show origin/data-snapshots:snapshots/jama_estado.jsonl`.
 
+### Custom news sources (`metodo: custom`)
+
+One class per outlet, registered by source id in `CUSTOM_CLASSES`
+(`src/corredor/sources/generic.py`), so `build_sources` picks them up from `config.yaml`.
+Both read only listing pages (never article pages) through `PoliteFetcher`; both sites set
+`Crawl-delay: 10`, which the fetcher honours. Listing pages shift as news is added, so they are
+always re-fetched (`refresh=True`: cache read skipped, response still cached); a run with a
+recent `since` stops after a few pages. Headline and lede are whitespace-collapsed and
+cut to 300 characters.
+
+| Source (`config.yaml` id) | Class | Requests | Date (`fecha_fuente`) | Kept |
+|---|---|---|---|---|
+| `vialidadnacional` | `VialidadNacionalSource` (`sources/vialidadnacional.py`) | `GET {base_url}?page=N`, N from 0 (16 items per page, newest first, back to 2018-10). Stops at the first page with no new items, when a whole page is older than `since`, on a non-2xx, or after `params.max_paginas`. | `<time datetime>` of the listing item (`published_time`) | Items whose headline + lede mention Jujuy, a corridor place, or RN 52. RN 9 alone is not enough (it also crosses Córdoba, Santiago del Estero, Tucumán and Salta). |
+| `eltribunojujuy` | `ElTribunoSource` (`sources/eltribuno.py`) | `GET {base_url}/ttag/<tag>[/<n>]` for each tag in `params.tags`, up to `params.max_paginas` pages per tag (~12 notes per page). Past the last page the site serves page 1 again, so a page with no new notes ends the tag; a non-2xx (unknown tag) too. | From the URL path `/<seccion>/YYYY-M-D-h-m-s-<slug>` (`fallback`: no `article:published_time` without fetching the note) | Notes whose headline + lede + URL path mention the corridor (`patterns.is_corridor`). Tag pages carry no lede, so `bajada` is usually empty. The same note appears as `/nota/…` and `/<seccion>/…` and under several tags: deduplicated by the last path segment. |
+
+El Tribuno has no deep archive elsewhere: its sitemaps (`sitemap_lite`, `sitemap-news`,
+`sitemap-organico`) list only the latest ~80–200 notes, the RSS page is not a feed,
+section listings stop after a few pages and the search (`/busqueda_amp`) returns no
+results in the server HTML. Tag pages are the only archive (`/ttag/ruta-52` reaches 2014).
+
 ## Adding a source
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-news-source) and

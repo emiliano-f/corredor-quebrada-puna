@@ -58,3 +58,6 @@ All notable changes to this project are documented here. The format follows
   ArcGIS and argentina.gob.ar, one request each, failures recorded as `error` lines) and
   the `jama_snapshot.yml` workflow that appends to `snapshots/jama_estado.jsonl` on the
   `data-snapshots` branch every 3 h. `PoliteFetcher.get` gains `refresh=True`.
+- Custom news sources: `VialidadNacionalSource` (national news listing filtered to Jujuy /
+  RN 52 / corridor places) and `ElTribunoSource` (El Tribuno de Jujuy tag pages), registered
+  in `CUSTOM_CLASSES` and enabled in `config.yaml`. Listing metadata only.

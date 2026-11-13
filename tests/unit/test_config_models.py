@@ -7,12 +7,14 @@ from pydantic import ValidationError
 from corredor.config import AppConfig, ClimaConfig, Settings, load_config
 from corredor.geo.points import CriticalPointRegistry
 from corredor.models import SCHEMA_VERSION, ClosureEvent
+from corredor.sources.eltribuno import ElTribunoSource
 from corredor.sources.generic import (
     SitemapSource,
     UnknownSourceError,
     WordPressApiSource,
     build_sources,
 )
+from corredor.sources.vialidadnacional import VialidadNacionalSource
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -52,13 +54,13 @@ def test_registry(cfg: AppConfig) -> None:
 def test_build_sources_uses_generic_classes(cfg: AppConfig) -> None:
     built = build_sources(cfg.fuentes, fetcher=object())  # type: ignore[arg-type]
     kinds = {type(s) for s in built}
-    assert kinds == {WordPressApiSource, SitemapSource}
+    assert kinds == {WordPressApiSource, SitemapSource, VialidadNacionalSource, ElTribunoSource}
     assert all(s.config.tier == 1 for s in built)
 
 
 def test_build_sources_unknown_custom(cfg: AppConfig) -> None:
     custom = next(s for s in cfg.fuentes if s.metodo == "custom").model_copy(
-        update={"enabled": True}
+        update={"enabled": True, "id": "sin-clase"}
     )
     with pytest.raises(UnknownSourceError):
         build_sources([custom], fetcher=object())  # type: ignore[arg-type]
