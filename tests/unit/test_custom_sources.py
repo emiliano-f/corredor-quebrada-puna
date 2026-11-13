@@ -258,3 +258,15 @@ def test_vialidad_through_polite_fetcher(cfg: AppConfig, tmp_path: Path) -> None
     assert len(items) == 1
     assert sleeps
     assert max(sleeps) >= 10  # Crawl-delay honoured between listing pages
+
+
+def test_markup_in_headlines_stays_plain_text(cfg: AppConfig) -> None:
+    hostile = (
+        '<a class="panel" href="/noticias/x"><time datetime="2026-01-02"></time>'
+        "<h3>&lt;script&gt;alert(1)&lt;/script&gt; Corte en la RN 52</h3>"
+        "<p><img src=x onerror=alert(1)>Bajada</p></a>"
+    )
+    src = VialidadNacionalSource(source_cfg(cfg, "vialidadnacional"), FakeFetcher({}))
+    (item,) = src.parse_listing(hostile, VN, NOW)
+    assert item.titular == "<script>alert(1)</script> Corte en la RN 52"  # escaped on render
+    assert item.bajada == "Bajada"
