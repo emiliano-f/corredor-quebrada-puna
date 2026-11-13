@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from corredor.config import AppConfig, Settings, load_config
+from corredor.config import AppConfig, ClimaConfig, Settings, load_config
 from corredor.geo.points import CriticalPointRegistry
 from corredor.models import SCHEMA_VERSION, ClosureEvent
 from corredor.sources.generic import (
@@ -121,5 +121,9 @@ def test_robots_exemption_rejects_wildcards_and_duplicates(cfg: AppConfig) -> No
 
 def test_clima_config(cfg: AppConfig) -> None:
     assert cfg.clima.desde == date(2016, 1, 1)
-    assert cfg.clima.max_llamadas_diarias == 500
+    assert cfg.clima.max_llamadas_diarias == 1500
+    assert ClimaConfig().max_llamadas_diarias == 500
     assert cfg.clima.modelo_historico == "era5_seamless"
+    assert cfg.clima.historical_forecast_url.startswith(
+        "https://historical-forecast-api.open-meteo.com/"
+    )

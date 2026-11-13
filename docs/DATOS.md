@@ -96,6 +96,7 @@ run refreshes them).
 |---|---|
 | `archivo/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Parquet cache of the archive, keyed by (model, timezone, lat, lon, date range) with 5-decimal coordinates (a cached archive is reused when both coordinates are within 0.000015°, about 1.5 m, so re-rounded coordinates do not trigger a new download); `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. A later run reuses it and only fetches the last 7 days plus the missing ones. |
 | `pronostico/<model>/<tz>/<lat>_<lon>_<from>_<to>.parquet` | Forecast cache (one per hour window): the last 7 days plus the next `hours`. |
+| `pronostico_historico/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Cache of `OpenMeteoClient.historical_forecast` (Historical Forecast API, model passed per call; same key and columns as `archivo/`). Nothing is downloaded yet: day 2 uses it for the forecast model's own climatology (#26). |
 | `horario.parquet` | All points, hourly: `punto_id`, `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. |
 | `antecedentes.parquet` | One row per point and day: `punto_id`, `fecha` and the antecedent features below. |
 | `grilla.parquet` | One row per point and grid model: `punto_id`, `modelo`, `lat_grilla`, `lon_grilla`, `elev_grilla_m`, `elev_punto_m`, `diferencia_m`, `comparte_celda_con`. |
@@ -137,7 +138,7 @@ enough to change elevations; both stay in the same cells. The other points moved
 | `rn52_abra_potrerillos` | −23.75, −65.75 (D) | −349 | −23.70, −65.70 (d) | −328 | 4204 |
 | `rn52_ronqui_angosto` | −23.75, −65.75 (D) | +145 | −23.70, −65.70 (d) | +166 | 3710 |
 | `rn52_salinas_grandes` | −23.50, −66.00 | +87 | −23.60, −65.90 | 0 | 3406 |
-| `rn52_susques` | −23.50, −66.25 | +31 | −23.40, −66.40 | +250 | 3608 |
+| `rn52_susques` | −23.50, −66.25 | +30 | −23.40, −66.40 | +249 | 3609 |
 | `rn52_paso_jama` | −23.25, −67.00 | +36 | −23.20, −67.10 | −9 | 4281 |
 
 Shared cells (same letter): ERA5 A = Volcán + Cuesta de Bárcena; B = Tumbaya +

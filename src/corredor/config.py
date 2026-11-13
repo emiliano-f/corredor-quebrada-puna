@@ -73,6 +73,7 @@ class ClimaConfig(BaseModel):
     max_llamadas_diarias: float = Field(default=500, gt=0, lt=10_000)
     archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
     forecast_url: str = "https://api.open-meteo.com/v1/forecast"
+    historical_forecast_url: str = "https://historical-forecast-api.open-meteo.com/v1/forecast"
     elevation_url: str = "https://api.open-meteo.com/v1/elevation"
 
 

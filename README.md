@@ -33,7 +33,7 @@ OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make clima`, `make datos`,
 `make precision`, `make reporte`. `make tablero` queda para el día 2.
 
 `make clima` respeta el tope diario de llamadas a Open-Meteo (`clima.max_llamadas_diarias`
-en `config.yaml`, 500 por defecto): si lo alcanza, se detiene con un aviso y la corrida
+en `config.yaml`: 1500; 500 si no se configura): si lo alcanza, se detiene con un aviso y la corrida
 siguiente sigue desde la caché.
 
 La configuración vive en [`config.yaml`](config.yaml) (puntos críticos y fuentes). Ninguna
@@ -84,6 +84,9 @@ de entorno `LLM_API_KEY`.
   (Volcán y Cuesta de Bárcena; Tumbaya, Purmamarca y Lipán bajo; Maimará y Tilcara;
   Abra de Potrerillos y Ronqui Angosto), así que el clima no los distingue. El detalle por
   punto está en `reports/clima_grilla.md` y en [docs/DATOS.md](docs/DATOS.md).
+- **Celdas que mezclan Quebrada y yungas:** las celdas de ERA5 de la Quebrada abarcan
+  también las laderas orientales, más húmedas, así que los milímetros absolutos no son la
+  lluvia que cae en la ruta. Las cifras por celda están en [docs/DATOS.md](docs/DATOS.md).
 - **Cantidad de lluvia sesgada:** ERA5 sobreestima la lluvia en las laderas andinas (en
   la celda de Volcán da unos 2.000 mm por año, contra unos 1.170 mm del modelo IFS de
   9 km en 2024); los umbrales se calibran contra los cortes, no se leen como milímetros

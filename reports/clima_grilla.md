@@ -1,6 +1,6 @@
 # Clima: modelo, celda de grilla y elevación por punto
 
-> Generado: 2026-11-13 22:43 UTC · versión `0.1.0.dev0` · commit `03ff05a` · SCHEMA_VERSION 1 · fuentes `69a5852fb79566d2`
+> Generado: 2026-11-13 22:59 UTC · versión `0.1.0.dev0` · commit `df74c71` · SCHEMA_VERSION 1 · fuentes `69a5852fb79566d2`
 
 Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-Land, ECMWF/Copernicus), licencia CC BY 4.0. Son datos de reanálisis en grilla, no mediciones de una estación en el punto.
 
@@ -23,7 +23,7 @@ Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-La
 | rn52_abra_potrerillos | -23.75, -65.75 | 3855 | 4204 | -349 | rn52_ronqui_angosto |
 | rn52_ronqui_angosto | -23.75, -65.75 | 3855 | 3710 | 145 | rn52_abra_potrerillos |
 | rn52_salinas_grandes | -23.50, -66.00 | 3493 | 3406 | 87 | — |
-| rn52_susques | -23.50, -66.25 | 3639 | 3608 | 31 | — |
+| rn52_susques | -23.50, -66.25 | 3639 | 3609 | 30 | — |
 | rn52_paso_jama | -23.25, -67.00 | 4317 | 4281 | 36 | — |
 
 ## Celdas `era5_land`
@@ -41,7 +41,7 @@ Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-La
 | rn52_abra_potrerillos | -23.70, -65.70 | 3876 | 4204 | -328 | rn52_ronqui_angosto |
 | rn52_ronqui_angosto | -23.70, -65.70 | 3876 | 3710 | 166 | rn52_abra_potrerillos |
 | rn52_salinas_grandes | -23.60, -65.90 | 3406 | 3406 | 0 | — |
-| rn52_susques | -23.40, -66.40 | 3858 | 3608 | 250 | — |
+| rn52_susques | -23.40, -66.40 | 3858 | 3609 | 249 | — |
 | rn52_paso_jama | -23.20, -67.10 | 4272 | 4281 | -9 | — |
 
 ## Puntos que comparten celda

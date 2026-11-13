@@ -38,7 +38,7 @@ clima:
   modelo_historico: era5_seamless   # same model for 2016→today (best_match switches to IFS in 2017)
   modelo_pronostico: best_match
   modelos_grilla: [era5, era5_land] # era5 = precipitation/snowfall cell, era5_land = temperature cell
-  max_llamadas_diarias: 500
+  max_llamadas_diarias: 1500
 
 # PROVISIONAL critical points. Coordinates looked up once on OpenStreetMap (Nominatim,
 # 2026-11-13); `osm` is the matched OSM object. Nothing here is verified: Child C
