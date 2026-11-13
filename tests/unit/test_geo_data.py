@@ -60,7 +60,7 @@ def test_committed_points_geojson_matches_config() -> None:
 
 
 def test_cli_geo_writes_geojson_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import corredor.http as http
+    import corredor.pipeline as pipeline
     from tests.unit.test_geo import FixtureFetcher
 
     class Fake(FixtureFetcher):
@@ -70,7 +70,7 @@ def test_cli_geo_writes_geojson_and_report(tmp_path: Path, monkeypatch: pytest.M
         def close(self) -> None:
             pass
 
-    monkeypatch.setattr(http, "PoliteFetcher", Fake)
+    monkeypatch.setattr(pipeline, "PoliteFetcher", Fake)
     monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path / "data"))
     report = tmp_path / "geo.md"
     result = CliRunner().invoke(
