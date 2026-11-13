@@ -197,6 +197,8 @@ def test_rejects_empty_user_agent(tmp_path: Path) -> None:
         ("User-agent: other\nDisallow: /\n", "/x", True),
         ("User-agent: *\nDisallow: /\n\nUser-agent: corredor-test\nAllow: /\n", "/x", True),
         ("User-agent: *\nDisallow:\n", "/x", True),
+        ("User-agent: *\nDisallow: /privado\n", "/%70rivado", False),
+        ("User-agent: *\nDisallow: /%C3%B1u\n", "/ñu", False),
     ],
 )
 def test_robots_rules_rfc9309(robots: str, path: str, allowed: bool) -> None:
@@ -237,3 +239,25 @@ def test_retry_after_above_cap_fails_instead_of_retrying_early(
     with pytest.raises(FetchError, match="900"):
         make(tmp_path, clock, retries=3).get(f"{BASE}/x")
     assert route.call_count == 1
+
+
+@respx.mock
+def test_robots_redirect_is_followed(tmp_path: Path, clock: FakeClock) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(
+        301, headers={"Location": "https://www.news.example/robots.txt"}
+    )
+    respx.get("https://www.news.example/robots.txt").respond(
+        200, text="User-agent: *\nDisallow: /privado\n"
+    )
+    respx.get(f"{BASE}/x").respond(200, text="ok")
+    f = make(tmp_path, clock)
+    assert f.get(f"{BASE}/x").ok
+    with pytest.raises(DisallowedByRobots):
+        f.get(f"{BASE}/privado/y")
+
+
+@respx.mock
+def test_304_without_location_is_returned(tmp_path: Path, clock: FakeClock) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(404)
+    respx.get(f"{BASE}/x").respond(304)
+    assert make(tmp_path, clock).get(f"{BASE}/x").status == 304

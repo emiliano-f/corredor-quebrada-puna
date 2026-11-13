@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
 import httpx
 from tenacity import (
@@ -127,7 +127,7 @@ class RobotsRules:
 
     def can_fetch(self, url: str) -> bool:
         parts = urlsplit(url)
-        target = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        target = unquote((parts.path or "/") + (f"?{parts.query}" if parts.query else ""))
         if target == "/robots.txt":
             return True
         best: tuple[int, bool] | None = None
@@ -142,7 +142,7 @@ class RobotsRules:
 def _robots_pattern(path: str) -> re.Pattern[str]:
     anchored = path.endswith("$")
     body = path[:-1] if anchored else path
-    regex = ".*".join(re.escape(chunk) for chunk in body.split("*"))
+    regex = ".*".join(re.escape(unquote(chunk)) for chunk in body.split("*"))
     return re.compile(regex + ("$" if anchored else ""))
 
 
@@ -234,9 +234,18 @@ class PoliteFetcher:
         robots_url = f"{host}/robots.txt"
         self._throttle(host, self.min_interval_s)
         try:
-            resp = self._client.get(robots_url)
+            resp = self._client.get(robots_url, follow_redirects=False)
+            # RFC 9309 §2.3.1.2: follow at least five consecutive redirects.
+            for _ in range(MAX_REDIRECTS):
+                if not resp.has_redirect_location:
+                    break
+                robots_url = urljoin(robots_url, resp.headers["location"])
+                self._throttle(_host_key(robots_url), self.min_interval_s)
+                resp = self._client.get(robots_url, follow_redirects=False)
         except httpx.HTTPError:
             return self._robots_entry(None, disallow_all=True, ttl=self._robots_retry_ttl())
+        if resp.has_redirect_location:
+            return self._robots_entry(None, disallow_all=False)
         status = resp.status_code
         if 200 <= status < 300:
             body = resp.text
@@ -280,7 +289,7 @@ class PoliteFetcher:
         for _ in range(MAX_REDIRECTS + 1):
             self._throttle(_host_key(target), self.interval_for(target))
             resp = self._client.get(target, follow_redirects=False)
-            if not resp.is_redirect:
+            if not resp.has_redirect_location:
                 break
             target = urljoin(target, resp.headers["location"])
             if not self.allowed(target):
