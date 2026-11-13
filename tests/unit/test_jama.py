@@ -157,6 +157,7 @@ def test_argentina_honors_crawl_delay(cfg: AppConfig, tmp_path: Path) -> None:
         (httpx.Response(200, text="<html>no</html>"), "JSON inválido"),
         (httpx.Response(200, json={"error": {"code": 400}}), "error ArcGIS"),
         (httpx.Response(200, json={"features": []}), "OBJECTID 7 no está"),
+        (httpx.Response(200, json={"features": 1}), "respuesta inesperada (TypeError"),
     ],
 )
 @respx.mock
@@ -191,6 +192,18 @@ def test_robots_disallow_becomes_error_row(cfg: AppConfig, tmp_path: Path) -> No
     ).snapshot()
     assert row.error is not None
     assert "DisallowedByRobots" in row.error
+
+
+@respx.mock
+def test_argentina_malformed_listing_becomes_error_row(cfg: AppConfig, tmp_path: Path) -> None:
+    mock_robots()
+    respx.get(AR_LIST).respond(200, json=[{"id": [19]}])
+    row = ArgentinaGobArJama(
+        source(cfg, "jama_argentina_gob_ar"), fetcher(tmp_path), now=lambda: NOW
+    ).snapshot()
+    assert row.payload_json is None
+    assert row.error is not None
+    assert "respuesta inesperada (TypeError" in row.error
 
 
 def test_argentina_missing_jama_is_error(cfg: AppConfig, tmp_path: Path) -> None:

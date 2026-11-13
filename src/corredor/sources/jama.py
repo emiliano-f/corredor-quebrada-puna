@@ -60,6 +60,10 @@ class JamaCollector(ABC):
             payload = self.records(_decode(result))
         except PayloadError as exc:
             return self._error(str(exc), result.fetched_at)
+        except (TypeError, ValueError, KeyError, AttributeError) as exc:
+            return self._error(
+                f"respuesta inesperada ({type(exc).__name__}: {exc})", result.fetched_at
+            )
         return JamaEstado(
             fuente=self.FUENTE,
             fetched_at=result.fetched_at.astimezone(UTC),
