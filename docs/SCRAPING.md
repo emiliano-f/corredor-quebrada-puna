@@ -54,12 +54,12 @@ the cache read is skipped because the endpoint is live).
 | `jama_mop_cl` (`MopChileJama`) | `mop_cl` | `GET {base_url}/query?where=OBJECTID=7&outFields=*&f=json` (ArcGIS MapServer of Vialidad MOP Chile; robots.txt 404 = no restrictions; `params.objectid`) | `attributes` of the OBJECTID 7 feature, all fields as returned (dates are epoch ms). Geometry is dropped. |
 | `jama_argentina_gob_ar` (`ArgentinaGobArJama`) | `argentina_gob_ar` | `GET {base_url}` (JSON list of every crossing; robots allows it with `Crawl-delay: 10`) | The record(s) in `params.ids` (Jama, id 19), always. The ids in `params.ids_si_cambian` (Jama Norte 100, Jama Sur 101, not open to traffic) only while any field in `params.estado_base` differs from that baseline. The other ~150 crossings are discarded. |
 
-- Command: `uv run corredor snapshot-jama [--config config.yaml] [--salida snapshots/jama_estado.jsonl]`
+- Command: `make snapshot-jama`, i.e. `uv run corredor snapshot-jama [--config config.yaml] [--salida snapshots/jama_estado.jsonl]`
   appends one JSON line per enabled snapshot source (`JamaEstado`, see
   [DATOS.md](DATOS.md#jama_estado--paso-de-jama-status-snapshots)).
 - Failures never stop the run: a network error, robots.txt refusal, non-2xx status,
-  invalid JSON, an ArcGIS `error` object or a missing Jama record becomes a line with
-  `error` set and `payload_json` empty; the command still exits 0.
+  invalid JSON, an ArcGIS `error` object, a malformed payload or a missing Jama record
+  becomes a line with `error` set and `payload_json` empty; the command still exits 0.
 - Schedule: [`.github/workflows/jama_snapshot.yml`](../.github/workflows/jama_snapshot.yml),
   `cron: "17 */3 * * *"` (UTC; GitHub may delay scheduled runs by some minutes) plus
   `workflow_dispatch`. It checks out the orphan branch `data-snapshots` (creating it if

@@ -11,7 +11,7 @@ make format       # ruff fix + format
 ```
 
 `make docs-check` compares your branch against `origin/main`, so run `git fetch origin`
-first. `uv run corredor snapshot-jama` (Paso de Jama status, see
+first. `make snapshot-jama` (`uv run corredor snapshot-jama`; Paso de Jama status, see
 [docs/SCRAPING.md](docs/SCRAPING.md)) makes one live request per source; in production it
 runs only from `.github/workflows/jama_snapshot.yml`. Tests never touch the network: use recorded fixtures under `tests/fixtures/` and
 `respx` for HTTP.

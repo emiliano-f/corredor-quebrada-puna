@@ -20,7 +20,7 @@ make setup          # uv sync + hooks de pre-commit
 make check          # lint, tipos, tests, docs-check y auditoría de dependencias
 uv run corredor --version
 uv run corredor manifest   # escribe data/manifest.json
-uv run corredor snapshot-jama   # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
+make snapshot-jama  # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
