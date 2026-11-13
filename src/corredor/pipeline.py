@@ -11,7 +11,7 @@ import typer
 from corredor import __version__
 from corredor.config import Settings, load_config
 from corredor.http import PoliteFetcher
-from corredor.reports import lineage, write_manifest
+from corredor.reports import lineage, report_header, write_manifest
 from corredor.sources.jama import append_jsonl, build_collectors
 
 app = typer.Typer(
@@ -80,6 +80,56 @@ def precision() -> None:
 def reporte() -> None:
     """Genera reports/calidad_catalogo.md."""
     _not_ready("reporte")
+
+
+GEO_DIR = Path("assets/geo")
+GEO_REPORT = Path("reports/geo_verificacion.md")
+OVERPASS_TIMEOUT_S = 120.0
+
+
+@app.command()
+def geo(
+    config: ConfigOpt = None,
+    salida: Annotated[Path, typer.Option(help="Carpeta de los GeoJSON.")] = GEO_DIR,
+    informe: Annotated[Path, typer.Option(help="Informe de verificación.")] = GEO_REPORT,
+) -> None:
+    """Exporta RN 9, RN 52 y el Tren Solar desde OSM y verifica los puntos críticos."""
+    from corredor.geo.points import CriticalPointRegistry, verification_report
+    from corredor.geo.routes import ATTRIBUTION, LICENSE, OverpassExporter, write_geojson
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    fetcher = PoliteFetcher(
+        cfg.http.user_agent,
+        settings.cache_dir,
+        min_interval_s=cfg.http.min_interval_s,
+        timeout_s=max(cfg.http.timeout_s, OVERPASS_TIMEOUT_S),
+        retries=cfg.http.retries,
+    )
+    try:
+        exporter = OverpassExporter(fetcher)
+        data = exporter.build()
+        registry = CriticalPointRegistry(cfg.puntos)
+        checks = registry.verify(exporter.client.objects(registry.osm_refs()), data.routes)
+    finally:
+        fetcher.close()
+    paths = write_geojson(data, salida, registry.all())
+    body = verification_report(checks, cfg.puntos)
+    informe.parent.mkdir(parents=True, exist_ok=True)
+    informe.write_text(
+        report_header("Verificación de puntos críticos (OpenStreetMap)", lineage(cfg))
+        + body
+        + f"\nDatos: {ATTRIBUTION}, licencia {LICENSE}.\n",
+        encoding="utf-8",
+    )
+    for path in [*paths, informe]:
+        typer.echo(f"Escrito {path}")
+    if "**no**" in body or any(c.order_problem for c in checks):
+        typer.echo(
+            "config.yaml difiere de OSM o tiene puntos fuera de orden: revisá el informe.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 DEFAULT_JAMA_OUT = Path("snapshots/jama_estado.jsonl")

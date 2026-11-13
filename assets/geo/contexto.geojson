@@ -1,0 +1,144 @@
+{
+ "type": "FeatureCollection",
+ "attribution": "© OpenStreetMap contributors",
+ "license": "ODbL-1.0 (https://opendatacommons.org/licenses/odbl/1-0/)",
+ "copyright": "https://www.openstreetmap.org/copyright",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Volcán",
+    "osm": "node/11989328551",
+    "fuente": "OSM node/11989328551",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.466341,
+     -23.915615
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Tumbaya",
+    "osm": "node/11989328548",
+    "fuente": "OSM node/11989328548",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.465147,
+     -23.853486
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Purmamarca",
+    "osm": "node/11989328545",
+    "fuente": "OSM node/11989328545",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.470065,
+     -23.748436
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Posta de Hornillos",
+    "osm": "node/12902249461",
+    "fuente": "OSM node/12902249461",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.429394,
+     -23.656369
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Maimará",
+    "osm": "node/11627219113",
+    "fuente": "OSM node/11627219113",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.40862,
+     -23.62818
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "estacion_tren_solar",
+    "nombre": "Tilcara",
+    "osm": "node/12901981258",
+    "fuente": "OSM node/12901981258",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.398519,
+     -23.572766
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "litio",
+    "nombre": "Cauchari-Olaroz",
+    "osm": "node/13735789123",
+    "fuente": "OSM node/13735789123",
+    "nota": ""
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -66.713152,
+     -23.416001
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "tipo": "litio",
+    "nombre": "Salar de Olaroz",
+    "osm": "way/209386890",
+    "fuente": "OSM way/209386890",
+    "nota": "La operación Olaroz no está mapeada en OSM como objeto con nombre; se muestra el centro del salar, no la planta"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -66.701515,
+     -23.472801
+    ]
+   }
+  }
+ ]
+}

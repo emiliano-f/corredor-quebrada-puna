@@ -59,10 +59,16 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 | `nombre` | str | yes | |
 | `ruta` | `RN9` \| `RN52` \| `otra` | yes | |
 | `km` | float | no | |
-| `lat`, `lon` | float | yes | WGS84, from OpenStreetMap. |
-| `verificado` | bool | no | `false` until checked against OSM. |
-| `fuente_geo` | str | no | OSM object used (e.g. `osm:relation/4473252`). |
-| `fuente_km` | str | no | Source of the km value. |
+| `lat`, `lon` | float | yes | WGS84, coordinates of the `osm` object (never typed by hand). |
+| `verificado` | bool | no | `true` only if `osm` is a node/way within 500 m of the route line. |
+| `fuente_geo` | str | no | OSM object and its distance to the route line. |
+| `fuente_km` | str | no | How the km was measured (see "Geo data" below). |
+| `osm` | str | no | Added by the geo stage: `node/<id>` or `way/<id>` the point comes from. |
+| `nota_geo` | str | no | Added by the geo stage: why a point is uncertain or not verified. |
+
+`make geo` (`corredor geo`) re-derives `lat`, `lon`, `km`, `verificado`, `fuente_geo` and
+`fuente_km` from `osm` and writes `reports/geo_verificacion.md`; it exits with code 1 when
+`config.yaml` differs from OSM, so the points are updated by hand from the report.
 
 ## `clima_diario` — daily weather per point
 
@@ -103,3 +109,39 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 | `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
 | `data/manifest.json` | Lineage of the last run: `version`, `git_commit`, `schema_version`, `sources_hash` (hash of `fuentes` in `config.yaml`), `generated_at`. |
 | `reports/*.md` | Generated reports; each starts with the same lineage header. |
+| `reports/geo_verificacion.md` | Critical points: OSM-derived km, distance to the route, verified or not, match with `config.yaml`. |
+| `assets/geo/*.geojson` | Committed (needed offline by the dashboard). See "Geo data". |
+
+## Geo data (`assets/geo/`, committed)
+
+Written by `make geo` from OpenStreetMap through Overpass. Every file is a GeoJSON
+`FeatureCollection` (WGS84, `[lon, lat]`, 6 decimals) with the foreign members
+`attribution: "© OpenStreetMap contributors"`, `license` (ODbL 1.0) and `copyright`
+(<https://www.openstreetmap.org/copyright>). Keep them when copying the data: ODbL.
+
+| File | Features | Properties |
+|---|---|---|
+| `rutas.geojson` | RN 9 and RN 52 (one `LineString` each) | `id`, `nombre`, `longitud_km`, `km_inicio`, `km_fin`, `fuente`, `fuente_km` |
+| `ferrocarril.geojson` | Tren Solar line Volcán → Tilcara (`LineString`) | same as above |
+| `contexto.geojson` | Tren Solar stations and lithium context points (`Point`) | `tipo` (`estacion_tren_solar` \| `litio`), `nombre`, `osm`, `fuente`, `nota` |
+| `puntos.geojson` | Critical points (`Point`), same values as `config.yaml` | `id`, `nombre`, `ruta`, `km`, `verificado`, `osm`, `fuente_geo`, `fuente_km`, `nota_geo` |
+
+How lines and km are built (`src/corredor/geo/routes.py`):
+
+- **RN 9:** OSM ways `highway=*` with `ref=RN9` in the bbox `-24.2,-65.6,-23.15,-65.25`,
+  stitched into one polyline (shortest path from the southernmost to the northernmost
+  vertex). km = OSM distance along that line + an offset fitted (median) to the OSM
+  milestones (`highway=milestone` with `distance`) within 50 m of the line. The milestones
+  are all between km 1692 and 1701 (San Salvador de Jujuy); further north the km is
+  extrapolated along the OSM geometry and may differ from the official progressive.
+- **RN 52:** OSM `relation/1745344`, stitched from the vertex closest to RN 9 (junction near
+  Purmamarca, km 0 assumed) to `node/311458189` (Paso de Jama). OSM has no milestones on
+  RN 52 and no machine-readable Vialidad Nacional progressive was found, so all RN 52 km
+  are OSM distances from the junction.
+- **Tren Solar:** OSM `relation/17730839` (`route=train`), stitched from the Volcán stop to
+  the Tilcara stop; stations are the relation's named stop/station nodes, ordered along the
+  line.
+- **Lithium:** `node/13735789123` (Cauchari-Olaroz) and `way/209386890` (Salar de Olaroz,
+  centre of the salt flat): the Olaroz operation itself is not mapped in OSM as a named
+  object, so its plant location is not shown.
+

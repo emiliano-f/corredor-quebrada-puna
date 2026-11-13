@@ -18,6 +18,24 @@ Every production HTTP request goes through `PoliteFetcher.get(url) -> FetchResul
 | Retries | 429, 5xx and transport errors: up to `http.retries` retries with exponential backoff, never sooner than `Retry-After`. A `Retry-After` above 600 s fails the request instead of retrying early. |
 | Cache | Under `data/cache/` (gitignored), one folder per host, keyed by SHA-256 of the URL. Only 2xx/304 are cached; 404 is cached for 1 hour; 429/5xx are never cached. `get(url, refresh=True)` skips the cache read (live status endpoints) but still writes the cache. |
 
+## OpenStreetMap APIs (geo stage)
+
+`make geo` only talks to OSM services, always through `PoliteFetcher` (same User-Agent,
+robots.txt, >= 2 s per host, permanent disk cache: a second run makes no requests).
+robots.txt checked on 2026-11-13 (`*` group):
+
+| Host | robots.txt | Use |
+|---|---|---|
+| `maps.mail.ru` (Overpass mirror) | no rules (redirects to HTML) | primary Overpass endpoint; answers small queries in ~20 s, large ones can return 504 |
+| `overpass.kumi.systems`, `overpass.private.coffee` | 404 (no restrictions) | fallbacks, tried in order; both timed out on 2026-11-13 |
+| `overpass-api.de` | `Disallow: /api/` | not used |
+| `nominatim.openstreetmap.org` | `Disallow: /search`, `/lookup`, `/reverse` | `NominatimGeocoder` raises `DisallowedByRobots`; not used, every point has an OSM id |
+
+Overpass fair use: six small queries per run (two route geometries, milestones, Tren Solar
+relation and nodes, objects by id), `timeout:50`. An answer with an error `remark`
+raises `OverpassError`; delete `data/cache/<host>/` to refetch. No robots exemption is
+used for OSM hosts.
+
 ## What is stored
 
 - Stored: URL, outlet (`source_id`), publication date and its provenance

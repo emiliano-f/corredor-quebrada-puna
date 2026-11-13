@@ -24,6 +24,12 @@ All notable changes to this project are documented here. The format follows
   two-step release (`make release` opens a release PR, `make tag` pushes the tag), CI and
   release workflows, Dependabot, PR and issue templates. CodeQL (Python + Actions) runs via
   GitHub default setup.
+- Geo: `corredor geo` / `make geo` builds RN 9, RN 52 and the Tren Solar line from OSM via
+  Overpass (`OverpassClient` with mirror fallback, `OverpassExporter`), writes committed
+  GeoJSON with ODbL attribution under `assets/geo/` and `reports/geo_verificacion.md`;
+  `CriticalPointRegistry.verify` derives coordinates, km and sources from each point's OSM
+  object; `NominatimGeocoder` (robots-bound). `CriticalPoint` gains `osm` and `nota_geo`;
+  12 of 13 points verified in `config.yaml`.
 - Docs: README (es-AR), AGENTS.md, CONTRIBUTING.md, FUENTES.md, SCRAPING.md, DATOS.md,
   ADR 0001 and playbooks.
 - Paso de Jama snapshots: `corredor snapshot-jama` (collectors for Vialidad MOP Chile
