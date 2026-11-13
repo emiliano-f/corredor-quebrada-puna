@@ -86,6 +86,8 @@ class RuleBasedExtractor(EventExtractor):
         point = self._point(cleaned, causa)
         km = self._km(cleaned)
         routes = p.routes(text)
+        if point is not None and len(routes) == 1 and point.ruta not in routes:
+            point = None  # an explicitly named route wins over a place on the other one
         ruta = self._route(point, routes, cleaned)
         if point is None and km is not None and ruta != "otra":
             point = self._nearest(ruta, km)

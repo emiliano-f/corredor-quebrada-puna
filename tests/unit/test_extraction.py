@@ -199,3 +199,8 @@ def test_rules_corto(rules: RuleBasedExtractor, titular: str) -> None:
 
 def test_rules_corto_plazo_is_not_a_closure(rules: RuleBasedExtractor) -> None:
     assert rules.extract(art("A corto plazo, obras en Volcán")) == []
+
+
+def test_rules_named_route_wins_over_place(rules: RuleBasedExtractor) -> None:
+    (event,) = rules.extract(art("Cortan la ruta 9 a la altura de Purmamarca"))
+    assert (event.ruta, event.punto_id) == ("RN9", None)
