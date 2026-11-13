@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Data (HTTP cache, DuckDB, Parquet, checkpoints): never committed
+data/
+.audit-requirements.txt
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+.env

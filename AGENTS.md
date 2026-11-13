@@ -1,0 +1,17 @@
+CONTEXT
+Road-closure risk alerts for Ruta Nacional 9 (Quebrada de Humahuaca, along the Tren Solar line) and Ruta Nacional 52 (Purmamarca → Cuesta de Lipán → Susques → Paso de Jama, the lithium-mining corridor) in Jujuy, Argentina. Core asset: a historical catalog of road closures built from local news (many outlets, including small local ones), cross-referenced with real weather. Demo on Nov 25 on board the Tren Solar (JujuyDev hackathon): must work OFFLINE on a phone. Owner: Emiliano Flores (solo). The owner makes the product decisions: always propose a plan and wait for approval before large changes.
+GIT IDENTITY
+Set in the owner's Devin settings: author = Emiliano Flores <73411823+emiliano-f@users.noreply.github.com>, committer = Devin's bot noreply. Never run or try to override git config. Before the first commit in any session, run `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT` and paste the output in the PR. Continue only if the author email is 73411823+emiliano-f@users.noreply.github.com and the committer email ends in @users.noreply.github.com; otherwise stop and report.
+NON-NEGOTIABLE RULES
+1. All user-facing text in Spanish (Argentina). Code and docs may be in English.
+2. News: store only metadata (URL, outlet, date, headline, short lede). Never store or republish full article text. Respect robots.txt, identify with a clear User-Agent, rate-limit (>= 2 s per request per host, or the site's Crawl-delay if larger), cache every fetched page under data/ (gitignored). No scraping of social networks.
+3. No secrets in the repo. API keys only via environment variables; the pipeline must run without any key.
+4. Every number shown in the dashboard comes from the pipeline tables. No invented values; if data is missing, say so in the UI.
+5. Never invent coordinates: geocode with OpenStreetMap and flag uncertain ones.
+6. Reproducible: uv lockfile, fixed seeds, one Makefile target per stage, tests never hit the network.
+7. Engineering standards: OOP with small interfaces, type hints, ruff (lint + format), mypy, pytest, pre-commit, GitHub Actions CI, PRs with the repo's PR template. Work on feature branches; main is protected (PR required + CI green); never push directly to main.
+8. Be explicit about limitations (press coverage bias, simple thresholds) in README and UI.
+9. If a source blocks scraping or data is too thin, stop and report instead of working around it.
+10. Docs are part of the change: follow the docs-sync skill before every PR.
+11. Versioning: SemVer with the version only in pyproject.toml. PRs never bump it; they add a line under "## [Unreleased]" in CHANGELOG.md. Releases go through a PR: `make release BUMP=...` opens a release/vX.Y.Z PR with the bump and the CHANGELOG move; after it is merged, `make tag` pushes the annotated tag vX.Y.Z from main, which triggers the GitHub Release. Only the integration session or the owner runs them. Bump SCHEMA_VERSION on any table/column change and a source's PARSER_VERSION when its parsing changes.
+12. Security: follow the security-check skill before every PR that touches fetching, scraped content, HTML, the LLM extractor, SQL, config, dependencies or workflows.

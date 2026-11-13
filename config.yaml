@@ -1,0 +1,237 @@
+# Corredor Quebrada–Puna — pipeline configuration.
+# Loaded with yaml.safe_load by corredor.config.load_config. Secrets never go here:
+# they come from environment variables (see corredor.config.Settings).
+
+http:
+  user_agent: "corredor-quebrada-puna/0.1 (+https://github.com/emiliano-f/corredor-quebrada-puna)"
+  min_interval_s: 2.5
+  timeout_s: 30
+  retries: 3
+  robots_ttl_h: 24
+  not_found_ttl_h: 24
+
+backfill:
+  desde: 2016-01-01
+  max_requests_per_run: 2000
+  muestra_sitemaps: ["2017-01", "2024-02", "2026-08"]
+
+# PROVISIONAL critical points. Coordinates looked up once on OpenStreetMap (Nominatim,
+# 2026-11-13); `osm` is the matched OSM object. Nothing here is verified: Child C
+# (feature/geo) verifies order, km and coordinates and sets `verificado: true`.
+# km values are deliberately left empty until verified (do not trust the plan's km).
+puntos:
+  # --- RN 9 (Quebrada de Humahuaca), south to north ---
+  - id: rn9_volcan
+    nombre: "Volcán / Quebrada de los Filtros"
+    ruta: RN9
+    lat: -23.91709
+    lon: -65.46402
+    verificado: false
+    fuente_geo: "OSM relation/4473252 (Municipio de Volcán, punto de etiqueta); 'Quebrada de los Filtros' sin resultado en Nominatim"
+  - id: rn9_cuesta_barcena
+    nombre: "Cuesta de Bárcena"
+    ruta: RN9
+    lat: -23.96844
+    lon: -65.45131
+    verificado: false
+    fuente_geo: "OSM node/13770515998 (Parador Cuesta de Bárcena, sobre RN 9)"
+  - id: rn9_tumbaya
+    nombre: "Tumbaya"
+    ruta: RN9
+    lat: -23.85754
+    lon: -65.46701
+    verificado: false
+    fuente_geo: "OSM relation/4473251 (Municipio de Tumbaya)"
+  - id: rn9_maimara
+    nombre: "Maimará"
+    ruta: RN9
+    lat: -23.62450
+    lon: -65.40860
+    verificado: false
+    fuente_geo: "OSM relation/4484386 (Municipio de Maimará)"
+  - id: rn9_tilcara
+    nombre: "Tilcara"
+    ruta: RN9
+    lat: -23.57690
+    lon: -65.39339
+    verificado: false
+    fuente_geo: "OSM relation/4484387 (Municipio de Tilcara)"
+  - id: rn9_huacalera
+    nombre: "Huacalera"
+    ruta: RN9
+    lat: -23.43352
+    lon: -65.35096
+    verificado: false
+    fuente_geo: "OSM relation/4484385 (Municipio de Huacalera)"
+  # --- RN 52 (Purmamarca → Paso de Jama), east to west ---
+  - id: rn52_purmamarca_chalala
+    nombre: "Purmamarca / Chalala"
+    ruta: RN52
+    lat: -23.73405
+    lon: -65.51658
+    verificado: false
+    fuente_geo: "OSM node/5112503888 (Chalala)"
+  - id: rn52_lipan_bajo
+    nombre: "Cuesta de Lipán — tramo bajo (aluvión)"
+    ruta: RN52
+    lat: -23.70529
+    lon: -65.53675
+    verificado: false
+    fuente_geo: "OSM way/297669793 (RN 52 'Cuesta de Lipán', Patacal; centro del tramo)"
+  - id: rn52_abra_potrerillos
+    nombre: "Abra de Potrerillos — cumbre de Lipán (nieve)"
+    ruta: RN52
+    lat: -23.69915
+    lon: -65.65954
+    verificado: false
+    fuente_geo: "OSM node/2795046332 (natural=saddle 'Abra Potrerillos')"
+  - id: rn52_ronqui_angosto
+    nombre: "Ronqui Angosto"
+    ruta: RN52
+    lat: -23.69812
+    lon: -65.73511
+    verificado: false
+    fuente_geo: "OSM node/5112503898 (Ronqui Angosto)"
+  - id: rn52_salinas_grandes
+    nombre: "Salinas Grandes"
+    ruta: RN52
+    lat: -23.59642
+    lon: -65.88232
+    verificado: false
+    fuente_geo: "OSM relation/12345428 (Salinas Grandes; punto representativo, no sobre la ruta)"
+  - id: rn52_susques
+    nombre: "Susques"
+    ruta: RN52
+    lat: -23.39917
+    lon: -66.36756
+    verificado: false
+    fuente_geo: "OSM relation/4503752 (Municipio de Susques)"
+  - id: rn52_paso_jama
+    nombre: "Paso de Jama"
+    ruta: RN52
+    lat: -23.22658
+    lon: -67.06292
+    verificado: false
+    fuente_geo: "OSM node/311458189 (Paso de Jama, RN 52)"
+
+# Sources from the approved survey (docs/FUENTES.md). Generic outlets are added here,
+# not in code. `archivo_desde` = first month with archive; `republica: true` = mostly
+# republishes other outlets, so it does not count in n_medios.
+# Excluded candidates are listed only in docs/FUENTES.md.
+fuentes:
+  # --- Tier 1, WordPress REST API ---
+  - id: elsubmarino
+    nombre: "El Submarino Jujuy"
+    base_url: "https://elsubmarinojujuy.com.ar"
+    metodo: wordpress_api
+    tier: 1
+    enabled: true
+    archivo_desde: 2013-07-01
+  - id: jujuyaldia
+    nombre: "Jujuy al Día"
+    base_url: "https://www.jujuyaldia.com.ar"
+    metodo: wordpress_api
+    tier: 1
+    enabled: true
+    archivo_desde: 2010-01-01
+  - id: radioazultilcara
+    nombre: "Radio Azul Tilcara"
+    base_url: "https://radioazultilcara.com.ar"
+    metodo: wordpress_api
+    tier: 1
+    enabled: true
+    archivo_desde: 2018-12-01
+    local: true
+  - id: jujuyonline
+    nombre: "Jujuy Online"
+    base_url: "https://jujuyonline.com"
+    metodo: wordpress_api
+    tier: 1
+    enabled: true
+    archivo_desde: 2026-04-01
+    republica: true
+  # --- Tier 1, monthly sitemaps ---
+  - id: todojujuy
+    nombre: "Todo Jujuy"
+    base_url: "https://www.todojujuy.com"
+    metodo: sitemap
+    tier: 1
+    enabled: true
+    archivo_desde: 2012-01-01
+    params:
+      sitemap_mensual: "https://www.todojujuy.com/sitemap/news-full/sitemap-{yyyymm}.xml.gz"
+  - id: jujuyalmomento
+    nombre: "Jujuy al Momento"
+    base_url: "https://www.jujuyalmomento.com"
+    metodo: sitemap
+    tier: 1
+    enabled: true
+    archivo_desde: 2011-01-01
+    params:
+      sitemap_mensual: "https://www.jujuyalmomento.com/sitemap/news-full/sitemap-{yyyymm}.xml.gz"
+  - id: somosjujuy
+    nombre: "Somos Jujuy"
+    base_url: "https://www.somosjujuy.com.ar"
+    metodo: sitemap
+    tier: 1
+    enabled: true
+    archivo_desde: 2018-01-01
+    params:
+      sitemap_mensual: "https://www.somosjujuy.com.ar/sitemapNoticias{yyyymm}.xml"
+  - id: prensajujuy
+    nombre: "Prensa Gobierno de Jujuy"
+    base_url: "https://prensa.jujuy.gob.ar"
+    metodo: sitemap
+    tier: 1
+    enabled: true
+    archivo_desde: 2016-05-01
+    oficial: true
+    params:
+      sitemap_mensual: "https://prensa.jujuy.gob.ar/sitemap/news-full/sitemap-{yyyymm}.xml.gz"
+  # --- Tier 1, custom parsers (Child B); enabled once implemented ---
+  - id: eltribunojujuy
+    nombre: "El Tribuno de Jujuy"
+    base_url: "https://www.eltribunodejujuy.com"
+    metodo: custom
+    tier: 1
+    enabled: false
+  - id: vialidadnacional
+    nombre: "Vialidad Nacional — noticias"
+    base_url: "https://www.argentina.gob.ar/node/96178/noticias"
+    metodo: custom
+    tier: 1
+    enabled: false
+    oficial: true
+  # --- Tier 1, Paso de Jama status snapshots (Child B; GitHub Actions every 3 h) ---
+  - id: jama_mop_cl
+    nombre: "Vialidad MOP Chile — Pasos Fronterizos (Jama)"
+    base_url: "https://rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Pasos_Fronterizos/MapServer/0"
+    metodo: snapshot
+    tier: 1
+    enabled: false
+    oficial: true
+    params:
+      objectid: 7
+  - id: jama_argentina_gob_ar
+    nombre: "Pasos internacionales AR — listado (Jama)"
+    base_url: "https://www.argentina.gob.ar/seguridad/pasosinternacionales/listado"
+    metodo: snapshot
+    tier: 1
+    enabled: false
+    oficial: true
+    params:
+      ids: [19, 100, 101]
+  # --- Tier 2 (backlog; one GitHub issue each, label tier-2) ---
+  - {id: infotilcara, nombre: "InfoTilcara / Radio RIN", base_url: "https://infotilcara.com.ar", metodo: wordpress_api, tier: 2, enabled: false, archivo_desde: 2023-06-01, local: true}
+  - {id: pregon, nombre: "El Pregón", base_url: "https://www.pregon.com.ar", metodo: custom, tier: 2, enabled: false}
+  - {id: quepasajujuy, nombre: "Que Pasa Jujuy", base_url: "https://www.quepasajujuy.com.ar", metodo: custom, tier: 2, enabled: false}
+  - {id: jujuydice, nombre: "Jujuy Dice", base_url: "https://www.jujuydice.com.ar", metodo: custom, tier: 2, enabled: false}
+  - {id: unjudiario, nombre: "UNJu Diario", base_url: "https://unjudiario.unju.edu.ar", metodo: custom, tier: 2, enabled: false}
+  - {id: radionacional, nombre: "Radio Nacional", base_url: "https://www.radionacional.com.ar", metodo: rss, tier: 2, enabled: false}
+  - {id: viapais, nombre: "Vía País Jujuy", base_url: "https://viapais.com.ar/jujuy", metodo: sitemap, tier: 2, enabled: false}
+  - {id: infobae, nombre: "Infobae", base_url: "https://www.infobae.com", metodo: sitemap, tier: 2, enabled: false}
+  - {id: calamaenlinea, nombre: "Calama en Línea (CL)", base_url: "https://noticias.calamaenlinea.cl", metodo: wordpress_api, tier: 2, enabled: false, archivo_desde: 2020-06-01}
+  - {id: timeline_cl, nombre: "Timeline.cl (CL)", base_url: "https://timeline.cl", metodo: wordpress_api, tier: 2, enabled: false, archivo_desde: 2013-07-01}
+  - {id: pasosfronterizos_cl, nombre: "pasosfronterizos.gob.cl — noticias (CL)", base_url: "https://www.pasosfronterizos.gob.cl/noticias", metodo: custom, tier: 2, enabled: false, oficial: true}
+  - {id: vialidad_estado_rutas, nombre: "Vialidad Nacional — Estado de rutas", base_url: "https://www.argentina.gob.ar/obras-publicas/vialidad-nacional/estado-de-las-rutas", metodo: custom, tier: 2, enabled: false, oficial: true}
+  - {id: gdelt, nombre: "GDELT DOC 2.0", base_url: "https://api.gdeltproject.org/api/v2/doc/doc", metodo: custom, tier: 2, enabled: false}

@@ -1,0 +1,38 @@
+name: Data source request
+description: Propose or track a news / status source
+labels: [data-source]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Source
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Base URL
+    validations:
+      required: true
+  - type: input
+    id: robots
+    attributes:
+      label: robots.txt status and date checked
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: Cheapest allowed method
+      options: [WordPress REST API, RSS, Sitemap, Listing/search pages, Custom HTML, API/JSON, Unknown]
+    validations:
+      required: true
+  - type: input
+    id: archive
+    attributes:
+      label: Archive since
+  - type: textarea
+    id: yield
+    attributes:
+      label: Expected yield and notes
+      description: Survey numbers, coverage (RN 9 / RN 52 / Jama), republication, caveats.
