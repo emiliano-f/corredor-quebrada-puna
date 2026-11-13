@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: identity-guard
+        name: identity guard (author/committer must be @users.noreply.github.com)
+        entry: python3 scripts/check_identity.py
+        language: system
+        pass_filenames: false
+        always_run: true
