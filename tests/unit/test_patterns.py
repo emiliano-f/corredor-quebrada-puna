@@ -162,3 +162,9 @@ def test_wp_search_terms_are_specific() -> None:
     assert "alud" in p.WP_SEARCH_TERMS
     assert not {"ruta 9", "corte"} & set(p.WP_SEARCH_TERMS)
     assert all(p.term_regex(t).search(p.norm(t)) for t in p.WP_SEARCH_TERMS)
+
+
+def test_ministry_name_does_not_swallow_the_sentence() -> None:
+    text = "Ministerio de Infraestructura informó cortes en la ruta 9 por derrumbes"
+    assert p.is_candidate(text)
+    assert "obra" not in p.causes(text)

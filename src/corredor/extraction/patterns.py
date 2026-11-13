@@ -76,7 +76,7 @@ NEGATIVES: Final = _rx(
     r"|inscripcion\w*|ejercicio|edicion|carnaval|mes)\b"
     r"|\bvolcan(?:es)? (?:de fuego|lascar|villarrica|etna|popocatepetl|osorno|calbuco"
     r"|llaima|copahue|hunga|kilauea|taal)\b"
-    r"|\bministerio de (?:infraestructura|obras publicas)[a-z ,]*"
+    r"|\bministerio de (?:infraestructura|obras publicas)\b"
     r"|\bobras? (?:publicas|sociales?|de teatro|de arte)\b"
 )
 
