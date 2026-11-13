@@ -171,42 +171,62 @@ class OpenMeteoClient:
         400); a cached range for the same (lat, lon, start) is
         reused and only its tail (last REFRESH_DAYS days) plus the missing days are fetched.
         """
+        return self._series(
+            "archivo", self.config.archive_url, self.config.modelo_historico, point, start, end
+        )
+
+    def historical_forecast(
+        self, point: CriticalPoint, start: date, end: date, model: str
+    ) -> pd.DataFrame:
+        """Same series as `history`, from the archived runs of forecast `model`.
+
+        Historical Forecast API (stored forecasts, available from about 2022 depending on
+        the model): the climatology of the model the dashboard forecast uses, so forecast
+        mm can be turned into percentiles of that model and not compared with ERA5 mm.
+        Same request, split, cache and call-cap rules as `history`.
+        """
+        return self._series(
+            "pronostico_historico", self.config.historical_forecast_url, model, point, start, end
+        )
+
+    def _series(
+        self, kind: str, url: str, model: str, point: CriticalPoint, start: date, end: date
+    ) -> pd.DataFrame:
         if end < start:
             raise ValueError("end before start")
-        model = self.config.modelo_historico
-        cached = self._find_cached(point, model, start, end)
+        cached = self._find_cached(kind, point, model, start, end)
         if cached is not None:
             frame, cached_end = cached
             if cached_end >= end:
                 return _slice(frame, start, end)
             tail_start = max(start, cached_end - timedelta(days=REFRESH_DAYS))
-            tail = self._fetch_archive(point, model, tail_start, end)
+            tail = self._fetch_archive(url, point, model, tail_start, end)
             merged = pd.concat([frame[frame["time"] < pd.Timestamp(tail_start)], tail])
-            self._write_cache(point, model, start, end, merged)
+            self._write_cache(kind, point, model, start, end, merged)
             return _slice(merged, start, end)
         try:
-            frame = self._fetch_archive(point, model, start, end)
+            frame = self._fetch_archive(url, point, model, start, end)
         except OpenMeteoError as exc:
             if exc.status != 400 or start.year == end.year:
                 raise
             frame = pd.concat(
                 [
                     self._fetch_archive(
-                        point, model, max(start, date(y, 1, 1)), min(end, date(y, 12, 31))
+                        url, point, model, max(start, date(y, 1, 1)), min(end, date(y, 12, 31))
                     )
                     for y in range(start.year, end.year + 1)
                 ],
                 ignore_index=True,
             )
-        self._write_cache(point, model, start, end, frame)
+        self._write_cache(kind, point, model, start, end, frame)
         return frame
 
     def _fetch_archive(
-        self, point: CriticalPoint, model: str, start: date, end: date
+        self, url: str, point: CriticalPoint, model: str, start: date, end: date
     ) -> pd.DataFrame:
         params = self._archive_params(point, model, start, end, list(HOURLY_VARIABLES))
         n_days = (end - start).days + 1
-        data, _ = self._get_json(self.config.archive_url, params, len(HOURLY_VARIABLES), n_days)
+        data, _ = self._get_json(url, params, len(HOURLY_VARIABLES), n_days)
         return parse_hourly(data)
 
     def _archive_params(
@@ -335,17 +355,23 @@ class OpenMeteoClient:
         return self.cache_dir / kind / model / self.config.zona_horaria.replace("/", "_")
 
     def _write_cache(
-        self, point: CriticalPoint, model: str, start: date, end: date, frame: pd.DataFrame
+        self,
+        kind: str,
+        point: CriticalPoint,
+        model: str,
+        start: date,
+        end: date,
+        frame: pd.DataFrame,
     ) -> None:
-        path = self._cache_path("archivo", point, model, start.isoformat(), end.isoformat())
+        path = self._cache_path(kind, point, model, start.isoformat(), end.isoformat())
         path.parent.mkdir(parents=True, exist_ok=True)
         frame.to_parquet(path, index=False)
 
     def _find_cached(
-        self, point: CriticalPoint, model: str, start: date, end: date
+        self, kind: str, point: CriticalPoint, model: str, start: date, end: date
     ) -> tuple[pd.DataFrame, date] | None:
-        """Best cached archive for the point, tolerating 5-decimal rounding noise (~1 m)."""
-        folder = self._cache_folder("archivo", model)
+        """Best cached series for the point, tolerating 5-decimal rounding noise (~1 m)."""
+        folder = self._cache_folder(kind, model)
         best: tuple[date, Path] | None = None
         for path in folder.glob("*.parquet") if folder.exists() else ():
             try:

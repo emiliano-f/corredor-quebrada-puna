@@ -110,6 +110,28 @@ def test_history_one_request_full_range_and_parquet_cache(
     assert again["time"].iloc[0] == pd.Timestamp("2016-01-02 00:00")
 
 
+def test_historical_forecast_takes_the_model_and_has_its_own_cache(
+    tmp_path: Path, fetcher: FakeFetcher
+) -> None:
+    client = make(tmp_path, fetcher)
+    client.historical_forecast(POINT, date(2024, 1, 1), date(2024, 1, 8), "ecmwf_ifs025")
+    assert len(fetcher.urls) == 1
+    split = urlsplit(fetcher.urls[0])
+    assert (split.netloc, split.path) == ("historical-forecast-api.open-meteo.com", "/v1/forecast")
+    q = fetcher.params()
+    assert q["models"] == "ecmwf_ifs025"
+    assert (q["start_date"], q["end_date"]) == ("2024-01-01", "2024-01-08")
+    assert q["hourly"] == "precipitation,snowfall,temperature_2m"
+    folder = tmp_path / "pronostico_historico" / "ecmwf_ifs025" / "America_Argentina_Jujuy"
+    assert (folder / "-23.91709_-65.46402_2024-01-01_2024-01-08.parquet").exists()
+    client.historical_forecast(POINT, date(2024, 1, 2), date(2024, 1, 3), "ecmwf_ifs025")
+    assert len(fetcher.urls) == 1
+    client.historical_forecast(POINT, date(2024, 1, 1), date(2024, 1, 8), "gfs_seamless")
+    assert fetcher.params()["models"] == "gfs_seamless"
+    assert len(fetcher.urls) == 2
+    assert not (tmp_path / "archivo").exists()
+
+
 def test_history_extends_cache_with_tail_only(tmp_path: Path, fetcher: FakeFetcher) -> None:
     client = make(tmp_path, fetcher)
     client.history(POINT, date(2016, 1, 1), date(2016, 1, 3))

@@ -25,7 +25,7 @@ consulted. Each entry carries `motivo` and `terminos_url`. Scope, exactly these 
 |---|---|---|
 | `archive-api.open-meteo.com` | Historical Weather API (archive, grid cells, point elevation) | <https://open-meteo.com/en/terms> |
 | `api.open-meteo.com` | Forecast API | <https://open-meteo.com/en/terms> |
-| `historical-forecast-api.open-meteo.com` | Historical Forecast API (not used yet) | <https://open-meteo.com/en/terms> |
+| `historical-forecast-api.open-meteo.com` | Historical Forecast API (`OpenMeteoClient.historical_forecast`; no downloads yet) | <https://open-meteo.com/en/terms> |
 
 - Exact hostnames only: no wildcards, schemes, ports or paths (validated when the config
   and the fetcher are built). Subdomains and `open-meteo.com` itself are not exempt.

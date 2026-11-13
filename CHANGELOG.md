@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- `clima.max_llamadas_diarias` in `config.yaml` 500 → 1500 (owner's decision) to finish
+  the 2016→today archive for all 13 points in one day; the code default stays 500.
 - Jama snapshots store only allowlisted status/schedule/timestamp fields per source; other
   fields (e.g. MOP `CREATEDBY`/`RESPONSABLE` operator usernames) are dropped and only their
   names are logged. `JamaCollector.PARSER_VERSION` 1 → 2.
@@ -16,6 +18,9 @@ All notable changes to this project are documented here. The format follows
   with an ADR and the owner's approval.
 
 ### Added
+- `OpenMeteoClient.historical_forecast(point, start, end, model)`: hourly series from the
+  Historical Forecast API for a given forecast model, cached under
+  `data/clima/pronostico_historico/` (no downloads yet; for day 2, #26).
 - Repository foundation: uv project (Python 3.11), typed models (`SCHEMA_VERSION = 1`),
   `config.yaml` with provisional critical points and the approved source survey,
   `PoliteFetcher` (robots.txt RFC 9309, Crawl-delay, rate limit, retries, disk cache),
