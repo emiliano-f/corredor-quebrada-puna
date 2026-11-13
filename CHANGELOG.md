@@ -16,6 +16,8 @@ All notable changes to this project are documented here. The format follows
 - AGENTS.md rule 2: documented public APIs whose terms allow programmatic use (currently
   Open-Meteo) may skip only the robots.txt check, host by host via `robots_exempt_hosts`,
   with an ADR and the owner's approval.
+- `jujuyaldia` disabled: its robots.txt disallows `/wp-json/`. 404 cache TTL
+  (`http.not_found_ttl_h`) lowered from 24 h to 1 h.
 
 ### Added
 - `OpenMeteoClient.historical_forecast(point, start, end, model)`: hourly series from the
@@ -51,7 +53,3 @@ All notable changes to this project are documented here. The format follows
   ArcGIS and argentina.gob.ar, one request each, failures recorded as `error` lines) and
   the `jama_snapshot.yml` workflow that appends to `snapshots/jama_estado.jsonl` on the
   `data-snapshots` branch every 3 h. `PoliteFetcher.get` gains `refresh=True`.
-
-### Changed
-- `jujuyaldia` disabled: its robots.txt disallows `/wp-json/`. 404 cache TTL
-  (`http.not_found_ttl_h`) lowered from 24 h to 1 h.
