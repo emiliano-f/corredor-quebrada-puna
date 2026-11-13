@@ -124,9 +124,10 @@ def geo(
     )
     for path in [*paths, informe]:
         typer.echo(f"Escrito {path}")
-    if "**no**" in body:
+    if "**no**" in body or any(c.order_problem for c in checks):
         typer.echo(
-            "config.yaml difiere de OSM: revisá el informe y actualizá los puntos.", err=True
+            "config.yaml difiere de OSM o tiene puntos fuera de orden: revisá el informe.",
+            err=True,
         )
         raise typer.Exit(1)
 

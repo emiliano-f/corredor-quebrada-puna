@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 MAX_OFFSET_M = 500.0
+ORDER_PROBLEM = "orden:"
 
 
 class Geocoder(Protocol):
@@ -65,6 +66,10 @@ class PointCheck:
     point: CriticalPoint
     distancia_m: float | None
     problemas: list[str] = field(default_factory=list)
+
+    @property
+    def order_problem(self) -> bool:
+        return any(p.startswith(ORDER_PROBLEM) for p in self.problemas)
 
 
 class CriticalPointRegistry:
@@ -167,7 +172,7 @@ def _check_order(checks: list[PointCheck]) -> None:
             continue
         prev = last.get(c.point.ruta)
         if prev is not None and km < prev[0]:
-            c.problemas.append(f"orden: km {km:.1f} < km {prev[0]:.1f} de {prev[1]}")
+            c.problemas.append(f"{ORDER_PROBLEM} km {km:.1f} < km {prev[0]:.1f} de {prev[1]}")
         last[c.point.ruta] = (km, c.point.id)
 
 
