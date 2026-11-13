@@ -30,9 +30,11 @@ class FakeFetcher:
     def __init__(self, pages: dict[str, str]) -> None:
         self.pages = pages
         self.calls: list[str] = []
+        self.refreshes: list[bool] = []
 
     def get(self, url: str, *, refresh: bool = False) -> FetchResult:
         self.calls.append(url)
+        self.refreshes.append(refresh)
         body = self.pages.get(url)
         return FetchResult(
             url=url,
@@ -82,6 +84,7 @@ def test_vialidad_filters_jujuy_and_stops_on_since(cfg: AppConfig) -> None:
     assert [a.titular[:45] for a in items] == ["Vialidad Nacional ejecuta trabajos en Jujuy p"]
     # page 1 is entirely older than `since` → no request for page 2
     assert fetcher.calls == [VN, f"{VN}?page=1"]
+    assert all(fetcher.refreshes)  # listings shift: never served from cache
 
 
 def test_vialidad_stops_at_last_page_and_max_pages(cfg: AppConfig) -> None:
@@ -188,6 +191,7 @@ def test_eltribuno_pages_until_repeat_and_dedupes_across_tags(cfg: AppConfig) ->
         f"{ET}/ttag/paso-de-jama/2",
         f"{ET}/ttag/no-existe",
     ]
+    assert all(fetcher.refreshes)
     keys = [note_key(a.url) for a in items]
     assert len(keys) == len(set(keys))
     titles = {a.titular for a in items}
@@ -235,8 +239,8 @@ def test_vialidad_through_polite_fetcher(cfg: AppConfig, tmp_path: Path) -> None
     respx.get("https://www.argentina.gob.ar/robots.txt").respond(
         200, text="User-agent: *\nCrawl-delay: 10\nDisallow: /user/\n"
     )
-    respx.get(VN).respond(200, html=html("vialidadnacional/listado_p0.html"))
-    respx.get(f"{VN}?page=1").respond(200, html=EMPTY)
+    first_page = respx.get(url__eq=VN).respond(200, html=html("vialidadnacional/listado_p0.html"))
+    page_1 = respx.get(url__eq=f"{VN}?page=1").respond(200, html=EMPTY)
     sleeps: list[float] = []
     clock = [1000.0]
 
@@ -258,6 +262,9 @@ def test_vialidad_through_polite_fetcher(cfg: AppConfig, tmp_path: Path) -> None
     assert len(items) == 1
     assert sleeps
     assert max(sleeps) >= 10  # Crawl-delay honoured between listing pages
+    list(src.list_articles(date(2026, 1, 1)))
+    # a second run re-fetches the listing instead of reading the cache
+    assert (first_page.call_count, page_1.call_count) == (2, 2)
 
 
 def test_markup_in_headlines_stays_plain_text(cfg: AppConfig) -> None:

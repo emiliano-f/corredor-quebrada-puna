@@ -33,7 +33,8 @@ class VialidadNacionalSource(NewsSource):
     """`{base_url}?page=N` (N from 0, 16 items per page, newest first, since 2018-10).
 
     Each item (`a.panel`) carries the URL, `<time datetime>`, `<h3>` headline and a short
-    lede, so article pages are never fetched. `params.max_paginas` caps one run.
+    lede, so article pages are never fetched. `params.max_paginas` caps one run. Listing
+    pages shift as news is added, so they are always re-fetched (`refresh=True`).
     """
 
     PARSER_VERSION = 1
@@ -45,7 +46,7 @@ class VialidadNacionalSource(NewsSource):
         max_pages = int(self.config.params.get("max_paginas", 100))
         seen: set[str] = set()
         for page in range(max_pages):
-            result = self.fetcher.get(self.page_url(page))
+            result = self.fetcher.get(self.page_url(page), refresh=True)
             if not result.ok:
                 return
             items = list(self.parse_listing(result.text, result.url, result.fetched_at))

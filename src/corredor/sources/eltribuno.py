@@ -40,7 +40,10 @@ def url_date(url: str) -> date | None:
 
 
 class ElTribunoSource(NewsSource):
-    """Walks `params.tags`; keeps notes that mention the corridor (route or place)."""
+    """Walks `params.tags`; keeps notes that mention the corridor (route or place).
+
+    Tag pages shift as notes are added, so they are always re-fetched (`refresh=True`).
+    """
 
     PARSER_VERSION = 1
 
@@ -54,7 +57,7 @@ class ElTribunoSource(NewsSource):
         for tag in self.config.params.get("tags", []):
             tag_seen: set[str] = set()
             for page in range(1, max_pages + 1):
-                result = self.fetcher.get(self.tag_url(tag, page))
+                result = self.fetcher.get(self.tag_url(tag, page), refresh=True)
                 if not result.ok:
                     break
                 items = list(self.parse_listing(result.text, result.url, result.fetched_at))

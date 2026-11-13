@@ -188,7 +188,9 @@ the cache read is skipped because the endpoint is live).
 One class per outlet, registered by source id in `CUSTOM_CLASSES`
 (`src/corredor/sources/generic.py`), so `build_sources` picks them up from `config.yaml`.
 Both read only listing pages (never article pages) through `PoliteFetcher`; both sites set
-`Crawl-delay: 10`, which the fetcher honours. Headline and lede are whitespace-collapsed and
+`Crawl-delay: 10`, which the fetcher honours. Listing pages shift as news is added, so they are
+always re-fetched (`refresh=True`: cache read skipped, response still cached); a run with a
+recent `since` stops after a few pages. Headline and lede are whitespace-collapsed and
 cut to 300 characters.
 
 | Source (`config.yaml` id) | Class | Requests | Date (`fecha_fuente`) | Kept |
