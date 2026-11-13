@@ -463,3 +463,22 @@ def test_failed_requests_count_against_the_cap(make_fetcher: Factory) -> None:
     assert source.stats.requests == 3
     assert route.call_count == 3
     assert source.stats.capped
+
+
+@respx.mock
+def test_open_year_resumes_from_todays_cache_after_the_cap(
+    make_fetcher: Factory, tmp_path: Path
+) -> None:
+    # The fake wall clock is 1970-01-01: responses cached "today" are reused, not refreshed.
+    no_robots()
+    route = respx.get(API).mock(return_value=wp_response([], pages=1))
+    options = GenericOptions(checkpoint_dir=tmp_path / "ck", max_requests=2, today=date(1970, 1, 1))
+    config = cfg("wordpress_api", params={"terms": ["Jama", "Lipán"]})
+    first = WordPressApiSource(config, make_fetcher(), options)
+    list(first.list_articles(date(1970, 1, 1)))
+    assert first.stats.capped
+    assert first.stats.units == {}
+    second = WordPressApiSource(config, make_fetcher(), options)
+    list(second.list_articles(date(1970, 1, 1)))
+    assert second.stats.units == {"1970": "ok"}
+    assert route.call_count == 3  # Jama, Lipán, Lipan: the first two came from cache

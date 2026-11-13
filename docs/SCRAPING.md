@@ -78,9 +78,10 @@ listing exists and has no entries), `missing` (the listing answered 404), `error
 (network/HTTP error on the listing or on a selected page). `ok`, `empty` and `missing`
 are not repeated in later runs; `error` is retried. Each unit also stores `closed`
 (the month or year had already ended when it was collected). The current unit is always
-re-run with `refresh=True` (bypassing the HTTP cache), and a unit collected while still
-open is re-fetched once more after it ends before being skipped; the RSS feed is always
-refreshed. An empty month and a month with an error are never confused.
+re-run, and a unit collected while still open is re-run once more after it ends before
+being skipped. Their listings (WP search pages, monthly sitemap) are re-fetched when the
+cached copy is older than `min(end of the unit, today)`, so a unit cut by the request cap
+resumes from same-day cache instead of starting over; the RSS feed is always refreshed. An empty month and a month with an error are never confused.
 
 Counts in `CollectionStats`: `raw` = entries listed by the outlet (WP: sum of
 `X-WP-Total` over every search, with duplicates between terms; sitemap: URLs in the

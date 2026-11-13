@@ -180,7 +180,16 @@ class _GenericSource(NewsSource):
         desde = self.config.archivo_desde
         return max(since, desde) if desde else since
 
-    def _get(self, url: str, *, refresh: bool = False) -> FetchResult:
+    def _get(
+        self, url: str, *, refresh: bool = False, fresh_after: date | None = None
+    ) -> FetchResult:
+        """`fresh_after`: a cached response fetched before that day is fetched again."""
+        result = self._fetch(url, refresh=refresh)
+        if fresh_after is not None and result.from_cache and result.fetched_at.date() < fresh_after:
+            result = self._fetch(url, refresh=True)
+        return result
+
+    def _fetch(self, url: str, *, refresh: bool) -> FetchResult:
         cap = self.options.max_requests
         if cap is not None and self.stats.requests >= cap:
             self.stats.capped = True
@@ -203,11 +212,6 @@ class _GenericSource(NewsSource):
         """Done units are skipped only if they were already closed when collected."""
         entry = self.checkpoint.get(key)
         return not open_now and self.checkpoint.is_done(key) and bool(entry and entry.get("closed"))
-
-    def _refresh(self, key: str, open_now: bool) -> bool:
-        """Bypass the HTTP cache for open units and for units last collected while open."""
-        entry = self.checkpoint.get(key)
-        return open_now or (entry is not None and not entry.get("closed", False))
 
     def _mark(self, key: str, status: CheckpointStatus, **info: Any) -> None:
         self.stats.units[key] = status
@@ -272,13 +276,13 @@ class WordPressApiSource(_GenericSource):
                 if self._skip(key, open_now):
                     self.stats.units[key] = "skipped"
                     continue
-                refresh = self._refresh(key, open_now)
-                yield from self._window(key, lo, hi, refresh=refresh, closed=not open_now)
+                fresh_after = min(hi, self.today)
+                yield from self._window(key, lo, hi, fresh_after=fresh_after, closed=not open_now)
         except RequestCapReached:
             return
 
     def _window(
-        self, key: str, lo: date, hi: date, *, refresh: bool, closed: bool
+        self, key: str, lo: date, hi: date, *, fresh_after: date, closed: bool
     ) -> Iterator[Article]:
         seen: set[int] = set()
         failed = False
@@ -286,7 +290,7 @@ class WordPressApiSource(_GenericSource):
         for term in terms:
             for variant in patterns.search_variants(str(term)):
                 try:
-                    yield from self._search(variant, lo, hi, seen, refresh=refresh)
+                    yield from self._search(variant, lo, hi, seen, fresh_after=fresh_after)
                 except FetchError as exc:
                     if isinstance(exc, DisallowedByRobots):
                         raise
@@ -295,7 +299,7 @@ class WordPressApiSource(_GenericSource):
         self._mark(key, "error" if failed else "ok", closed=closed, posts=len(seen))
 
     def _search(
-        self, term: str, lo: date, hi: date, seen: set[int], *, refresh: bool = False
+        self, term: str, lo: date, hi: date, seen: set[int], *, fresh_after: date | None = None
     ) -> Iterator[Article]:
         per_page = int(self.config.params.get("per_page", 100))
         page = 1
@@ -310,7 +314,8 @@ class WordPressApiSource(_GenericSource):
                 "order": "asc",
                 "_fields": self.FIELDS,
             }
-            result = self._get(f"{self._api_url()}?{urlencode(query)}", refresh=refresh)
+            url = f"{self._api_url()}?{urlencode(query)}"
+            result = self._get(url, fresh_after=fresh_after)
             if result.status == 400 and page > 1:  # rest_post_invalid_page_number
                 return
             if not result.ok:
@@ -452,6 +457,12 @@ def _month_range(start: date, end: date) -> list[str]:
     return months
 
 
+def _month_end(month: str) -> date:
+    """First day after the month "YYYY-MM"."""
+    yyyy, mm = (int(part) for part in month.split("-"))
+    return date(yyyy + mm // 12, mm % 12 + 1, 1)
+
+
 class SitemapSource(_GenericSource):
     """Monthly sitemap → slug filter C (patterns.slug_level) → article page <head> metadata.
 
@@ -495,17 +506,17 @@ class SitemapSource(_GenericSource):
                 if self._skip(month, open_now):
                     self.stats.units[month] = "skipped"
                     continue
-                refresh = self._refresh(month, open_now)
-                yield from self._month(month, refresh=refresh, closed=not open_now)
+                fresh_after = min(_month_end(month), self.today)
+                yield from self._month(month, fresh_after=fresh_after, closed=not open_now)
         except RequestCapReached:
             return
 
     def _month(
-        self, month: str, *, refresh: bool = False, closed: bool = True
+        self, month: str, *, fresh_after: date | None = None, closed: bool = True
     ) -> Iterator[Article]:
         url = self.month_url(month)
         try:
-            result = self._get(url, refresh=refresh)
+            result = self._get(url, fresh_after=fresh_after)
         except DisallowedByRobots:
             raise
         except FetchError as exc:
