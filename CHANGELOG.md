@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- AGENTS.md rule 2: documented public APIs whose terms allow programmatic use (currently
+  Open-Meteo) may skip only the robots.txt check, host by host via `robots_exempt_hosts`,
+  with an ADR and the owner's approval.
+
 ### Added
 - Repository foundation: uv project (Python 3.11), typed models (`SCHEMA_VERSION = 1`),
   `config.yaml` with provisional critical points and the approved source survey,
