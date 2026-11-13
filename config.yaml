@@ -274,19 +274,27 @@ fuentes:
     params:
       sitemap_mensual: "https://prensa.jujuy.gob.ar/sitemap/news-full/sitemap-{yyyymm}.xml.gz"
   # --- Tier 1, custom parsers (Child B); enabled once implemented ---
-  - id: eltribunojujuy
-    nombre: "El Tribuno de Jujuy"
-    base_url: "https://www.eltribunodejujuy.com"
-    metodo: custom
-    tier: 1
-    enabled: false
   - id: vialidadnacional
     nombre: "Vialidad Nacional — noticias"
     base_url: "https://www.argentina.gob.ar/node/96178/noticias"
     metodo: custom
     tier: 1
-    enabled: false
+    enabled: true
+    archivo_desde: 2018-10-01
     oficial: true
+    params:
+      max_paginas: 100            # listing has ~75 pages of 16 items (2026-11)
+  - id: eltribunojujuy
+    nombre: "El Tribuno de Jujuy"
+    base_url: "https://eltribunodejujuy.com"
+    metodo: custom
+    tier: 1
+    enabled: true
+    archivo_desde: 2014-01-01
+    params:
+      max_paginas: 20             # per tag; past the last page the site repeats page 1
+      tags: [ruta-52, ruta-9, paso-de-jama, cuesta-de-lipan, corte-de-ruta, seguridad-vial,
+             purmamarca, susques, volcan, alud, viento-blanco, temporal]
   # --- Tier 1, Paso de Jama status snapshots (Child B; GitHub Actions every 3 h) ---
   - id: jama_mop_cl
     nombre: "Vialidad MOP Chile — Pasos Fronterizos (Jama)"

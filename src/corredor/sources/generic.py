@@ -27,6 +27,8 @@ from corredor.extraction import patterns
 from corredor.http import DisallowedByRobots, Fetcher, FetchError, FetchResult
 from corredor.models import Article, FechaFuente, FiltroSlug, MetodoFuente, SourceConfig
 from corredor.sources.base import NewsSource
+from corredor.sources.eltribuno import ElTribunoSource
+from corredor.sources.vialidadnacional import VialidadNacionalSource
 from corredor.sources.checkpoint import Checkpoint, CheckpointStatus
 
 BAJADA_MAX_CHARS: Final = 300
@@ -799,8 +801,11 @@ GENERIC_CLASSES: dict[MetodoFuente, type[_GenericSource]] = {
     "rss": RssSource,
 }
 
-# Custom parsers register here by source id (Child B): {"eltribunojujuy": ElTribunoSource}
-CUSTOM_CLASSES: dict[str, type[NewsSource]] = {}
+# Custom parsers, by source id (one class per outlet in sources/<outlet>.py).
+CUSTOM_CLASSES: dict[str, type[NewsSource]] = {
+    "vialidadnacional": VialidadNacionalSource,
+    "eltribunojujuy": ElTribunoSource,
+}
 
 
 class UnknownSourceError(LookupError):

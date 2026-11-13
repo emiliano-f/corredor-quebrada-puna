@@ -40,8 +40,8 @@ Follow [docs/playbooks/add_news_source.md](docs/playbooks/add_news_source.md). I
 2. If a generic class fits (`wordpress_api`, `sitemap`, `rss`), add an entry under
    `fuentes:` in `config.yaml`; no code needed.
 3. Otherwise write `<Outlet>Source(NewsSource)` in `src/corredor/sources/<outlet>.py` on
-   top of `PoliteFetcher`, with `PARSER_VERSION = 1`, register it in
-   `sources/generic.py::build_sources`, and use `metodo: custom`.
+   top of `PoliteFetcher`, with `PARSER_VERSION = 1`, register it by source id in
+   `CUSTOM_CLASSES` (`sources/generic.py`), and use `metodo: custom`.
 4. Add trimmed fixtures (API/feed responses or listing pages, never article bodies) and
    offline tests; document the source in `docs/SCRAPING.md`.
 5. Generic outlets need one smoke test entry in `tests/unit/test_generic_smoke.py` with
