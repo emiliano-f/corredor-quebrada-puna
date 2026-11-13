@@ -12,7 +12,7 @@ import typer
 
 from corredor import __version__
 from corredor.config import AppConfig, Settings, load_config
-from corredor.http import PoliteFetcher
+from corredor.http import FetchError, PoliteFetcher
 from corredor.models import Article
 from corredor.reports import lineage, report_header, write_manifest
 from corredor.sources.generic import GenericOptions, build_sources
@@ -163,18 +163,28 @@ def recolectar(
         if not sources:
             typer.echo("No hay fuentes activas para recolectar.", err=True)
             raise typer.Exit(1)
+        failed: list[str] = []
         for source in sources:
             typer.echo(f"→ {source.source_id}")
             batch: list[Article] = []
             total = 0
-            for article in source.list_articles(cfg.backfill.desde):
-                batch.append(article)
-                if len(batch) >= lote:
-                    total += repo.upsert("articulos", batch)
-                    batch = []
-            total += repo.upsert("articulos", batch)
+            failure: str | None = None
+            try:
+                for article in source.list_articles(cfg.backfill.desde):
+                    batch.append(article)
+                    if len(batch) >= lote:
+                        total += repo.upsert("articulos", batch)
+                        batch = []
+            except FetchError as exc:
+                failure = f"{type(exc).__name__}: {exc}"
+            finally:
+                # Checkpoints are written as units finish: persist what they yielded first.
+                total += repo.upsert("articulos", batch)
             stats = getattr(source, "stats", None)
             summary = stats.as_dict() if stats is not None else {}
+            if failure is not None:
+                failed.append(source.source_id)
+                summary["errors"] = [*summary.get("errors", []), failure]
             out = settings.data_dir / "recoleccion" / f"{source.source_id}.json"
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -185,6 +195,11 @@ def recolectar(
                 f"errores: {len(summary.get('errors', []))}"
                 + (" (se alcanzó el tope de requests por corrida)" if summary.get("capped") else "")
             )
+            if failure is not None:
+                typer.echo(f"  fuente interrumpida: {failure}", err=True)
+        if failed:
+            typer.echo(f"Fuentes interrumpidas: {', '.join(failed)}", err=True)
+            raise typer.Exit(1)
     finally:
         repo.close()
         fetcher.close()
