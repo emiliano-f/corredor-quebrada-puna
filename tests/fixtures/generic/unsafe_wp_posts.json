@@ -1,0 +1,9 @@
+[
+ {
+  "id": 9001,
+  "date": "2025-02-10T08:30:00",
+  "link": "https://noticias.example/cierran-paso-jama-nieve/",
+  "title": {"rendered": "&lt;script&gt;alert(&#8217;x&#8217;)&lt;/script&gt; Cierran el Paso de Jama por nieve"},
+  "excerpt": {"rendered": "<p><img src=x onerror=alert(1)>Vialidad cerró el paso internacional.</p>"}
+ }
+]

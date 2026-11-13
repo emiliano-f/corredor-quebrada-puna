@@ -1,0 +1,58 @@
+{
+ "url": "https://jujuyonline.com/wp-json/wp/v2/posts?search=Jama&after=2026-03-31T23%3A59%3A59&before=2026-11-14T00%3A00%3A00&per_page=100&page=1&orderby=date&order=asc&_fields=id%2Cdate%2Clink%2Ctitle%2Cexcerpt",
+ "headers": {
+  "x-wp-total": "4",
+  "x-wp-totalpages": "1",
+  "content-type": "application/json; charset=UTF-8"
+ },
+ "body": [
+  {
+   "id": 37424,
+   "date": "2026-05-17T13:49:18",
+   "link": "https://jujuyonline.com/2026/05/17/cierran-paso-de-jama-fuertes-vientos/",
+   "title": {
+    "rendered": "Cierran el Paso de Jama por fuertes vientos en la zona"
+   },
+   "excerpt": {
+    "rendered": "<p>Las autoridades viales de Jujuy cerraron el Paso de Jama de forma preventiva debido a ráfagas de viento superiores a 30 km/h. Recomiendan evitar viajes a la alta montaña.</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 37426,
+   "date": "2026-05-17T14:37:16",
+   "link": "https://jujuyonline.com/2026/05/17/cierran-paso-de-jama-fuertes-vientos-2/",
+   "title": {
+    "rendered": "Cierran el Paso de Jama hasta nuevo aviso por fuertes vientos en la zona"
+   },
+   "excerpt": {
+    "rendered": "<p>El Paso de Jama permanece cerrado para todo tipo de vehículos debido a ráfagas de viento superiores a 30 km/h. Autoridades recomiendan postergar viajes a la alta montaña.</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 36582,
+   "date": "2026-04-29T11:34:29",
+   "link": "https://jujuyonline.com/2026/04/29/litio-poder-global-norte-cambiar-historia-argentina/",
+   "title": {
+    "rendered": "Litio y poder global: el Norte que puede cambiar la historia argentina"
+   },
+   "excerpt": {
+    "rendered": "<p>El litio en el NOA alcanza récords de exportación y se proyecta como motor económico. Conoce los desafíos y propuestas para un desarrollo sostenible en Jujuy y la región.</p>\n",
+    "protected": false
+   }
+  },
+  {
+   "id": 36659,
+   "date": "2026-04-30T22:00:17",
+   "link": "https://jujuyonline.com/2026/04/30/desde-el-1-de-mayo-cambian-los-horarios-de-atencion-en-paso-de-jama/",
+   "title": {
+    "rendered": "Desde el 1 de mayo cambian los horarios de atención en Paso de Jama"
+   },
+   "excerpt": {
+    "rendered": "<p>El Complejo Integrado Paso de Jama modifica su horario a partir del 1 de mayo por cambios de huso horario en Chile. Conocé los nuevos horarios para tránsito de carga, particulares y turistas.</p>\n",
+    "protected": false
+   }
+  }
+ ]
+}

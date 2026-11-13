@@ -16,11 +16,21 @@ All notable changes to this project are documented here. The format follows
 - AGENTS.md rule 2: documented public APIs whose terms allow programmatic use (currently
   Open-Meteo) may skip only the robots.txt check, host by host via `robots_exempt_hosts`,
   with an ADR and the owner's approval.
+- `jujuyaldia` moved from the WordPress API (its robots.txt disallows `/wp-json/`) to
+  `SitemapSource` over its allowed `wp-sitemap.xml` index. 404 cache TTL
+  (`http.not_found_ttl_h`) lowered from 24 h to 1 h.
+- docs/FUENTES.md: robots.txt column rechecked for all candidates with the production
+  parser (all `User-agent: *` groups combined).
 
 ### Added
 - `OpenMeteoClient.historical_forecast(point, start, end, model)`: hourly series from the
   Historical Forecast API for a given forecast model, cached under
   `data/clima/pronostico_historico/` (no downloads yet; for day 2, #26).
+- `SitemapSource` `params.sitemap_indice`/`sitemap_hijos`: paginated sitemap indexes
+  (children chosen per month by `lastmod`, URLs filtered by their date).
+- Generic sources `WordPressApiSource`, `SitemapSource` and `RssSource` (yearly WP windows,
+  monthly sitemaps with slug filter C, resumable checkpoints that tell empty from error,
+  per-run request cap), `corredor recolectar` CLI, trimmed fixtures and per-outlet smoke tests.
 - Repository foundation: uv project (Python 3.11), typed models (`SCHEMA_VERSION = 1`),
   `config.yaml` with provisional critical points and the approved source survey,
   `PoliteFetcher` (robots.txt RFC 9309, Crawl-delay, rate limit, retries, disk cache),

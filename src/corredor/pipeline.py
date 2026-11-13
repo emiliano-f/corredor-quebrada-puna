@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 from pathlib import Path
@@ -11,9 +12,12 @@ import typer
 
 from corredor import __version__
 from corredor.config import AppConfig, Settings, load_config
-from corredor.http import PoliteFetcher
+from corredor.http import FetchError, PoliteFetcher
+from corredor.models import Article
 from corredor.reports import lineage, report_header, write_manifest
+from corredor.sources.generic import GenericOptions, build_sources
 from corredor.sources.jama import append_jsonl, build_collectors
+from corredor.storage.repository import DuckDBRepository
 
 app = typer.Typer(
     help="Corredor Quebrada–Puna: catálogo de cortes y alertas para RN 9 y RN 52.",
@@ -126,6 +130,79 @@ def clima(
             err=True,
         )
         raise typer.Exit(1)
+
+
+@app.command()
+def recolectar(
+    config: ConfigOpt = None,
+    fuente: Annotated[
+        list[str] | None,
+        typer.Option("--fuente", help="Id de fuente (repetible). Por defecto, todas las activas."),
+    ] = None,
+    muestra: Annotated[
+        bool,
+        typer.Option(
+            "--muestra/--completo",
+            help="Sitemaps: solo los meses de backfill.muestra_sitemaps (por defecto).",
+        ),
+    ] = True,
+    lote: Annotated[int, typer.Option(help="Artículos por escritura en DuckDB.")] = 200,
+) -> None:
+    """Recolecta metadatos de artículos (fuentes genéricas) y los guarda en `articulos`."""
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    options = GenericOptions(
+        checkpoint_dir=settings.data_dir / "checkpoints",
+        max_requests=cfg.backfill.max_requests_per_run,
+        sample_months=tuple(cfg.backfill.muestra_sitemaps) if muestra else None,
+    )
+    fetcher = build_fetcher(cfg, settings)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        sources = build_sources(cfg.fuentes, fetcher, options, only=fuente)
+        if not sources:
+            typer.echo("No hay fuentes activas para recolectar.", err=True)
+            raise typer.Exit(1)
+        failed: list[str] = []
+        for source in sources:
+            typer.echo(f"→ {source.source_id}")
+            batch: list[Article] = []
+            total = 0
+            failure: str | None = None
+            try:
+                for article in source.list_articles(cfg.backfill.desde):
+                    batch.append(article)
+                    if len(batch) >= lote:
+                        total += repo.upsert("articulos", batch)
+                        batch = []
+            except FetchError as exc:
+                failure = f"{type(exc).__name__}: {exc}"
+            finally:
+                # Checkpoints are written as units finish: persist what they yielded first.
+                total += repo.upsert("articulos", batch)
+            stats = getattr(source, "stats", None)
+            summary = stats.as_dict() if stats is not None else {}
+            if failure is not None:
+                failed.append(source.source_id)
+                summary["errors"] = [*summary.get("errors", []), failure]
+            out = settings.data_dir / "recoleccion" / f"{source.source_id}.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
+            typer.echo(
+                f"  {total} artículos guardados; listados: {summary.get('raw', '?')}, "
+                f"seleccionados: {summary.get('selected', '?')}, "
+                f"requests: {summary.get('requests', '?')}, "
+                f"errores: {len(summary.get('errors', []))}"
+                + (" (se alcanzó el tope de requests por corrida)" if summary.get("capped") else "")
+            )
+            if failure is not None:
+                typer.echo(f"  fuente interrumpida: {failure}", err=True)
+        if failed:
+            typer.echo(f"Fuentes interrumpidas: {', '.join(failed)}", err=True)
+            raise typer.Exit(1)
+    finally:
+        repo.close()
+        fetcher.close()
 
 
 @app.command()

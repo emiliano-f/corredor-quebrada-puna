@@ -174,6 +174,8 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 |---|---|
 | `data/` | Gitignored: DuckDB file, Parquet exports, HTTP cache. |
 | `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
+| `data/checkpoints/<source_id>.json` | Resumable collection state: `units` → `{status: ok\|empty\|missing\|error, updated_at, ...}` per month (sitemaps) or year (WordPress). See SCRAPING.md. |
+| `data/recoleccion/<source_id>.json` | Counts of the last `corredor recolectar` run of that source (`CollectionStats.as_dict()`). |
 | `data/manifest.json` | Lineage of the last run: `version`, `git_commit`, `schema_version`, `sources_hash` (hash of `fuentes` in `config.yaml`), `generated_at`. |
 | `reports/*.md` | Generated reports; each starts with the same lineage header. |
 | `reports/geo_verificacion.md` | Critical points: OSM-derived km, distance to the route, verified or not, match with `config.yaml`. |

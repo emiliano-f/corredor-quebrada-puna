@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
 
+import duckdb
 import pytest
+import respx
+import yaml
 from typer.testing import CliRunner
 
 from corredor import __version__
@@ -81,3 +84,94 @@ def test_build_fetcher_passes_exemptions(tmp_path: Path, monkeypatch: pytest.Mon
     assert fetcher.is_robots_exempt("https://archive-api.open-meteo.com/v1/archive")
     assert not fetcher.is_robots_exempt("https://open-meteo.com/")
     fetcher.close()
+
+
+@respx.mock
+def test_recolectar_one_sitemap_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    cfg["http"]["min_interval_s"] = 2.0
+    cfg["backfill"]["muestra_sitemaps"] = ["2024-02"]
+    cfg["fuentes"] = [
+        {
+            "id": "prueba",
+            "nombre": "Prueba",
+            "base_url": "https://noticias.example",
+            "metodo": "sitemap",
+            "tier": 1,
+            "enabled": True,
+            "params": {"sitemap_mensual": "https://noticias.example/s-{yyyymm}.xml"},
+        }
+    ]
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr("corredor.http.time.sleep", lambda _s: None)
+    respx.get("https://noticias.example/robots.txt").respond(404)
+    respx.get("https://noticias.example/s-202402.xml").respond(
+        200,
+        text="<urlset><url><loc>https://noticias.example/alud-en-volcan-ruta-9-n1</loc>"
+        "<lastmod>2024-02-03</lastmod></url></urlset>",
+    )
+    respx.get("https://noticias.example/alud-en-volcan-ruta-9-n1").respond(
+        200, text='<head><meta property="og:title" content="Alud en Volcán"></head>'
+    )
+    result = runner.invoke(app, ["recolectar", "--config", str(path)])
+    assert result.exit_code == 0, result.output
+    assert "1 artículos guardados" in result.output
+    stats = json.loads((tmp_path / "data" / "recoleccion" / "prueba.json").read_text())
+    assert stats["by_level"] == {"B": 1}
+    ckpt = json.loads((tmp_path / "data" / "checkpoints" / "prueba.json").read_text())
+    assert ckpt["units"]["2024-02"]["status"] == "ok"
+
+
+def test_recolectar_without_sources(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path))
+    result = runner.invoke(
+        app, ["recolectar", "--config", str(ROOT / "config.yaml"), "--fuente", "nada"]
+    )
+    assert result.exit_code == 1
+    assert "No hay fuentes activas" in result.output
+
+
+@respx.mock
+def test_recolectar_keeps_articles_when_a_source_is_interrupted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    cfg["http"]["min_interval_s"] = 2.0
+    cfg["backfill"]["muestra_sitemaps"] = ["2024-01", "2024-02"]
+    cfg["fuentes"] = [
+        {
+            "id": "prueba",
+            "nombre": "Prueba",
+            "base_url": "https://noticias.example",
+            "metodo": "sitemap",
+            "tier": 1,
+            "enabled": True,
+            "params": {"sitemap_mensual": "https://noticias.example/s-{yyyymm}.xml"},
+        }
+    ]
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr("corredor.http.time.sleep", lambda _s: None)
+    respx.get("https://noticias.example/robots.txt").respond(
+        200, text="User-agent: *\nDisallow: /s-202402.xml\n"
+    )
+    respx.get("https://noticias.example/s-202401.xml").respond(
+        200,
+        text="<urlset><url><loc>https://noticias.example/alud-en-volcan-ruta-9-n1</loc>"
+        "<lastmod>2024-01-03</lastmod></url></urlset>",
+    )
+    respx.get("https://noticias.example/alud-en-volcan-ruta-9-n1").respond(
+        200, text='<head><meta property="og:title" content="Alud en Volcán"></head>'
+    )
+    result = runner.invoke(app, ["recolectar", "--config", str(path)])
+    assert result.exit_code == 1
+    assert "1 artículos guardados" in result.output
+    assert "fuente interrumpida: DisallowedByRobots" in result.output
+    stats = json.loads((tmp_path / "data" / "recoleccion" / "prueba.json").read_text())
+    assert stats["errors"][-1].startswith("DisallowedByRobots")
+    con = duckdb.connect(str(tmp_path / "data" / "corredor.duckdb"), read_only=True)
+    assert con.execute("select count(*) from articulos").fetchone() == (1,)
+    con.close()

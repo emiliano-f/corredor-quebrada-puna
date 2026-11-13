@@ -44,6 +44,9 @@ Follow [docs/playbooks/add_news_source.md](docs/playbooks/add_news_source.md). I
    `sources/generic.py::build_sources`, and use `metodo: custom`.
 4. Add trimmed fixtures (API/feed responses or listing pages, never article bodies) and
    offline tests; document the source in `docs/SCRAPING.md`.
+5. Generic outlets need one smoke test entry in `tests/unit/test_generic_smoke.py` with
+   recorded fixtures under `tests/fixtures/generic/`. Try it with
+   `uv run corredor recolectar --fuente <id>` (sitemaps: sample months only).
 
 ## Releases
 

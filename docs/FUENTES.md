@@ -9,22 +9,22 @@ Relevamiento hecho con robots.txt, APIs, feeds y sitemaps (más unas pocas pági
 | # | Fuente | URL | robots.txt | Método | Archivo desde | Estado | `republica` | Motivo / nota |
 |---|---|---|---|---|---|---|---|---|
 | 1 | El Submarino Jujuy | elsubmarinojujuy.com.ar | Permite (solo bloquea Bytespider) | WP REST API | 2013-07 | **Tier 1 genérica** | no | Estable |
-| 2 | Jujuy al Día | jujuyaldia.com.ar | Permite; `Content-Signal: ai-train=no, use=reference` | WP REST API | 2010-01 | **Tier 1 genérica** | no | Estable. Solo metadatos (compatible con `use=reference`) |
+| 2 | Jujuy al Día | jujuyaldia.com.ar | Bloquea `/wp-json/`, `/?rest_route=` y `/ads` (segundo grupo `User-agent: *`); permite `/wp-sitemap.xml`, `/post-sitemapN.xml` y `/feed/`; `Content-Signal: search=yes,ai-train=no,use=reference` | Índice de sitemaps Yoast (`wp-sitemap.xml` → `post-sitemapN.xml`, 1000 URLs c/u, fecha en la URL) | 2010-01 | **Tier 1 genérica** | no | Estable. La API WP está bloqueada (el script del relevamiento solo leía el primer grupo); se recolecta por `sitemap_indice` (decisión del owner, #16) |
 | 3 | Radio Azul Tilcara | radioazultilcara.com.ar | Permite | WP REST API | 2018-12 | **Tier 1 genérica** | no | Fuente nueva (posterior a 2016) |
 | 4 | Jujuy Online | jujuyonline.com | Permite | WP REST API | 2026-04 | **Tier 1 genérica** | **sí** | 29/100 titulares coinciden con Somos Jujuy / Todo Jujuy / Jujuy al Momento; no cuenta en `n_medios` |
 | 5 | Todo Jujuy | todojujuy.com | Permite | Sitemap mensual | 2012-01 | **Tier 1 genérica** | no | Estable |
 | 6 | Jujuy al Momento | jujuyalmomento.com | Permite | Sitemap mensual | 2011 | **Tier 1 genérica** | no | Estable |
 | 7 | Somos Jujuy | somosjujuy.com.ar | Permite | Sitemap mensual (AmuraCMS) | 2018-01 | **Tier 1 genérica** | no | Fuente nueva; falta 2022-09 |
-| 8 | Prensa Gobierno de Jujuy | prensa.jujuy.gob.ar | Permite | Sitemap mensual | 2016-05 | **Tier 1 genérica** | no | Fuente nueva (oficial) |
+| 8 | Prensa Gobierno de Jujuy | prensa.jujuy.gob.ar | Permite | Sitemap mensual | 2016-05 | **Tier 1 genérica** | no | Fuente nueva (oficial). Los sitemaps viejos (p. ej. 2017-01) listan URLs `/AAAA/MM/DD/slug` que hoy responden 404: esas notas quedan en `pages_missing` |
 | 9 | El Tribuno de Jujuy | eltribunodejujuy.com | Permite; `Crawl-delay: 10` | RSS + sitemaps recientes; probar listados de sección | — (sin archivo visible) | **Tier 1 custom (Hijo B)** | no | Si no aparece archivo, pasa a Tier 2 |
 | 10 | Vialidad Nacional (noticias) | argentina.gob.ar/node/96178/noticias | Permite; `Crawl-delay: 10` | Listado HTML `?page=N`, filtrar Jujuy/RN 9/RN 52 | años (paginado) | **Tier 1 custom (Hijo B)** | no | Feed nacional |
 | 11 | Vialidad MOP Chile — ArcGIS Pasos Fronterizos (Jama, OBJECTID 7) | rest-sit.mop.gob.cl/arcgis/rest/services/VIALIDAD/Pasos_Fronterizos/MapServer/0 | 404 (sin restricciones) | Query JSON cada 3 h → tabla `jama_estado` (campos crudos + `fetched_at`) | solo estado actual | **Tier 1 snapshot** | no | Arranca al mergear foundation |
 | 12 | Pasos internacionales AR — listado (Jama, id 19) | argentina.gob.ar/seguridad/pasosinternacionales/listado | Permite; `Crawl-delay: 10` | JSON (155 pasos): `estado_prioridad`, `estado_vialidad`, `fecha_schema`, `fecha_hora_consulta` | solo estado actual | **Tier 1 snapshot** | no | Aprobado. 1 request cada 3 h, misma tabla `jama_estado` con columna `fuente`; se guarda solo Jama. Ver §4 |
 | 13 | InfoTilcara / Radio RIN | infotilcara.com.ar | Permite | WP REST API | 2023-06 | **Tier 2** | no | 6/507 corredor+causa |
-| 14 | El Pregón | pregon.com.ar | Solo Content-Signals, sin Disallow | Sitemap reciente (2,4k) + búsqueda server-side | desconocido | **Tier 2** | — | Profundidad no medida |
+| 14 | El Pregón | pregon.com.ar | 200 sin reglas (todo permitido; ya no publica Content-Signals) | Sitemap reciente (2,4k) + búsqueda server-side | desconocido | **Tier 2** | — | Profundidad no medida |
 | 15 | Que Pasa Jujuy | quepasajujuy.com.ar | `Allow: /` | Búsqueda de CMS propio | desconocido | **Tier 2** | — | Sin sitemap/RSS/WP |
-| 16 | Jujuy Dice | jujuydice.com.ar | Permite | Listados por categoría | desconocido | **Tier 2** | — | |
-| 17 | UNJu Diario | unjudiario.unju.edu.ar | Permite (bloquea rutas Joomla de admin) | Joomla `/buscar?q=` | desconocido | **Tier 2** | — | RSS vacío; cobertura universitaria |
+| 16 | Jujuy Dice | jujuydice.com.ar | Permite salvo `/Ad*` y `/ap*` (dos grupos `User-agent: *`) | Listados por categoría | desconocido | **Tier 2** | — | |
+| 17 | UNJu Diario | unjudiario.unju.edu.ar | **No verificable**: TLS con cadena incompleta (`unable to get local issuer certificate`); el fetcher de producción trata un robots.txt inaccesible como bloqueo total | Joomla `/buscar?q=` | desconocido | **Tier 2** | — | RSS vacío; cobertura universitaria |
 | 18 | Radio Nacional | radionacional.com.ar | Permite | RSS (WP API da 401) | — | **Tier 2** | — | Nacional |
 | 19 | Vía País Jujuy | viapais.com.ar/jujuy | Permite salvo query params | Sitemaps de noticias, RSS | — | **Tier 2** | — | Solo grandes eventos |
 | 20 | Infobae | infobae.com | Permite | Sitemaps por categoría | — | **Tier 2** | — | Solo grandes eventos |
@@ -32,19 +32,21 @@ Relevamiento hecho con robots.txt, APIs, feeds y sitemaps (más unas pocas pági
 | 22 | Timeline.cl (CL) | timeline.cl | Permite | WP REST API | 2013-07 | **Tier 2** (baja) | — | Jama: 4/100 |
 | 23 | pasosfronterizos.gob.cl — noticias (CL) | pasosfronterizos.gob.cl/noticias | 404 (sin restricciones) | Listado HTML (31 páginas) | 2017-03 | **Tier 2** (baja) | — | La búsqueda "jama" no devuelve noticias; el estado diario es una página viva sin archivo |
 | 24 | Vialidad Nacional — Estado de rutas | argentina.gob.ar/obras-publicas/vialidad-nacional/estado-de-las-rutas | Permite; `Crawl-delay: 10` | Contenido cargado por JS desde una API con key | solo estado actual | **Tier 2** | — | Investigar si hay endpoint público sin key |
-| 25 | GDELT DOC 2.0 | api.gdeltproject.org | n/a | API | 2017-01 (según docs) | **Tier 2 (última prioridad)** | — | 429 desde la VM del relevamiento, **no verificado**: el script cacheaba errores, así que los reintentos pueden no haber salido a la red. Re-probar una vez con el fetcher de producción (1 request cada 5 s) |
+| 25 | GDELT DOC 2.0 | api.gdeltproject.org | 404 (sin restricciones) | API | 2017-01 (según docs) | **Tier 2 (última prioridad)** | — | 429 desde la VM del relevamiento, **no verificado**: el script cacheaba errores, así que los reintentos pueden no haber salido a la red. Re-probar una vez con el fetcher de producción (1 request cada 5 s) |
 | 26 | Radio M Humahuaca | radiomhumahuaca.com.ar | Permite | WP REST API | 2024-04 | **Excluida** | (sí) | Agregador nacional: 98 posts/día de deporte/actualidad nacional, 0/824 corredor+causa |
 | 27 | Vialidad Provincial Jujuy | vialidad.jujuy.gob.ar | `Crawl-delay: 30`; bloquea `/wp-*`, `/?s=`, `/*?` | — | noticias hasta 2017 | **Excluida** | — | API bloqueada por robots y archivo desactualizado |
-| 28 | Diario Jujuy | diariojujuy.com | — | — | — | **Excluida** | — | Dominio estacionado en venta (HugeDomains) |
-| 29 | Jujuy Conecta | diario.jujuyconecta.com | — | — | — | **Excluida** | — | No responde |
+| 28 | Diario Jujuy | diariojujuy.com | `Disallow:` vacío (permite) | — | — | **Excluida** | — | Dominio estacionado en venta (HugeDomains) |
+| 29 | Jujuy Conecta | diario.jujuyconecta.com | No resuelve (DNS) | — | — | **Excluida** | — | No responde |
 | 30 | FM Tributo Tilcara | fmtributotilcara.com | Permite | — | — | **Excluida** | — | Sin noticias |
 | 31 | Nueva FM Humahuaca, Radio La Cima Maimará | — | — | — | — | **Excluida** | — | Solo streaming |
 | 32 | Radio Municipal Humahuaca | radiomunicipalhumahuaca.net.ar | Permite | WP REST API | 2024 | **Excluida** | — | 7 posts en total |
 | 33 | El Mercurio de Calama (CL) | mercuriocalama.cl | `User-agent: * / Disallow: /` | — | — | **Excluida** | — | robots bloquea todo |
-| 34 | SoyChile / SoyCalama (CL) | soychile.cl/calama | Permite (salvo /urlJson/) | — | — | **Excluida** | — | Sitemap solo de secciones; buscador sin resultados server-side |
+| 34 | SoyChile / SoyCalama (CL) | soychile.cl/calama | Permite (salvo `/urlJson/` y `/tv/stats/`) | — | — | **Excluida** | — | Sitemap solo de secciones; buscador sin resultados server-side |
 | 35 | SENAPRED (CL) | senapred.cl | Permite | — | — | **Excluida** | — | Sin archivo de alertas viales; el sitemap apunta a `qa2.` |
-| 36 | elloa.cl, radiofmcalama.cl, elmercuriodecalama.cl (CL) | — | — | — | — | **Excluida** | — | No resuelven |
+| 36 | elloa.cl, radiofmcalama.cl, elmercuriodecalama.cl (CL) | — | No resuelven (DNS) | — | — | **Excluida** | — | No resuelven |
 | 37 | X / Facebook / Instagram | — | — | — | — | **Excluida** | — | Fuera de alcance |
+
+**Re-chequeo de robots.txt (2026-11-13).** La columna robots.txt se volvió a verificar para todas las candidatas con el parser de producción (`RobotsRules`, RFC 9309: combina todos los grupos `User-agent: *` y sigue redirecciones), una request por host (dos si `robots.txt` redirige: El Tribuno `www.` → apex, Timeline.cl apex → `www.`). Cambios respecto del relevamiento: Jujuy al Día (#2, segundo grupo `*`), El Pregón (#14), Jujuy Dice (#16, segundo grupo `*`), UNJu Diario (#17, TLS), GDELT (#25), Diario Jujuy (#28), Jujuy Conecta (#29), SoyChile (#34) y los dominios de #36. Ninguna fuente activa cambió de estado salvo Jujuy al Día, que pasa de la API WP a sitemaps.
 
 No hay medio local propio para Volcán, Tumbaya, Purmamarca, Maimará ni Susques: llegan vía las radios de Tilcara y la prensa provincial.
 
@@ -87,8 +89,8 @@ Candidato = slug con lugar/ruta del corredor **y** término de causa/cierre.
 - B ≈ 892 páginas ≈ 37 min a 2,5 s/página. C ≈ 1.900 páginas ≈ 80 min.
 - **Elegido: C.** Cada artículo registra `filtro_slug` (B | C_solo_ruta); el reporte de calidad mide cuántos eventos aportan solo las páginas C_solo_ruta. Si son menos del 5 %, se propone volver a B.
 - El filtro por slug pierde notas con slug genérico; el chequeo de recall (§5) lo mide.
-- **Los conteos A/B/C subestiman.** La regex del relevamiento no reconocía "Nº"/"nro"/"número" en la ruta, formas como "cierran"/"cortaron", ni causas como viento blanco o temporal, y descartaba las URLs con barra final. La versión corregida (HANDOFF §7.1–7.2) va a dar más candidatos; recalcular el estimado al implementar `SitemapSource`.
-- Los meses vacíos (Somos Jujuy 2022-09, Prensa 2016-01→04) pueden ser errores de red cacheados como vacío: re-verificar.
+- **Los conteos A/B/C subestiman.** La regex del relevamiento no reconocía "Nº"/"nro"/"número" en la ruta, formas como "cierran"/"cortaron", ni causas como viento blanco o temporal, y descartaba las URLs con barra final. La versión corregida (HANDOFF §7.1–7.2) está en `patterns.slug_level` y la usa `SitemapSource`; los conteos reales por corrida quedan en `data/recoleccion/<fuente>.json`.
+- Los meses vacíos (Somos Jujuy 2022-09, Prensa 2016-01→04) pueden ser errores de red cacheados como vacío: re-verificar. En producción el checkpoint distingue `empty`, `missing` (404) y `error` ([SCRAPING.md](SCRAPING.md#running-a-collection)).
 - `lastmod` no es la fecha de publicación: se usa `article:published_time` y se marca el fallback.
 
 ## 4. Paso de Jama — snapshots de estado
