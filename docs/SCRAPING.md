@@ -12,9 +12,10 @@ Every production HTTP request goes through `PoliteFetcher.get(url) -> FetchResul
 |---|---|
 | User-Agent | `http.user_agent` in `config.yaml` (project name + repo URL). |
 | Rate limit | `max(2.0 s, http.min_interval_s, robots Crawl-delay)` between requests to the same host. |
-| robots.txt | Fetched once per host and cached `http.robots_ttl_h` hours. RFC 9309: 4xx → no restrictions; 5xx or network error → everything disallowed; a body that looks like HTML counts as no rules. Disallowed URLs raise `DisallowedByRobots` (applies to APIs and sitemaps too). |
+| robots.txt | Fetched once per host and cached `http.robots_ttl_h` hours. RFC 9309 matcher (`RobotsRules`): group for our product token, else `*`; longest matching rule wins, Allow wins ties; `*` and `$` wildcards. Status codes: 4xx → no restrictions; 5xx or network error → everything disallowed; a body that looks like HTML counts as no rules. Disallowed URLs raise `DisallowedByRobots` (applies to APIs and sitemaps too). |
 | TLS | Certificate verification always on. |
-| Retries | 429, 5xx and transport errors: up to `http.retries` retries with exponential backoff; `Retry-After` is honored. |
+| Redirects | Followed by hand, at most 5 hops; each hop is checked against robots.txt (`DisallowedByRobots`) and throttled. |
+| Retries | 429, 5xx and transport errors: up to `http.retries` retries with exponential backoff, never sooner than `Retry-After`. A `Retry-After` above 600 s fails the request instead of retrying early. |
 | Cache | Under `data/cache/` (gitignored), one folder per host, keyed by SHA-256 of the URL. Only 2xx/304 are cached; 404 is cached for 1 hour; 429/5xx are never cached. |
 
 ## What is stored

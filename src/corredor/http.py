@@ -2,13 +2,16 @@
 
 Rules (HANDOFF §7.3, AGENTS.md):
 - identifies itself with a clear User-Agent;
-- robots.txt per RFC 9309: 2xx → apply rules; 4xx → no restrictions; 5xx, timeout or
-  network error → assume everything is disallowed (retry later); an HTML body served as
-  /robots.txt counts as "no rules". Cached per host for `robots_ttl_s`;
-- per-host interval = max(min_interval_s, Crawl-delay), and never below 2 s;
+- robots.txt per RFC 9309 (own matcher: longest match wins, `*` and `$` wildcards):
+  2xx → apply rules; 4xx → no restrictions; 5xx, timeout or network error → assume
+  everything is disallowed (retry later); an HTML body served as /robots.txt counts as
+  "no rules". Cached per host for `robots_ttl_s`;
+- per-host interval = max(min_interval_s, Crawl-delay), and never below 2 s; redirects
+  are followed by hand (max 5), each hop checked against robots.txt and throttled;
 - TLS verification always on (no option to disable it);
 - disk cache under data/: only 2xx (and 304) are cached; 404 is cached with a short TTL;
-  429 and 5xx are retried with exponential backoff honouring Retry-After and never cached.
+  429 and 5xx are retried with exponential backoff honouring Retry-After (a Retry-After
+  above MAX_RETRY_AFTER_S fails instead of retrying early) and never cached.
 """
 
 from __future__ import annotations
@@ -16,14 +19,14 @@ from __future__ import annotations
 import email.utils
 import hashlib
 import json
+import re
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
-from urllib.parse import urlsplit
-from urllib.robotparser import RobotFileParser
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 from tenacity import (
@@ -35,6 +38,8 @@ from tenacity import (
 )
 
 MIN_INTERVAL_FLOOR_S = 2.0
+MAX_RETRY_AFTER_S = 600.0
+MAX_REDIRECTS = 5
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 
 
@@ -77,9 +82,73 @@ class Fetcher(Protocol):
     def get(self, url: str) -> FetchResult: ...
 
 
+class RobotsRules:
+    """robots.txt rules for one user agent, matched per RFC 9309.
+
+    The group for our product token is used if present, otherwise the `*` group. The
+    longest matching rule wins (Allow wins ties); `*` and a trailing `$` are supported.
+    """
+
+    def __init__(self, body: str, user_agent: str) -> None:
+        token = user_agent.split("/")[0].strip().lower()
+        groups: dict[str, list[tuple[bool, str]]] = {}
+        delays: dict[str, float] = {}
+        agents: list[str] = []
+        in_rules = False
+        for raw in body.splitlines():
+            line = raw.split("#", 1)[0].strip()
+            if ":" not in line:
+                continue
+            key, value = (part.strip() for part in line.split(":", 1))
+            key = key.lower()
+            if key == "user-agent":
+                if in_rules:
+                    agents, in_rules = [], False
+                agents.append(value.lower())
+                groups.setdefault(value.lower(), [])
+            elif key in ("allow", "disallow"):
+                in_rules = True
+                if value:
+                    for agent in agents:
+                        groups[agent].append((key == "allow", value))
+            elif key == "crawl-delay":
+                in_rules = True
+                try:
+                    delay = float(value)
+                except ValueError:
+                    continue
+                for agent in agents:
+                    delays[agent] = delay
+        chosen = token if token in groups else "*"
+        self.rules = [
+            (allow, _robots_pattern(path), len(path)) for allow, path in groups.get(chosen, [])
+        ]
+        self.crawl_delay = delays.get(chosen)
+
+    def can_fetch(self, url: str) -> bool:
+        parts = urlsplit(url)
+        target = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        if target == "/robots.txt":
+            return True
+        best: tuple[int, bool] | None = None
+        for allow, pattern, length in self.rules:
+            if pattern.match(target) and (
+                best is None or length > best[0] or (length == best[0] and allow)
+            ):
+                best = (length, allow)
+        return True if best is None else best[1]
+
+
+def _robots_pattern(path: str) -> re.Pattern[str]:
+    anchored = path.endswith("$")
+    body = path[:-1] if anchored else path
+    regex = ".*".join(re.escape(chunk) for chunk in body.split("*"))
+    return re.compile(regex + ("$" if anchored else ""))
+
+
 @dataclass
 class _RobotsEntry:
-    parser: RobotFileParser | None  # None = no rules (allow all)
+    parser: RobotsRules | None  # None = no rules (allow all)
     disallow_all: bool
     expires_at: float
 
@@ -114,7 +183,7 @@ class PoliteFetcher:
         self.retries = retries
         self.robots_ttl_s = robots_ttl_s
         self.not_found_ttl_s = not_found_ttl_s
-        self._client = client or httpx.Client(timeout=timeout_s, follow_redirects=True)
+        self._client = client or httpx.Client(timeout=timeout_s)
         self._client.headers["User-Agent"] = user_agent
         self._sleep = sleep
         self._clock = clock
@@ -139,15 +208,13 @@ class PoliteFetcher:
             return False
         if entry.parser is None:
             return True
-        return entry.parser.can_fetch(self.user_agent, url)
+        return entry.parser.can_fetch(url)
 
     def interval_for(self, url: str) -> float:
         entry = self._robots_for(url)
         delay: float = 0.0
-        if entry.parser is not None:
-            crawl_delay = entry.parser.crawl_delay(self.user_agent)
-            if crawl_delay is not None:
-                delay = float(crawl_delay)
+        if entry.parser is not None and entry.parser.crawl_delay is not None:
+            delay = entry.parser.crawl_delay
         return max(self.min_interval_s, delay)
 
     def close(self) -> None:
@@ -175,15 +242,13 @@ class PoliteFetcher:
             body = resp.text
             if _looks_like_html(resp.headers.get("content-type", ""), body):
                 return self._robots_entry(None, disallow_all=False)
-            parser = RobotFileParser()
-            parser.parse(body.splitlines())
-            return self._robots_entry(parser, disallow_all=False)
+            return self._robots_entry(RobotsRules(body, self.user_agent), disallow_all=False)
         if 400 <= status < 500:
             return self._robots_entry(None, disallow_all=False)
         return self._robots_entry(None, disallow_all=True, ttl=self._robots_retry_ttl())
 
     def _robots_entry(
-        self, parser: RobotFileParser | None, *, disallow_all: bool, ttl: float | None = None
+        self, parser: RobotsRules | None, *, disallow_all: bool, ttl: float | None = None
     ) -> _RobotsEntry:
         return _RobotsEntry(
             parser=parser,
@@ -211,12 +276,24 @@ class PoliteFetcher:
             raise FetchError(f"{type(exc).__name__} for {url}: {exc}") from exc
 
     def _request_once(self, url: str) -> FetchResult:
-        self._throttle(_host_key(url), self.interval_for(url))
-        resp = self._client.get(url)
+        target = url
+        for _ in range(MAX_REDIRECTS + 1):
+            self._throttle(_host_key(target), self.interval_for(target))
+            resp = self._client.get(target, follow_redirects=False)
+            if not resp.is_redirect:
+                break
+            target = urljoin(target, resp.headers["location"])
+            if not self.allowed(target):
+                raise DisallowedByRobots(f"{url} redirects to {target}")
+        else:
+            raise FetchError(f"too many redirects for {url}")
         if resp.status_code in RETRYABLE_STATUS:
-            raise RetryableStatusError(
-                url, resp.status_code, _parse_retry_after(resp.headers.get("retry-after"))
-            )
+            retry_after = _parse_retry_after(resp.headers.get("retry-after"))
+            if retry_after is not None and retry_after > MAX_RETRY_AFTER_S:
+                raise FetchError(
+                    f"HTTP {resp.status_code} for {url}: server asks to wait {retry_after:.0f} s"
+                )
+            raise RetryableStatusError(url, resp.status_code, retry_after)
         return FetchResult(
             url=url,
             status=resp.status_code,
@@ -287,7 +364,7 @@ class _RetryAfterWait:
         outcome = retry_state.outcome
         exc = outcome.exception() if outcome is not None else None
         if isinstance(exc, RetryableStatusError) and exc.retry_after_s is not None:
-            return max(base, min(exc.retry_after_s, 600.0))
+            return max(base, exc.retry_after_s)
         return base
 
 

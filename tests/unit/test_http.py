@@ -4,7 +4,13 @@ import httpx
 import pytest
 import respx
 
-from corredor.http import DisallowedByRobots, FetchError, PoliteFetcher, RetryableStatusError
+from corredor.http import (
+    DisallowedByRobots,
+    FetchError,
+    PoliteFetcher,
+    RetryableStatusError,
+    RobotsRules,
+)
 
 UA = "corredor-test/0.1 (+https://example.org)"
 BASE = "https://news.example"
@@ -176,3 +182,58 @@ def test_tls_verification_is_on_by_default(tmp_path: Path, clock: FakeClock) -> 
 def test_rejects_empty_user_agent(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="user_agent"):
         PoliteFetcher(" ", tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("robots", "path", "allowed"),
+    [
+        ("User-agent: *\nAllow: /\nDisallow: /privado\n", "/privado/x", False),
+        ("User-agent: *\nAllow: /\nDisallow: /privado\n", "/publico", True),
+        ("User-agent: *\nDisallow: /a\nAllow: /a/b\n", "/a/b/c", True),
+        ("User-agent: *\nDisallow: /*.pdf$\n", "/doc.pdf", False),
+        ("User-agent: *\nDisallow: /*.pdf$\n", "/doc.pdf.html", True),
+        ("User-agent: *\nDisallow: /*?s=\n", "/buscar?s=ruta", False),
+        ("User-agent: *\nDisallow: /\n", "/robots.txt", True),
+        ("User-agent: other\nDisallow: /\n", "/x", True),
+        ("User-agent: *\nDisallow: /\n\nUser-agent: corredor-test\nAllow: /\n", "/x", True),
+        ("User-agent: *\nDisallow:\n", "/x", True),
+    ],
+)
+def test_robots_rules_rfc9309(robots: str, path: str, allowed: bool) -> None:
+    assert RobotsRules(robots, UA).can_fetch(f"{BASE}{path}") is allowed
+
+
+def test_robots_crawl_delay_per_group() -> None:
+    rules = RobotsRules("User-agent: a\nCrawl-delay: 30\n\nUser-agent: *\nCrawl-delay: 10\n", UA)
+    assert rules.crawl_delay == 10
+
+
+@respx.mock
+def test_redirect_to_disallowed_path_raises(tmp_path: Path, clock: FakeClock) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(200, text="User-agent: *\nDisallow: /privado\n")
+    respx.get(f"{BASE}/a").respond(301, headers={"Location": "/privado/a"})
+    target = respx.get(f"{BASE}/privado/a").respond(200, text="no")
+    with pytest.raises(DisallowedByRobots):
+        make(tmp_path, clock).get(f"{BASE}/a")
+    assert target.call_count == 0
+
+
+@respx.mock
+def test_redirect_hops_are_throttled(tmp_path: Path, clock: FakeClock) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(404)
+    respx.get(f"{BASE}/a").respond(302, headers={"Location": f"{BASE}/b"})
+    respx.get(f"{BASE}/b").respond(200, text="ok")
+    f = make(tmp_path, clock, min_interval_s=2.5)
+    assert f.get(f"{BASE}/a").text == "ok"
+    assert clock.sleeps.count(2.5) == 2
+
+
+@respx.mock
+def test_retry_after_above_cap_fails_instead_of_retrying_early(
+    tmp_path: Path, clock: FakeClock
+) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(404)
+    route = respx.get(f"{BASE}/x").respond(429, headers={"Retry-After": "900"})
+    with pytest.raises(FetchError, match="900"):
+        make(tmp_path, clock, retries=3).get(f"{BASE}/x")
+    assert route.call_count == 1
