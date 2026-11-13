@@ -72,10 +72,15 @@ class EventDeduplicator:
         clusters: list[_Cluster] = []
         for ev in sorted(events, key=lambda e: (e.fecha, e.fuentes, e.evento_id)):
             title = tokens(" ".join(refs[u].titular for u in ev.fuentes if u in refs))
-            target = next((c for c in clusters if self._matches(c, ev, title)), None)
-            if target is None:
-                target = _Cluster()
-                clusters.append(target)
+            hits = [c for c in clusters if self._matches(c, ev, title)]
+            if not hits:
+                hits = [_Cluster()]
+                clusters.append(hits[0])
+            target = hits[0]
+            for other in hits[1:]:  # the event bridges clusters: join them
+                target.events.extend(other.events)
+                target.titles.extend(other.titles)
+                clusters.remove(other)
             target.events.append(ev)
             target.titles.append(title)
         return [self._combine(c, refs) for c in clusters]

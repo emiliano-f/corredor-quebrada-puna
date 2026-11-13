@@ -209,3 +209,14 @@ def test_rules_named_route_wins_over_place(rules: RuleBasedExtractor) -> None:
 def test_rules_reopening_is_not_total(rules: RuleBasedExtractor) -> None:
     (event,) = rules.extract(art("Habilitan ambos carriles en la ruta 52 en Lipán con precaución"))
     assert event.tipo_corte == "precaucion"
+
+
+def test_dedup_bridging_event_joins_clusters() -> None:
+    refs = {
+        "u1": ArticleRef("a", "Aluvión cortó la ruta 52 entre Purmamarca y Susques"),
+        "u3": ArticleRef("c", "Un aluvión cortó la ruta 52 entre Purmamarca y Susques"),
+    }
+    events = [ev("1", 10, None, "u1"), ev("2", 10, "rn52_susques", "u2"),
+              ev("3", 11, "rn52_susques", "u3")]  # fmt: skip
+    (merged,) = EventDeduplicator().merge(events, refs)
+    assert len(merged.fuentes) == 3
