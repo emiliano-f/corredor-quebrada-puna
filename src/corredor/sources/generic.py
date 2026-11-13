@@ -27,9 +27,9 @@ from corredor.extraction import patterns
 from corredor.http import DisallowedByRobots, Fetcher, FetchError, FetchResult
 from corredor.models import Article, FechaFuente, FiltroSlug, MetodoFuente, SourceConfig
 from corredor.sources.base import NewsSource
+from corredor.sources.checkpoint import Checkpoint, CheckpointStatus
 from corredor.sources.eltribuno import ElTribunoSource
 from corredor.sources.vialidadnacional import VialidadNacionalSource
-from corredor.sources.checkpoint import Checkpoint, CheckpointStatus
 
 BAJADA_MAX_CHARS: Final = 300
 MAX_DECOMPRESSED_BYTES: Final = 64 * 1024 * 1024
