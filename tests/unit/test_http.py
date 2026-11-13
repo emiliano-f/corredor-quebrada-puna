@@ -198,6 +198,7 @@ def test_rejects_empty_user_agent(tmp_path: Path) -> None:
         ("User-agent: *\nDisallow: /\n\nUser-agent: corredor-test\nAllow: /\n", "/x", True),
         ("User-agent: *\nDisallow:\n", "/x", True),
         ("User-agent: *\nDisallow: /privado\n", "/%70rivado", False),
+        ("User-agent: *\nDisallow: /private\nAllow: /%70%72%69\n", "/private", False),
         ("User-agent: *\nDisallow: /%C3%B1u\n", "/ñu", False),
     ],
 )
@@ -261,3 +262,17 @@ def test_304_without_location_is_returned(tmp_path: Path, clock: FakeClock) -> N
     respx.get(f"{BASE}/robots.txt").respond(404)
     respx.get(f"{BASE}/x").respond(304)
     assert make(tmp_path, clock).get(f"{BASE}/x").status == 304
+
+
+@respx.mock
+def test_robots_redirect_uses_known_crawl_delay(tmp_path: Path, clock: FakeClock) -> None:
+    other = "https://cdn.example"
+    respx.get(f"{other}/robots.txt").respond(200, text="User-agent: *\nCrawl-delay: 10\n")
+    respx.get(f"{other}/page").respond(200, text="ok")
+    respx.get(f"{BASE}/robots.txt").respond(301, headers={"Location": f"{other}/robots.txt"})
+    respx.get(f"{BASE}/x").respond(200, text="ok")
+    f = make(tmp_path, clock)
+    f.get(f"{other}/page")
+    clock.sleeps.clear()
+    f.get(f"{BASE}/x")
+    assert clock.sleeps[0] == pytest.approx(10)

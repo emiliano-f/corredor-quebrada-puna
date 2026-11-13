@@ -121,7 +121,8 @@ class RobotsRules:
                     delays[agent] = delay
         chosen = token if token in groups else "*"
         self.rules = [
-            (allow, _robots_pattern(path), len(path)) for allow, path in groups.get(chosen, [])
+            (allow, _robots_pattern(path), len(unquote(path)))
+            for allow, path in groups.get(chosen, [])
         ]
         self.crawl_delay = delays.get(chosen)
 
@@ -217,6 +218,14 @@ class PoliteFetcher:
             delay = entry.parser.crawl_delay
         return max(self.min_interval_s, delay)
 
+    def _known_interval(self, url: str) -> float:
+        """Like interval_for, but only from an already cached robots.txt (never fetches)."""
+        state = self._hosts.get(_host_key(url))
+        entry = state.robots if state is not None else None
+        if entry is None or entry.parser is None or entry.parser.crawl_delay is None:
+            return self.min_interval_s
+        return max(self.min_interval_s, entry.parser.crawl_delay)
+
     def close(self) -> None:
         self._client.close()
 
@@ -240,7 +249,7 @@ class PoliteFetcher:
                 if not resp.has_redirect_location:
                     break
                 robots_url = urljoin(robots_url, resp.headers["location"])
-                self._throttle(_host_key(robots_url), self.min_interval_s)
+                self._throttle(_host_key(robots_url), self._known_interval(robots_url))
                 resp = self._client.get(robots_url, follow_redirects=False)
         except httpx.HTTPError:
             return self._robots_entry(None, disallow_all=True, ttl=self._robots_retry_ttl())
