@@ -9,6 +9,9 @@ Rules (HANDOFF §7.3, AGENTS.md):
 - per-host interval = max(min_interval_s, Crawl-delay), and never below 2 s; redirects
   are followed by hand (max 5), each hop checked against robots.txt and throttled;
 - TLS verification always on (no option to disable it);
+- `robots_exempt_hosts`: exact hostnames of documented public APIs whose robots.txt
+  targets crawlers (ADR 0002). For those hosts ONLY the robots.txt check is skipped;
+  rate limit, User-Agent, TLS, timeouts, retries and cache are unchanged;
 - disk cache under data/: only 2xx (and 304) are cached; 404 is cached with a short TTL;
   429 and 5xx are retried with exponential backoff honouring Retry-After (a Retry-After
   above MAX_RETRY_AFTER_S fails instead of retrying early) and never cached.
@@ -19,9 +22,10 @@ from __future__ import annotations
 import email.utils
 import hashlib
 import json
+import logging
 import re
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,6 +45,9 @@ MIN_INTERVAL_FLOOR_S = 2.0
 MAX_RETRY_AFTER_S = 600.0
 MAX_REDIRECTS = 5
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+_HOSTNAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+
+logger = logging.getLogger(__name__)
 
 
 class FetchError(Exception):
@@ -175,9 +182,16 @@ class PoliteFetcher:
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], float] = time.time,
+        robots_exempt_hosts: Collection[str] = (),
     ) -> None:
         if not user_agent.strip():
             raise ValueError("user_agent is required")
+        self.robots_exempt_hosts = frozenset(validate_hostname(h) for h in robots_exempt_hosts)
+        if self.robots_exempt_hosts:
+            logger.info(
+                "robots.txt check skipped (ADR 0002) for: %s",
+                ", ".join(sorted(self.robots_exempt_hosts)),
+            )
         self.user_agent = user_agent
         self.cache_dir = cache_dir
         self.min_interval_s = max(min_interval_s, MIN_INTERVAL_FLOOR_S)
@@ -206,7 +220,12 @@ class PoliteFetcher:
         self._cache_write(result)
         return result
 
+    def is_robots_exempt(self, url: str) -> bool:
+        return (urlsplit(url).hostname or "") in self.robots_exempt_hosts
+
     def allowed(self, url: str) -> bool:
+        if self.is_robots_exempt(url):
+            return True
         entry = self._robots_for(url)
         if entry.disallow_all:
             return False
@@ -215,6 +234,8 @@ class PoliteFetcher:
         return entry.parser.can_fetch(url)
 
     def interval_for(self, url: str) -> float:
+        if self.is_robots_exempt(url):
+            return self.min_interval_s
         entry = self._robots_for(url)
         delay: float = 0.0
         if entry.parser is not None and entry.parser.crawl_delay is not None:
@@ -228,6 +249,10 @@ class PoliteFetcher:
         if entry is None or entry.parser is None or entry.parser.crawl_delay is None:
             return self.min_interval_s
         return max(self.min_interval_s, entry.parser.crawl_delay)
+
+    def cached(self, url: str) -> FetchResult | None:
+        """The unexpired cached response for `url`, without touching the network."""
+        return self._cache_read(url)
 
     def close(self) -> None:
         self._client.close()
@@ -387,6 +412,13 @@ class _RetryAfterWait:
         if isinstance(exc, RetryableStatusError) and exc.retry_after_s is not None:
             return max(base, exc.retry_after_s)
         return base
+
+
+def validate_hostname(host: str) -> str:
+    """An exact, lowercase hostname: no scheme, port, path or wildcard."""
+    if not _HOSTNAME_RE.fullmatch(host):
+        raise ValueError(f"exact hostname required (no scheme, port, path or wildcard): {host!r}")
+    return host
 
 
 def _host_key(url: str) -> str:

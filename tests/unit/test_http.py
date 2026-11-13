@@ -276,3 +276,68 @@ def test_robots_redirect_uses_known_crawl_delay(tmp_path: Path, clock: FakeClock
     clock.sleeps.clear()
     f.get(f"{BASE}/x")
     assert clock.sleeps[0] == pytest.approx(10)
+
+
+EXEMPT = "https://api.exempt.example"
+
+
+@respx.mock
+def test_exempt_host_skips_only_robots(tmp_path: Path, clock: FakeClock) -> None:
+    robots = respx.get(f"{EXEMPT}/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    route = respx.get(url__regex=rf"{EXEMPT}/v1/\w+").respond(200, text="{}")
+    f = make(tmp_path, clock, robots_exempt_hosts=["api.exempt.example"])
+    assert f.allowed(f"{EXEMPT}/v1/a")
+    f.get(f"{EXEMPT}/v1/a")
+    f.get(f"{EXEMPT}/v1/b")
+    assert f.get(f"{EXEMPT}/v1/a").from_cache
+    assert robots.call_count == 0
+    assert route.call_count == 2
+    assert route.calls[0].request.headers["User-Agent"] == UA
+    assert clock.sleeps[-1] == pytest.approx(2.5)
+
+
+@respx.mock
+def test_non_listed_host_still_blocked_by_robots(tmp_path: Path, clock: FakeClock) -> None:
+    respx.get(f"{BASE}/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    respx.get("https://sub.api.exempt.example/robots.txt").respond(
+        200, text="User-agent: *\nDisallow: /\n"
+    )
+    f = make(tmp_path, clock, robots_exempt_hosts=["api.exempt.example"])
+    with pytest.raises(DisallowedByRobots):
+        f.get(f"{BASE}/x")
+    with pytest.raises(DisallowedByRobots):
+        f.get("https://sub.api.exempt.example/v1/a")
+
+
+@respx.mock
+def test_exempt_host_still_retries_and_never_caches_5xx(tmp_path: Path, clock: FakeClock) -> None:
+    route = respx.get(f"{EXEMPT}/v1/a").respond(503)
+    f = make(tmp_path, clock, retries=1, robots_exempt_hosts=["api.exempt.example"])
+    with pytest.raises(RetryableStatusError):
+        f.get(f"{EXEMPT}/v1/a")
+    assert route.call_count == 2
+
+
+def test_exemption_logged_once_per_fetcher(
+    tmp_path: Path, clock: FakeClock, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("INFO", logger="corredor.http"):
+        make(tmp_path, clock, robots_exempt_hosts=["b.example.org", "a.example.org"])
+    assert [r.getMessage() for r in caplog.records] == [
+        "robots.txt check skipped (ADR 0002) for: a.example.org, b.example.org"
+    ]
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "*.open-meteo.com",
+        "https://api.open-meteo.com",
+        "api.open-meteo.com:443",
+        "api",
+        "API.x.com",
+    ],
+)
+def test_exemption_requires_exact_hostname(tmp_path: Path, clock: FakeClock, host: str) -> None:
+    with pytest.raises(ValueError, match="exact hostname"):
+        make(tmp_path, clock, robots_exempt_hosts=[host])

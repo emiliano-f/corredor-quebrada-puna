@@ -9,11 +9,36 @@ http:
   retries: 3
   robots_ttl_h: 24
   not_found_ttl_h: 24
+  # Documented public APIs whose robots.txt (`Disallow: /`) targets crawlers. For these
+  # exact hosts ONLY the robots.txt check is skipped; rate limit, User-Agent, TLS,
+  # timeouts, retries and cache still apply. Scope and limits: docs/adr/0002. A new host
+  # needs a new ADR line and the owner's approval. No wildcards.
+  robots_exempt_hosts:
+    - host: archive-api.open-meteo.com
+      motivo: "API histórica documentada de Open-Meteo (uso no comercial, CC BY 4.0)"
+      terminos_url: "https://open-meteo.com/en/terms"
+    - host: api.open-meteo.com
+      motivo: "API de pronóstico y elevación documentada de Open-Meteo (uso no comercial, CC BY 4.0)"
+      terminos_url: "https://open-meteo.com/en/terms"
+    - host: historical-forecast-api.open-meteo.com
+      motivo: "API de pronósticos históricos documentada de Open-Meteo (uso no comercial, CC BY 4.0)"
+      terminos_url: "https://open-meteo.com/en/terms"
 
 backfill:
   desde: 2016-01-01
   max_requests_per_run: 2000
   muestra_sitemaps: ["2017-01", "2024-02", "2026-08"]
+
+# Weather (Open-Meteo, free tier: < 600 calls/min, 5,000/h, 10,000/day, non-commercial).
+# One archive request per point for the whole desde→today range. Calls are counted with
+# Open-Meteo's weighting (> 2 weeks or > 10 variables = several calls).
+clima:
+  desde: 2016-01-01
+  zona_horaria: "America/Argentina/Jujuy"
+  modelo_historico: era5_seamless   # same model for 2016→today (best_match switches to IFS in 2017)
+  modelo_pronostico: best_match
+  modelos_grilla: [era5, era5_land] # era5 = precipitation/snowfall cell, era5_land = temperature cell
+  max_llamadas_diarias: 500
 
 # PROVISIONAL critical points. Coordinates looked up once on OpenStreetMap (Nominatim,
 # 2026-11-13); `osm` is the matched OSM object. Nothing here is verified: Child C

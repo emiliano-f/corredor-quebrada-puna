@@ -30,6 +30,13 @@ All notable changes to this project are documented here. The format follows
   `CriticalPointRegistry.verify` derives coordinates, km and sources from each point's OSM
   object; `NominatimGeocoder` (robots-bound). `CriticalPoint` gains `osm` and `nota_geo`;
   12 of 13 points verified in `config.yaml`.
+- Weather (Child D): `OpenMeteoClient` (archive `era5_seamless` 2016→today in one request
+  per point, forecast, grid cell and elevation per point, weighted daily call cap
+  `clima.max_llamadas_diarias` = 500, Parquet cache by lat/lon/range), antecedent
+  features (24/48/72 h, 7 d, max hourly, snow), `corredor clima` / `make clima` loading
+  `clima_diario`, and `reports/clima_grilla.md`.
+- `PoliteFetcher`: `http.robots_exempt_hosts` skips only the robots.txt check for the 3
+  exact Open-Meteo API hosts (ADR 0002); everything else unchanged.
 - Docs: README (es-AR), AGENTS.md, CONTRIBUTING.md, FUENTES.md, SCRAPING.md, DATOS.md,
   ADR 0001 and playbooks.
 - Paso de Jama snapshots: `corredor snapshot-jama` (collectors for Vialidad MOP Chile

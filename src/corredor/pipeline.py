@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from corredor import __version__
-from corredor.config import Settings, load_config
+from corredor.config import AppConfig, Settings, load_config
 from corredor.http import PoliteFetcher
 from corredor.reports import lineage, report_header, write_manifest
 from corredor.sources.jama import append_jsonl, build_collectors
@@ -56,6 +57,75 @@ def manifest(config: ConfigOpt = None) -> None:
     cfg = load_config(config or settings.config_path)
     path = write_manifest(settings.data_dir, lineage(cfg))
     typer.echo(f"Manifiesto escrito en {path}")
+
+
+def build_fetcher(cfg: AppConfig, settings: Settings) -> PoliteFetcher:
+    """The single PoliteFetcher of a run (so the robots exemption is logged once)."""
+    http = cfg.http
+    exempt = [e.host for e in http.robots_exempt_hosts]
+    if exempt:
+        typer.echo(
+            f"robots.txt omitido (ADR 0002) solo para: {', '.join(sorted(exempt))}", err=True
+        )
+    return PoliteFetcher(
+        http.user_agent,
+        settings.cache_dir,
+        min_interval_s=http.min_interval_s,
+        timeout_s=http.timeout_s,
+        retries=http.retries,
+        robots_ttl_s=http.robots_ttl_h * 3600,
+        not_found_ttl_s=http.not_found_ttl_h * 3600,
+        robots_exempt_hosts=exempt,
+    )
+
+
+@app.command()
+def clima(
+    config: ConfigOpt = None,
+    hasta: Annotated[
+        str | None, typer.Option(help="Última fecha (AAAA-MM-DD); por defecto, hoy.")
+    ] = None,
+) -> None:
+    """Descarga el clima horario de Open-Meteo (2016→hoy) y calcula los antecedentes."""
+    from corredor.storage.repository import DuckDBRepository
+    from corredor.weather.backfill import fetch_points, grid_report, saved_cells, write_outputs
+    from corredor.weather.openmeteo import OpenMeteoClient
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    end = date.fromisoformat(hasta) if hasta else date.today()
+    fetcher = build_fetcher(cfg, settings)
+    client = OpenMeteoClient(fetcher, settings.data_dir / "clima", cfg.clima)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        run = fetch_points(client, cfg.puntos, cfg.clima.desde, end, repo)
+    finally:
+        repo.close()
+        fetcher.close()
+    paths = write_outputs(run, settings.data_dir / "clima")
+    report = Path("reports") / "clima_grilla.md"
+    report.parent.mkdir(exist_ok=True)
+    report.write_text(
+        grid_report(
+            saved_cells(settings.data_dir / "clima", [p.id for p in cfg.puntos]),
+            lineage(cfg),
+            cfg.clima.modelo_historico,
+        ),
+        encoding="utf-8",
+    )
+    used = client.ledger.used_today()
+    typer.echo(
+        f"Clima: {len(run.done)}/{len(cfg.puntos)} puntos, {run.days} días en clima_diario; "
+        f"{report} y {len(paths)} archivos en {settings.data_dir / 'clima'}. "
+        f"Llamadas Open-Meteo hoy: {used:.1f}/{cfg.clima.max_llamadas_diarias:.0f}."
+    )
+    if run.error:
+        typer.echo(
+            f"Clima incompleto ({run.error}). Lo descargado quedó en caché: "
+            "volvé a correr `make clima` (mañana, si se llegó al tope diario).",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 @app.command()
