@@ -82,6 +82,8 @@ def decompress_if_gzip(content: bytes, limit: int = MAX_DECOMPRESSED_BYTES) -> b
     out = inflater.decompress(content, limit)
     if inflater.unconsumed_tail:
         raise ValueError(f"decompressed payload exceeds {limit} bytes")
+    if not inflater.eof:
+        raise ValueError("truncated gzip payload")
     return out
 
 
@@ -355,6 +357,9 @@ class SitemapEntry:
     news_title: str | None = None
 
 
+_URLSET_END: Final = re.compile(r"</(?:\w+:)?urlset\s*>|<(?:\w+:)?urlset\b[^>]*/>", re.I)
+
+
 def parse_sitemap(xml: str) -> list[SitemapEntry]:
     """`<url>` entries of a sitemap (plain or Google News). Regex, no XML entity expansion."""
     entries = []
@@ -510,6 +515,10 @@ class SitemapSource(_GenericSource):
         except (ValueError, zlib.error) as exc:
             self._error(f"{month}: {exc}")
             self._mark(month, "error", closed=closed, error=str(exc))
+            return
+        if not _URLSET_END.search(xml):
+            self._error(f"{month}: not a complete sitemap (no closing </urlset>)")
+            self._mark(month, "error", closed=closed, error="incomplete sitemap")
             return
         entries = parse_sitemap(xml)
         self.stats.raw += len(entries)

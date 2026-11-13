@@ -85,6 +85,8 @@ def test_decompress_limit() -> None:
     with pytest.raises(ValueError, match="exceeds"):
         decompress_if_gzip(bomb, limit=1_000)
     assert decompress_if_gzip(b"<urlset/>") == b"<urlset/>"
+    with pytest.raises(ValueError, match="truncated"):
+        decompress_if_gzip(bomb[: len(bomb) // 2])
 
 
 def test_parse_sitemap_google_news_and_cdata() -> None:
@@ -410,3 +412,27 @@ def test_articles_hold_metadata_only() -> None:
         "filtro_slug",
     }
     assert not {"cuerpo", "texto", "body", "content"} & set(Article.model_fields)
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"<html><body>Mantenimiento</body></html>",
+        b"<urlset><url><loc>https://noticias.example/alud-ruta-9-n1</loc></url>",
+        gzip.compress(b"<urlset><url><loc>https://noticias.example/a</loc></url></urlset>")[:30],
+    ],
+    ids=["html", "truncated-xml", "truncated-gzip"],
+)
+def test_sitemap_invalid_listing_is_an_error(
+    make_fetcher: Factory, tmp_path: Path, body: bytes
+) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, content=body)
+    options = GenericOptions(
+        checkpoint_dir=tmp_path, sample_months=("2024-02",), today=date(2026, 1, 1)
+    )
+    source = SitemapSource(sitemap_cfg(), make_fetcher(), options)
+    assert list(source.list_articles(date(2016, 1, 1))) == []
+    assert source.stats.units == {"2024-02": "error"}
+    assert not source.checkpoint.is_done("2024-02")
