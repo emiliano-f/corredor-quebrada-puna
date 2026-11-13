@@ -107,7 +107,11 @@ class OverpassClient:
             if not result.ok:
                 errors.append(f"{endpoint}: HTTP {result.status}")
                 continue
-            data = json.loads(result.text)
+            try:
+                data = json.loads(result.text)
+            except ValueError:
+                errors.append(f"{endpoint}: respuesta no es JSON")
+                continue
             remark = str(data.get("remark", ""))
             if "error" in remark.lower():
                 # A cached partial answer must not be trusted: clear data/cache to retry.
