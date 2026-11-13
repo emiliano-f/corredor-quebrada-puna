@@ -70,7 +70,7 @@ Implemented in `src/corredor/extraction/patterns.py`:
     crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`.
   - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de
     Potrerillos; else `km N` → nearest point of that route within 5 km.
-  - `ruta`: the point's route, else the only route named, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).
+  - `ruta`: the only route named (a place on the other route is then dropped), else the point's route, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).
   - `tipo_corte`: `total` / `parcial` (media calzada, un carril, una mano, intermitente, demoras) / `precaucion`.
 - **LLM** (`extraction/llm.py`, optional): `LLMExtractor` sends only headline, lede and URL
   between `<articulo>` delimiters as untrusted data, no tools, one call per article cached
