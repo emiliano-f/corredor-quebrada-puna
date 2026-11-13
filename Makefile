@@ -41,6 +41,10 @@ clima:
 
 datos:
 	$(UV) run corredor manifest
+	$(UV) run corredor recolectar
+	$(UV) run corredor clima
+	-git fetch origin data-snapshots && mkdir -p data/snapshots && \
+	  git show origin/data-snapshots:snapshots/jama_estado.jsonl > data/snapshots/jama_estado.jsonl
 	$(UV) run corredor datos
 
 calibrar:

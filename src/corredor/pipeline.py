@@ -8,12 +8,13 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
+import pandas as pd
 import typer
 
 from corredor import __version__
 from corredor.config import AppConfig, Settings, load_config
 from corredor.http import FetchError, PoliteFetcher
-from corredor.models import Article
+from corredor.models import Article, JamaEstado
 from corredor.reports import lineage, report_header, write_manifest
 from corredor.sources.generic import GenericOptions, build_sources
 from corredor.sources.jama import append_jsonl, build_collectors
@@ -205,28 +206,160 @@ def recolectar(
         fetcher.close()
 
 
-@app.command()
-def datos() -> None:
-    """Recolecta artículos, extrae eventos y carga clima."""
-    _not_ready("datos")
+REPORTS_DIR = Path("reports")
+REVIEW_CSV = REPORTS_DIR / "revision_manual.csv"
+JAMA_JSONL = Path("snapshots") / "jama_estado.jsonl"
+
+
+def _load_jsonl(path: Path) -> list[JamaEstado]:
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(JamaEstado.model_validate_json(line))
+    return rows
 
 
 @app.command()
-def calibrar() -> None:
+def datos(
+    config: ConfigOpt = None,
+    jama: Annotated[
+        Path | None,
+        typer.Option(help="JSONL de la rama data-snapshots (por defecto data/snapshots/…)."),
+    ] = None,
+) -> None:
+    """Extrae y deduplica eventos de `articulos`, carga puntos y Jama, exporta Parquet.
+
+    Sin red: usa lo que dejaron `corredor recolectar`, `corredor clima` y el JSONL de Jama.
+    """
+    from corredor.catalog import build_events, frame_to_articles
+    from corredor.extraction.dedup import EventDeduplicator
+    from corredor.extraction.rules import RuleBasedExtractor
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    if settings.llm_api_key is not None:
+        typer.echo(
+            "LLM_API_KEY está definida, pero todavía no hay proveedor de LLM configurado: "
+            "se usan solo las reglas.",
+            err=True,
+        )
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        repo.upsert("puntos", cfg.puntos)
+        jama_path = jama or settings.data_dir / JAMA_JSONL
+        n_jama = repo.upsert("jama_estado", _load_jsonl(jama_path)) if jama_path.exists() else 0
+        articles = frame_to_articles(repo.read("articulos"))
+        republishers = frozenset(s.id for s in cfg.fuentes if s.republica)
+        events, raw = build_events(
+            articles, [RuleBasedExtractor(cfg.puntos)], EventDeduplicator(2, republishers)
+        )
+        repo.replace("eventos", events)
+        paths = repo.export_parquet(settings.data_dir / "parquet")
+    finally:
+        repo.close()
+    typer.echo(
+        f"Datos: {len(articles)} artículos → {raw} menciones → {len(events)} eventos; "
+        f"{n_jama} snapshots de Jama ({'sin archivo' if not n_jama else jama_path}); "
+        f"{len(paths)} tablas en {settings.data_dir / 'parquet'}."
+    )
+
+
+def _features(settings: Settings) -> pd.DataFrame:
+    path = settings.data_dir / "clima" / "antecedentes.parquet"
+    if not path.exists():
+        typer.echo(f"Falta {path}: corré `make clima` primero.", err=True)
+        raise typer.Exit(1)
+    return pd.read_parquet(path)
+
+
+@app.command()
+def calibrar(config: ConfigOpt = None) -> None:
     """Calibra umbrales por causa y escribe reports/validacion.md."""
-    _not_ready("calibrar")
+    from corredor.calibration.report import section
+    from corredor.calibration.thresholds import ThresholdCalibrator
+    from corredor.catalog import article_refs, frame_to_events, stable_sources
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        events = frame_to_events(repo.read("eventos"))
+        refs = article_refs(repo.read("articulos"))
+    finally:
+        repo.close()
+    features = _features(settings)
+    stable = stable_sources(cfg)
+    stable_events = [
+        e for e in events if {refs[u].source_id for u in e.fuentes if u in refs} & stable
+    ]
+    cal = ThresholdCalibrator()
+    text = (
+        report_header("Validación de umbrales", lineage(cfg))
+        + (
+            "Causas meteorológicas: aluvión y crecida contra lluvia, nieve contra nieve. "
+            "Una regla por causa, igual para todos los puntos; ajuste 2016–2022, prueba "
+            "2023→hoy. Acierto = evento con alarma ese día o el anterior; falsa alarma = "
+            "día con alarma sin evento ese día o el siguiente. Los mm de ERA5 no son lluvia "
+            "local (ver docs/DATOS.md): por eso cada variable va también como percentil de "
+            "su celda en la misma estación. Vos elegís la regla final.\n\n"
+            f"Fuentes estables (archivo desde ≤ {cfg.backfill.desde}): "
+            f"{', '.join(sorted(stable))}.\n\n"
+        )
+        + section("Todas las fuentes", cal, events, features)
+        + "\n"
+        + section("Solo fuentes estables", cal, stable_events, features)
+    )
+    out = REPORTS_DIR / "validacion.md"
+    out.parent.mkdir(exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    typer.echo(f"Calibración: {len(events)} eventos ({len(stable_events)} estables) → {out}")
 
 
 @app.command()
-def precision() -> None:
+def precision(
+    config: ConfigOpt = None,
+    archivo: Annotated[Path, typer.Option(help="CSV etiquetado.")] = REVIEW_CSV,
+) -> None:
     """Lee reports/revision_manual.csv y reporta la precisión por campo."""
-    _not_ready("precision")
+    from corredor.catalog import precision_report
+
+    if not archivo.exists():
+        typer.echo(f"Falta {archivo}: corré `make reporte` y etiquetalo.", err=True)
+        raise typer.Exit(1)
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    out = REPORTS_DIR / "precision.md"
+    out.write_text(
+        precision_report(archivo, report_header("Precisión de la extracción", lineage(cfg))),
+        encoding="utf-8",
+    )
+    typer.echo(f"Precisión → {out}")
 
 
 @app.command()
-def reporte() -> None:
-    """Genera reports/calidad_catalogo.md."""
-    _not_ready("reporte")
+def reporte(config: ConfigOpt = None) -> None:
+    """Genera reports/calidad_catalogo.md y reports/revision_manual.csv."""
+    from corredor.catalog import article_refs, frame_to_events, quality_report, write_review
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        articles = repo.read("articulos")
+        events = frame_to_events(repo.read("eventos"))
+    finally:
+        repo.close()
+    REPORTS_DIR.mkdir(exist_ok=True)
+    out = REPORTS_DIR / "calidad_catalogo.md"
+    out.write_text(
+        quality_report(cfg, articles, events, report_header("Calidad del catálogo", lineage(cfg))),
+        encoding="utf-8",
+    )
+    wrote = write_review(events, article_refs(articles), REVIEW_CSV)
+    typer.echo(
+        f"Reporte → {out}; "
+        + (f"{REVIEW_CSV} nuevo" if wrote else f"{REVIEW_CSV} ya etiquetado, no se pisa")
+    )
 
 
 GEO_DIR = Path("assets/geo")

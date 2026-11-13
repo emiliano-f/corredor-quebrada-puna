@@ -23,6 +23,10 @@ uv run corredor manifest   # escribe data/manifest.json
 make snapshot-jama  # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
 make clima          # clima horario de Open-Meteo 2016→hoy por punto + antecedentes
 uv run corredor recolectar # metadatos de notas de las fuentes activas → data/corredor.duckdb
+make datos          # recolectar + clima + Jama → eventos deduplicados en DuckDB y Parquet
+make reporte        # reports/calidad_catalogo.md y reports/revision_manual.csv
+make calibrar       # reports/validacion.md (umbrales en mm/cm y en percentil por celda)
+make precision      # precisión por campo desde reports/revision_manual.csv etiquetado
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
@@ -67,7 +71,12 @@ de entorno `LLM_API_KEY`.
   catálogo. Los medios grandes cubren más los eventos de RN 9 y los eventos grandes;
   algunos medios tienen archivo solo desde años recientes.
 - **Umbrales simples:** una regla por causa, igual para todos los puntos; no es un modelo
-  hidrológico ni un pronóstico oficial.
+  hidrológico ni un pronóstico oficial. Cada umbral se muestra en unidades de ERA5 y como
+  percentil de la celda en la misma estación (2016–2022); se ajusta con 2016–2022 y se
+  prueba con 2023 en adelante (ver [reports/validacion.md](reports/validacion.md)).
+- **Extracción por reglas:** los eventos salen del titular, la bajada y la URL, no del
+  texto de la nota; una nota sin lugar ni km queda sin punto crítico. La precisión medida
+  a mano está en `reports/precision.md`.
 - **Puntos críticos:** las coordenadas salen de un objeto de OpenStreetMap y solo se marcan
   `verificado: true` si están a menos de 500 m de la traza (ver
   [reports/geo_verificacion.md](reports/geo_verificacion.md)). Los km son distancias medidas

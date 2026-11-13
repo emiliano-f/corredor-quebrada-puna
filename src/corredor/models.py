@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 Ruta = Literal["RN9", "RN52", "otra"]
 Causa = Literal["aluvion", "crecida", "nieve", "accidente", "protesta", "obra", "otro"]

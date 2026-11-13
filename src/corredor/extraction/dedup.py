@@ -1,18 +1,126 @@
-"""Event deduplication (integration step): same route + point, dates within N days."""
+"""Event deduplication: one closure reported by several outlets becomes one event.
+
+Two events are the same closure when they share the route, have compatible causes
+(equal, or one of them "otro") and their dates are within `window_days`, and either
+  * both have the same critical point, or
+  * at least one has no point and their headlines are similar: Jaccard similarity of
+    normalised tokens >= `min_jaccard`, both with >= `min_tokens` tokens (HANDOFF §7.4).
+Clusters grow by single linkage over events sorted by date. `n_medios` counts distinct
+outlets, excluding those with `republica: true`.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import hashlib
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
-from corredor.models import ClosureEvent
+from corredor.extraction.patterns import norm
+from corredor.models import ClosureEvent, Confianza, TipoCorte
+
+STOPWORDS = frozenset(
+    "a al ante con de del desde el en entre es la las lo los para por que se sin su sobre tras "  # noqa: SIM905
+    "un una y o e ya hoy".split()
+)
+_CONFIANZA: dict[Confianza, int] = {"baja": 0, "media": 1, "alta": 2}
+_TIPO: dict[TipoCorte, int] = {"desconocido": 0, "precaucion": 1, "parcial": 2, "total": 3}
+
+
+@dataclass(frozen=True)
+class ArticleRef:
+    """What dedup needs to know about the article behind each event URL."""
+
+    source_id: str
+    titular: str = ""
+
+
+def tokens(text: str) -> frozenset[str]:
+    return frozenset(
+        t for t in norm(text).replace(".", " ").replace(",", " ").split() if t not in STOPWORDS
+    )
+
+
+def jaccard(a: frozenset[str], b: frozenset[str]) -> float:
+    return len(a & b) / len(a | b) if a and b else 0.0
+
+
+@dataclass
+class _Cluster:
+    events: list[ClosureEvent] = field(default_factory=list)
+    titles: list[frozenset[str]] = field(default_factory=list)
 
 
 class EventDeduplicator:
     """Merges duplicates; n_medios excludes sources with `republica: true`."""
 
-    def __init__(self, window_days: int = 2, republishers: frozenset[str] = frozenset()) -> None:
+    def __init__(
+        self,
+        window_days: int = 2,
+        republishers: frozenset[str] = frozenset(),
+        min_jaccard: float = 0.5,
+        min_tokens: int = 5,
+    ) -> None:
         self.window_days = window_days
         self.republishers = republishers
+        self.min_jaccard = min_jaccard
+        self.min_tokens = min_tokens
 
-    def merge(self, events: Sequence[ClosureEvent]) -> list[ClosureEvent]:
-        raise NotImplementedError("EventDeduplicator: pendiente (integración)")
+    def merge(
+        self, events: Sequence[ClosureEvent], articles: Mapping[str, ArticleRef] | None = None
+    ) -> list[ClosureEvent]:
+        refs = articles or {}
+        clusters: list[_Cluster] = []
+        for ev in sorted(events, key=lambda e: (e.fecha, e.fuentes, e.evento_id)):
+            title = tokens(" ".join(refs[u].titular for u in ev.fuentes if u in refs))
+            target = next((c for c in clusters if self._matches(c, ev, title)), None)
+            if target is None:
+                target = _Cluster()
+                clusters.append(target)
+            target.events.append(ev)
+            target.titles.append(title)
+        return [self._combine(c, refs) for c in clusters]
+
+    def _matches(self, cluster: _Cluster, ev: ClosureEvent, title: frozenset[str]) -> bool:
+        for other, other_title in zip(cluster.events, cluster.titles, strict=True):
+            if other.ruta != ev.ruta or abs((ev.fecha - other.fecha).days) > self.window_days:
+                continue
+            if other.causa != ev.causa and "otro" not in (other.causa, ev.causa):
+                continue
+            if ev.punto_id is not None and ev.punto_id == other.punto_id:
+                return True
+            if (ev.punto_id is None or other.punto_id is None) and self._similar(
+                title, other_title
+            ):
+                return True
+        return False
+
+    def _similar(self, a: frozenset[str], b: frozenset[str]) -> bool:
+        if min(len(a), len(b)) < self.min_tokens:
+            return False
+        return jaccard(a, b) >= self.min_jaccard
+
+    def _combine(self, cluster: _Cluster, refs: Mapping[str, ArticleRef]) -> ClosureEvent:
+        evs = cluster.events
+        if len(evs) == 1 and not refs:
+            return evs[0]
+        urls = sorted({u for e in evs for u in e.fuentes})
+        outlets = {refs[u].source_id if u in refs else u for u in urls}
+        causes = [e.causa for e in evs if e.causa != "otro"]
+        first = evs[0]
+        return first.model_copy(
+            update={
+                "evento_id": hashlib.sha1(  # noqa: S324 — identifier, not security
+                    "|".join([first.fecha.isoformat(), first.ruta, *urls]).encode()
+                ).hexdigest()[:16],
+                "punto_id": next((e.punto_id for e in evs if e.punto_id), None),
+                "km": next((e.km for e in evs if e.km is not None), None),
+                "paraje": ", ".join(sorted({x for e in evs for x in e.paraje.split(", ") if x})),
+                "causa": max(set(causes), key=lambda c: (causes.count(c), c)) if causes else "otro",
+                "tipo_corte": max((e.tipo_corte for e in evs), key=_TIPO.__getitem__),
+                "fuentes": urls,
+                "n_medios": len(outlets - self.republishers),
+                "metodo": "llm" if any(e.metodo == "llm" for e in evs) else "reglas",
+                "confianza": max((e.confianza for e in evs), key=_CONFIANZA.__getitem__),
+                "notas": "; ".join(sorted({e.notas for e in evs if e.notas})),
+            }
+        )

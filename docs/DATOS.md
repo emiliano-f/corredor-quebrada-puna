@@ -1,7 +1,9 @@
 # Data dictionary
 
 Pydantic models in `src/corredor/models.py` define every row. `SCHEMA_VERSION` (currently
-**1**) is bumped once per release on any table/column change. Tables live in DuckDB
+**2**: `puntos.osm` and `puntos.nota_geo` added) is bumped once per release on any
+table/column change. Opening an older DuckDB file is safe: before writing, the repository
+adds the model columns a table lacks (`ALTER TABLE … ADD COLUMN`, null for old rows). Tables live in DuckDB
 (`DuckDBRepository`, `src/corredor/storage/repository.py`) and are exported to Parquet
 (one file per table). Only allowlisted tables can be written. Column types come from the
 models (`TABLE_MODELS`), not from the first batch; an upsert replaces rows with the same
@@ -15,7 +17,8 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 | `clima_diario` | `WeatherDay` | `punto_id`, `fecha` |
 | `jama_estado` | `JamaEstado` | `fuente`, `fetched_at` |
 
-`Threshold` and `ValidationResult` are report rows (calibration), not stored tables yet.
+`Threshold` and `ValidationResult` are report rows (calibration), not stored tables.
+`eventos` is derived: `corredor datos` rebuilds it from `articulos` on every run.
 
 ## `articulos` — news metadata (never full text)
 
@@ -33,22 +36,27 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 
 ## `eventos` — closure events
 
+Built by `corredor datos` (`catalog.build_events`): `RuleBasedExtractor` reads only the
+headline, lede and URL path of each `articulos` row (at most one event per article), then
+`EventDeduplicator` merges mentions of the same closure (see
+[SCRAPING.md](SCRAPING.md#event-extraction-and-deduplication)).
+
 | Column | Type | Required | Notes |
 |---|---|---|---|
-| `evento_id` | str | yes | Stable id. |
-| `fecha` | date | yes | |
+| `evento_id` | str | yes | Stable id: first 16 hex chars of SHA-1 of the event `fecha`, `ruta` and its sorted article URLs. |
+| `fecha` | date | yes | Publication date of the earliest merged article (closures are usually reported the same or next day). |
 | `hora` | str | no | |
 | `ruta` | `RN9` \| `RN52` \| `otra` | yes | |
 | `punto_id` | str | no | `puntos.id`. |
-| `km` | float | no | |
+| `km` | float | no | Only when the text says `km N`. |
 | `paraje` | str | no | Place name as reported. |
 | `causa` | `aluvion` \| `crecida` \| `nieve` \| `accidente` \| `protesta` \| `obra` \| `otro` | yes | |
 | `tipo_corte` | `total` \| `parcial` \| `precaucion` \| `desconocido` | yes | |
-| `duracion_horas` | float | no | |
+| `duracion_horas` | float | no | Not extracted yet (always null). |
 | `fuentes` | list[str] | yes | Article URLs merged into the event. |
 | `n_medios` | int | yes | Distinct outlets, excluding sources with `republica: true`. |
-| `metodo` | `reglas` \| `llm` | yes | |
-| `confianza` | `alta` \| `media` \| `baja` | yes | |
+| `metodo` | `reglas` \| `llm` | yes | Today always `reglas` (no LLM provider wired). |
+| `confianza` | `alta` \| `media` \| `baja` | yes | `alta`: point and a cause found; `media`: one of them; `baja`: no point and zero or several routes. |
 | `notas` | str | no | |
 
 ## `puntos` — critical points
@@ -173,6 +181,12 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 | Path | Content |
 |---|---|
 | `data/` | Gitignored: DuckDB file, Parquet exports, HTTP cache. |
+| `data/parquet/<table>.parquet` | One Parquet file per table, written by `corredor datos`. |
+| `data/snapshots/jama_estado.jsonl` | Local copy of the `data-snapshots` JSONL that `make datos` loads into `jama_estado`. |
+| `reports/calidad_catalogo.md` | `corredor reporte`: articles/events per source, year, route, cause and point; dedup ratio; 1 vs 2+ outlets; local-only events; WordPress-vs-sitemap recall check; share of events from `C_solo_ruta` pages; 20 random events. |
+| `reports/revision_manual.csv` | `corredor reporte`: 30 random events (seed 42) with headline and URL plus empty `ok_fecha`, `ok_punto`, `ok_causa`, `comentario` to fill by hand (`si`/`no`). Never overwritten once it has labels. |
+| `reports/precision.md` | `corredor precision`: precision per field from the labelled CSV. |
+| `reports/validacion.md` | `corredor calibrar`: threshold candidates per cause, absolute and per-cell percentile, train 2016–2022 / test 2023→, for all sources and for stable sources only. |
 | `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
 | `data/checkpoints/<source_id>.json` | Resumable collection state: `units` → `{status: ok\|empty\|missing\|error, updated_at, ...}` per month (sitemaps) or year (WordPress). See SCRAPING.md. |
 | `data/recoleccion/<source_id>.json` | Counts of the last `corredor recolectar` run of that source (`CollectionStats.as_dict()`). |

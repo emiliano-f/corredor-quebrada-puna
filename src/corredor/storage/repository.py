@@ -81,6 +81,8 @@ class UnknownTableError(KeyError):
 
 
 class Repository(Protocol):
+    def replace(self, table: str, rows: Sequence[Row]) -> int: ...
+
     def upsert(self, table: str, rows: Sequence[Row]) -> int: ...
 
     def read(self, table: str) -> pd.DataFrame: ...
@@ -113,10 +115,36 @@ class DuckDBRepository:
         ).fetchone()
         return bool(row and row[0])
 
+    def _migrate(self, table: str) -> None:
+        """Create the table, or add the model's columns it lacks (older SCHEMA_VERSION)."""
+        self._con.execute(create_table_sql(table))
+        have = {
+            row[0]
+            for row in self._con.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+                [table],
+            ).fetchall()
+        }
+        for name, fld in TABLE_MODELS[table].model_fields.items():
+            if name not in have:
+                self._con.execute(
+                    f"ALTER TABLE {_quote(table)} ADD COLUMN {_quote(name)} "
+                    f"{duckdb_type(fld.annotation)}"
+                )
+
+    def replace(self, table: str, rows: Sequence[Row]) -> int:
+        """Replace the whole table content atomically (derived tables such as `eventos`)."""
+        return self._write(table, rows, clear=True)
+
     def upsert(self, table: str, rows: Sequence[Row]) -> int:
         """Insert rows, replacing existing rows with the same primary key."""
+        return self._write(table, rows, clear=False)
+
+    def _write(self, table: str, rows: Sequence[Row], clear: bool) -> int:
         keys = self._keys(table)
         if not rows:
+            if clear and self._exists(table):
+                self._con.execute(f"DELETE FROM {_quote(table)}")  # noqa: S608 — allowlisted, quoted identifier
             return 0
         frame = _to_frame(rows).drop_duplicates(subset=list(keys), keep="last")
         qt = _quote(table)
@@ -125,7 +153,9 @@ class DuckDBRepository:
         try:
             self._con.execute("BEGIN TRANSACTION")
             try:
-                self._con.execute(create_table_sql(table))
+                self._migrate(table)
+                if clear:
+                    self._con.execute(f"DELETE FROM {qt}")  # noqa: S608 — allowlisted, quoted identifier
                 self._con.execute(
                     f"DELETE FROM {qt} WHERE ({cols}) IN (SELECT {cols} FROM incoming)"  # noqa: S608 — allowlisted identifiers
                 )

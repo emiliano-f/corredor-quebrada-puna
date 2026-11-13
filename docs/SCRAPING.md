@@ -58,6 +58,30 @@ Implemented in `src/corredor/extraction/patterns.py`:
 - Dates: sitemap `lastmod` is a modification date. Prefer `article:published_time`;
   otherwise mark `fecha_fuente = fallback`.
 
+## Event extraction and deduplication
+
+`corredor datos` turns `articulos` into `eventos` offline (no network):
+
+- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 1): text =
+  headline + lede + URL path. An article is an event only if it names the corridor
+  (`patterns.is_corridor`) and a closure or reopening (`is_closure` / `is_reopening`);
+  `patterns.NEGATIVES` (Corte Suprema, corte de luz, …) are removed first.
+  - `causa`: first matching group of `patterns.CAUSE_GROUPS` (aluvión/derrumbe → `aluvion`,
+    crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`.
+  - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de
+    Potrerillos; else `km N` → nearest point of that route within 5 km.
+  - `ruta`: the point's route, else the only route named, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).
+  - `tipo_corte`: `total` / `parcial` (media calzada, un carril, una mano, intermitente, demoras) / `precaucion`.
+- **LLM** (`extraction/llm.py`, optional): `LLMExtractor` sends only headline, lede and URL
+  between `<articulo>` delimiters as untrusted data, no tools, one call per article cached
+  under `cache_dir` by (prompt version, URL); output is validated with the
+  `ClosureEvent` schema and dropped if invalid. No provider is wired yet, so `datos` uses
+  rules only even if `LLM_API_KEY` is set.
+- **Dedup** (`extraction/dedup.py`): two mentions are the same event if same route, dates
+  within ±2 days, compatible cause (equal, or one is `otro`), and either the same point,
+  or (one has no point) a Jaccard similarity ≥ 0.5 of normalized headline tokens with at
+  least 5 tokens each. `n_medios` counts distinct outlets, excluding `republica: true`.
+
 ## Running a collection
 
 ```bash
