@@ -1,0 +1,94 @@
+name: Jama snapshot
+
+# Every 3 h: `corredor snapshot-jama` appends one line per source to
+# snapshots/jama_estado.jsonl on the orphan branch `data-snapshots` (never on main).
+# A failing source is recorded as a line with `error`; it does not fail the run.
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: jama-snapshot
+  cancel-in-progress: false
+
+env:
+  DATA_BRANCH: data-snapshots
+  DATA_DIR: data-branch
+  SNAPSHOT_FILE: snapshots/jama_estado.jsonl
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+
+      - name: Check out data branch (create it as an orphan if missing)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Token passed per process via GIT_CONFIG_* (never written to disk or the URL).
+          basic="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::${basic}"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic}"
+          git init -q "$DATA_DIR"
+          cd "$DATA_DIR"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          # Appends from two runs must never conflict: keep both sides' lines.
+          echo "snapshots/*.jsonl merge=union" >> .git/info/attributes
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH" >/dev/null; then
+            git fetch -q origin "$DATA_BRANCH"
+            git checkout -q -b "$DATA_BRANCH" FETCH_HEAD
+          else
+            echo "Branch $DATA_BRANCH not found: creating it as an orphan."
+            git checkout -q --orphan "$DATA_BRANCH"
+          fi
+
+      - name: Snapshot
+        run: uv run --frozen corredor snapshot-jama --salida "$DATA_DIR/$SNAPSHOT_FILE"
+
+      - name: Commit and push (fetch + rebase, one retry)
+        working-directory: ${{ env.DATA_DIR }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          basic="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::${basic}"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic}"
+          git add "$SNAPSHOT_FILE"
+          git commit -q -m "data: Jama snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          sync() {
+            if git ls-remote --exit-code --heads origin "$DATA_BRANCH" >/dev/null; then
+              git fetch -q origin "$DATA_BRANCH"
+              git rebase -q FETCH_HEAD
+            fi
+          }
+          push() { git push -q origin "HEAD:refs/heads/$DATA_BRANCH"; }
+          sync
+          if ! push; then
+            echo "Push rejected; retrying once after fetch + rebase."
+            sleep 10
+            sync
+            push
+          fi
+          git log -1 --format='%H %an <%ae>'
+          tail -n 2 "$SNAPSHOT_FILE"
