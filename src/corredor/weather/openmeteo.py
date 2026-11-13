@@ -37,6 +37,8 @@ WEATHER_COLUMNS = list(HOURLY_VARIABLES.values())
 # Archive data near today is still being produced (ERA5 lags ~5 days): when the cache is
 # extended, the last REFRESH_DAYS of the cached range are fetched again.
 REFRESH_DAYS = 7
+# A cached archive is reused for coordinates this close (one unit of the 5-decimal key).
+SAME_POINT_DEG = 1.5e-5
 FORECAST_PAST_HOURS = 7 * 24
 
 
@@ -342,17 +344,21 @@ class OpenMeteoClient:
     def _find_cached(
         self, point: CriticalPoint, model: str, start: date, end: date
     ) -> tuple[pd.DataFrame, date] | None:
+        """Best cached archive for the point, tolerating 5-decimal rounding noise (~1 m)."""
         folder = self._cache_folder("archivo", model)
-        prefix = f"{_coord(point.lat)}_{_coord(point.lon)}_"
         best: tuple[date, Path] | None = None
-        for path in folder.glob(f"{prefix}*.parquet") if folder.exists() else ():
+        for path in folder.glob("*.parquet") if folder.exists() else ():
             try:
-                c_start, c_end = (
-                    date.fromisoformat(x) for x in path.stem[len(prefix) :].split("_")
-                )
+                lat, lon, s_start, s_end = path.stem.split("_")
+                c_lat, c_lon = float(lat), float(lon)
+                c_start, c_end = date.fromisoformat(s_start), date.fromisoformat(s_end)
             except ValueError:
                 continue
-            if c_start <= start and (best is None or c_end > best[0]):
+            near = (
+                abs(c_lat - point.lat) <= SAME_POINT_DEG
+                and abs(c_lon - point.lon) <= SAME_POINT_DEG
+            )
+            if near and c_start <= start and (best is None or c_end > best[0]):
                 best = (c_end, path)
         if best is None or best[0] < start:
             return None

@@ -254,6 +254,17 @@ def test_http_cache_hits_bypass_an_exhausted_cap(tmp_path: Path) -> None:
     assert exhausted.ledger.used_today() == 3
 
 
+def test_archive_cache_tolerates_rounding_noise_only(tmp_path: Path, fetcher: FakeFetcher) -> None:
+    client = make(tmp_path, fetcher)
+    client.history(POINT, date(2016, 1, 1), date(2016, 1, 3))
+    nudged = POINT.model_copy(update={"lat": POINT.lat - 0.00001, "lon": POINT.lon + 0.00001})
+    client.history(nudged, date(2016, 1, 1), date(2016, 1, 3))
+    assert len(fetcher.urls) == 1
+    moved = POINT.model_copy(update={"lat": POINT.lat + 0.0004})
+    client.history(moved, date(2016, 1, 1), date(2016, 1, 3))
+    assert len(fetcher.urls) == 2
+
+
 def test_archive_cache_is_keyed_by_time_zone(tmp_path: Path, fetcher: FakeFetcher) -> None:
     make(tmp_path, fetcher).history(POINT, date(2016, 1, 1), date(2016, 1, 3))
     make(tmp_path, fetcher, zona_horaria="UTC").history(POINT, date(2016, 1, 1), date(2016, 1, 3))

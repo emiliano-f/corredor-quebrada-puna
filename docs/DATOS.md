@@ -94,7 +94,7 @@ run refreshes them).
 
 | Path | Content |
 |---|---|
-| `archivo/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Parquet cache of the archive, keyed by (model, timezone, lat, lon, date range) with 5-decimal coordinates; `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. A later run reuses it and only fetches the last 7 days plus the missing ones. |
+| `archivo/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Parquet cache of the archive, keyed by (model, timezone, lat, lon, date range) with 5-decimal coordinates (a cached archive is reused when both coordinates are within 0.000015°, about 1.5 m, so re-rounded coordinates do not trigger a new download); `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. A later run reuses it and only fetches the last 7 days plus the missing ones. |
 | `pronostico/<model>/<tz>/<lat>_<lon>_<from>_<to>.parquet` | Forecast cache (one per hour window): the last 7 days plus the next `hours`. |
 | `horario.parquet` | All points, hourly: `punto_id`, `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. |
 | `antecedentes.parquet` | One row per point and day: `punto_id`, `fecha` and the antecedent features below. |
