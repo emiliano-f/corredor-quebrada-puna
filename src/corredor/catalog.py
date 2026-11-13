@@ -229,12 +229,20 @@ def write_review(
         writer.writeheader()
         for e in sorted(sample, key=lambda e: (e.fecha, e.evento_id)):
             url = e.fuentes[0]
-            writer.writerow({
+            row = {
                 **{k: getattr(e, k) for k in REVIEW_COLUMNS[:11]},
                 "titular": refs[url].titular if url in refs else "",
                 "url": url,
-            })  # fmt: skip
+            }
+            writer.writerow({k: _cell(v) for k, v in row.items()})
     return True
+
+
+def _cell(value: object) -> object:
+    """Neutralise spreadsheet formulas in untrusted text (CSV injection)."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
 
 
 def read_labels(path: Path) -> dict[str, list[bool]]:

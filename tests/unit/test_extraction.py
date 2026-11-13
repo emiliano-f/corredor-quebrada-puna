@@ -170,3 +170,11 @@ def test_llm_valid_cached_and_delimited(tmp_path: Path) -> None:
 )  # fmt: skip
 def test_llm_invalid_output_dropped(tmp_path: Path, reply: str) -> None:
     assert LLMExtractor(FakeLLM(reply), tmp_path).extract(art("x")) == []
+
+
+def test_review_csv_neutralises_formulas(tmp_path: Path) -> None:
+    from corredor.catalog import write_review
+
+    path = tmp_path / "r.csv"
+    write_review([ev("1", 10, None, "u1")], {"u1": ArticleRef("a", '=HYPERLINK("x")')}, path)
+    assert "'=HYPERLINK" in path.read_text()
