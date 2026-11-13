@@ -28,7 +28,7 @@ def test_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(data["sources_hash"]) == 16
 
 
-@pytest.mark.parametrize("stage", ["datos", "calibrar", "precision", "reporte", "snapshot-jama"])
+@pytest.mark.parametrize("stage", ["datos", "calibrar", "precision", "reporte"])
 def test_unwired_stages_fail_clearly(stage: str) -> None:
     result = runner.invoke(app, [stage])
     assert result.exit_code == NOT_READY_EXIT
