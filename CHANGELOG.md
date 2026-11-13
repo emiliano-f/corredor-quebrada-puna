@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows
 - Jama snapshots store only allowlisted status/schedule/timestamp fields per source; other
   fields (e.g. MOP `CREATEDBY`/`RESPONSABLE` operator usernames) are dropped and only their
   names are logged. `JamaCollector.PARSER_VERSION` 1 → 2.
+- AGENTS.md rule 2: documented public APIs whose terms allow programmatic use (currently
+  Open-Meteo) may skip only the robots.txt check, host by host via `robots_exempt_hosts`,
+  with an ADR and the owner's approval.
 
 ### Added
 - Repository foundation: uv project (Python 3.11), typed models (`SCHEMA_VERSION = 1`),
