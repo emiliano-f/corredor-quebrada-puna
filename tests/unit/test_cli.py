@@ -49,3 +49,35 @@ def test_report_header() -> None:
     assert header.startswith("# Calidad")
     assert "abc123" in header
     assert "SCHEMA_VERSION 1" in header
+
+
+def test_clima_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from corredor import pipeline
+
+    from .test_openmeteo import FakeFetcher
+
+    class ClosableFetcher(FakeFetcher):
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(pipeline, "build_fetcher", lambda cfg, settings: ClosableFetcher())
+    args = ["clima", "--config", str(ROOT / "config.yaml"), "--hasta", "2016-01-08"]
+    result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert "Clima: 13/13 puntos, 104 días en clima_diario" in result.output
+    report = (tmp_path / "reports" / "clima_grilla.md").read_text()
+    assert "rn9_volcan" in report
+    assert (tmp_path / "data" / "clima" / "antecedentes.parquet").exists()
+
+
+def test_build_fetcher_passes_exemptions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from corredor.config import Settings, load_config
+    from corredor.pipeline import build_fetcher
+
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path))
+    fetcher = build_fetcher(load_config(ROOT / "config.yaml"), Settings())
+    assert fetcher.is_robots_exempt("https://archive-api.open-meteo.com/v1/archive")
+    assert not fetcher.is_robots_exempt("https://open-meteo.com/")
+    fetcher.close()

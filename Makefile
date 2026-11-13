@@ -1,4 +1,4 @@
-.PHONY: setup lint format typecheck test docs-check audit check geo snapshot-jama datos calibrar precision reporte tablero release tag
+.PHONY: setup lint format typecheck test docs-check audit check geo snapshot-jama clima datos calibrar precision reporte tablero release tag
 
 UV ?= uv
 BUMP ?=
@@ -35,6 +35,9 @@ geo:
 
 snapshot-jama:
 	$(UV) run corredor snapshot-jama
+
+clima:
+	$(UV) run corredor clima
 
 datos:
 	$(UV) run corredor manifest

@@ -94,3 +94,32 @@ def test_closure_event_validates_enums() -> None:
 
 def test_schema_version() -> None:
     assert SCHEMA_VERSION == 1
+
+
+def test_robots_exemptions_are_exactly_open_meteo(cfg: AppConfig) -> None:
+    hosts = {e.host for e in cfg.http.robots_exempt_hosts}
+    assert hosts == {
+        "archive-api.open-meteo.com",
+        "api.open-meteo.com",
+        "historical-forecast-api.open-meteo.com",
+    }
+    for e in cfg.http.robots_exempt_hosts:
+        assert e.motivo
+        assert str(e.terminos_url) == "https://open-meteo.com/en/terms"
+
+
+def test_robots_exemption_rejects_wildcards_and_duplicates(cfg: AppConfig) -> None:
+    raw = cfg.model_dump(mode="json")
+    entry = {"motivo": "x", "terminos_url": "https://open-meteo.com/en/terms"}
+    raw["http"]["robots_exempt_hosts"] = [{"host": "*.open-meteo.com", **entry}]
+    with pytest.raises(ValidationError, match="exact hostname"):
+        AppConfig.model_validate(raw)
+    raw["http"]["robots_exempt_hosts"] = [{"host": "a.example.org", **entry}] * 2
+    with pytest.raises(ValidationError, match="duplicated"):
+        AppConfig.model_validate(raw)
+
+
+def test_clima_config(cfg: AppConfig) -> None:
+    assert cfg.clima.desde == date(2016, 1, 1)
+    assert cfg.clima.max_llamadas_diarias == 500
+    assert cfg.clima.modelo_historico == "era5_seamless"

@@ -21,6 +21,7 @@ make check          # lint, tipos, tests, docs-check y auditoría de dependencia
 uv run corredor --version
 uv run corredor manifest   # escribe data/manifest.json
 make snapshot-jama  # agrega el estado actual del Paso de Jama a snapshots/jama_estado.jsonl
+make clima          # clima horario de Open-Meteo 2016→hoy por punto + antecedentes
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
@@ -28,8 +29,12 @@ con un workflow de GitHub Actions en la rama `data-snapshots`. Ninguna de las do
 tiene historial: los datos empiezan el día en que arrancó el colector.
 
 Etapas (una por target de Make): `make geo` (rutas, Tren Solar y puntos críticos desde
-OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make datos`, `make calibrar`, `make precision`,
-`make reporte`. `make tablero` queda para el día 2.
+OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make clima`, `make datos`, `make calibrar`,
+`make precision`, `make reporte`. `make tablero` queda para el día 2.
+
+`make clima` respeta el tope diario de llamadas a Open-Meteo (`clima.max_llamadas_diarias`
+en `config.yaml`, 500 por defecto): si lo alcanza, se detiene con un aviso y la corrida
+siguiente sigue desde la caché.
 
 La configuración vive en [`config.yaml`](config.yaml) (puntos críticos y fuentes). Ninguna
 etapa necesita claves; la extracción con LLM es opcional y solo se activa con la variable
@@ -68,5 +73,22 @@ de entorno `LLM_API_KEY`.
   sobre la geometría de OSM: en RN 9 se calibran con hitos kilométricos cercanos a San
   Salvador de Jujuy y hacia el norte son extrapolados; en RN 52 el km 0 es el empalme con
   RN 9 (supuesto). Pueden diferir de la progresiva oficial de Vialidad Nacional.
-- **Clima de grilla:** Open-Meteo devuelve valores de una celda de grilla cuya elevación
-  puede diferir de la del punto real, sobre todo en la Puna.
+- **Clima de grilla, no de estación:** el histórico es reanálisis ERA5 (modelo
+  `era5_seamless` de Open-Meteo), no mediciones en el punto. La lluvia y la nieve salen de
+  celdas de 0,25° (~28 km) y la temperatura de celdas de 0,1° (~11 km).
+- **Elevación de la celda distinta a la del punto:** en la Quebrada la celda de lluvia
+  está entre 450 y 1.200 m más alta que la ruta (por ejemplo Tumbaya: +1.196 m), porque
+  promedia las laderas y cumbres vecinas; en la Puna la diferencia baja a decenas de
+  metros. La temperatura se corrige por altura, la lluvia no.
+- **Puntos que comparten celda:** varios puntos tienen la misma serie de lluvia y nieve
+  (Volcán y Cuesta de Bárcena; Tumbaya, Purmamarca y Lipán bajo; Maimará y Tilcara;
+  Abra de Potrerillos y Ronqui Angosto), así que el clima no los distingue. El detalle por
+  punto está en `reports/clima_grilla.md` y en [docs/DATOS.md](docs/DATOS.md).
+- **Cantidad de lluvia sesgada:** ERA5 sobreestima la lluvia en las laderas andinas (en
+  la celda de Volcán da unos 2.000 mm por año, contra unos 1.170 mm del modelo IFS de
+  9 km en 2024); los umbrales se calibran contra los cortes, no se leen como milímetros
+  reales.
+- **Últimos días sin dato:** ERA5 se publica con unos 5 días de demora; esos días quedan
+  vacíos en el histórico (para el presente se usa el pronóstico).
+- **Uso no comercial:** la API gratuita de Open-Meteo permite solo uso no comercial y
+  exige atribución (CC BY 4.0).

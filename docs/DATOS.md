@@ -81,6 +81,70 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 | `temp_max_c`, `temp_min_c` | float | no | |
 | `precip_max_horaria_mm` | float | no | |
 
+Source: Open-Meteo Historical Weather API (`OpenMeteoClient.history`, model
+`clima.modelo_historico`, default `era5_seamless`), hourly values in local time
+(`America/Argentina/Jujuy`, UTC−3) aggregated per calendar day by
+`weather.features.daily_weather`: `precipitacion_mm` and `nieve_cm` are daily sums
+(mm, cm of fresh snow), `temp_max_c`/`temp_min_c` the hourly 2 m extremes (°C) and
+`precip_max_horaria_mm` the wettest hour (mm). A day with any missing hour gets null
+values (ERA5 lags about 5 days behind today, so the last days are null until a later
+run refreshes them).
+
+## Weather files (`data/clima/`, not tables yet)
+
+| Path | Content |
+|---|---|
+| `archivo/<model>/<lat>_<lon>_<start>_<end>.parquet` | Parquet cache of the archive, keyed by (lat, lon, date range) with 5-decimal coordinates; `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. A later run reuses it and only fetches the last 7 days plus the missing ones. |
+| `pronostico/<model>/<lat>_<lon>_<from>_<to>.parquet` | Forecast cache (one per hour window): the last 7 days plus the next `hours`. |
+| `horario.parquet` | All points, hourly: `punto_id`, `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. |
+| `antecedentes.parquet` | One row per point and day: `punto_id`, `fecha` and the antecedent features below. |
+| `grilla.parquet` | One row per point and grid model: `punto_id`, `modelo`, `lat_grilla`, `lon_grilla`, `elev_grilla_m`, `elev_punto_m`, `diferencia_m`, `comparte_celda_con`. |
+| `llamadas_openmeteo.json` | Weighted Open-Meteo calls per UTC day (last 7 days) for the daily cap (ADR 0002). |
+
+Antecedent features (`weather.features.antecedent_features`), windows ending at the end
+of `fecha` (23:00–24:00 local hour included); a window with any missing hour is NaN,
+never zero:
+
+| Column | Unit | Window |
+|---|---|---|
+| `lluvia_24h_mm`, `lluvia_48h_mm`, `lluvia_72h_mm`, `lluvia_7d_mm` | mm | 24 h, 48 h, 72 h, 7 days (sum) |
+| `lluvia_max_horaria_24h_mm`, `lluvia_max_horaria_72h_mm` | mm/h | wettest hour in 24 h / 72 h |
+| `nieve_24h_cm`, `nieve_72h_cm`, `nieve_7d_cm` | cm | fresh snowfall sum |
+
+### Model, grid cell and elevation per point
+
+`era5_seamless` combines ERA5 (0.25°, about 28 km) and ERA5-Land (0.1°, about 11 km):
+precipitation and snowfall come from ERA5 (ERA5-Land returns no precipitation through
+Open-Meteo), 2 m temperature from ERA5-Land, downscaled by Open-Meteo to the point
+elevation of its 90 m DEM (Copernicus GLO-90). `OpenMeteoClient.grid_cells` records,
+per model in `clima.modelos_grilla`, the cell centre and the cell elevation
+(`elevation=nan`, downscaling off) vs that point elevation. The generated table is
+`reports/clima_grilla.md`; snapshot of 2026-11-13 for the provisional points of
+`config.yaml` (cells change if Child C moves a point):
+
+| Point | ERA5 cell (precip., snow) | ERA5 cell elev. − point (m) | ERA5-Land cell (temp.) | ERA5-Land cell elev. − point (m) | Point elev. (m) |
+|---|---|---:|---|---:|---:|
+| `rn9_volcan` | −24.00, −65.50 (A) | +822 | −23.90, −65.50 (a) | +838 | 2079 |
+| `rn9_cuesta_barcena` | −24.00, −65.50 (A) | +917 | −24.00, −65.50 | +704 | 1984 |
+| `rn9_tumbaya` | −23.75, −65.50 (B) | +1196 | −23.90, −65.50 (a) | +822 | 2095 |
+| `rn9_maimara` | −23.50, −65.50 (C) | +1189 | −23.60, −65.40 (b) | +1025 | 2395 |
+| `rn9_tilcara` | −23.50, −65.50 (C) | +1112 | −23.60, −65.40 (b) | +948 | 2472 |
+| `rn9_huacalera` | −23.50, −65.25 | +450 | −23.40, −65.40 | +749 | 2656 |
+| `rn52_purmamarca_chalala` | −23.75, −65.50 (B) | +863 | −23.70, −65.50 (c) | +738 | 2428 |
+| `rn52_lipan_bajo` | −23.75, −65.50 (B) | +674 | −23.70, −65.50 (c) | +549 | 2617 |
+| `rn52_abra_potrerillos` | −23.75, −65.75 (D) | −349 | −23.70, −65.70 (d) | −328 | 4204 |
+| `rn52_ronqui_angosto` | −23.75, −65.75 (D) | +145 | −23.70, −65.70 (d) | +166 | 3710 |
+| `rn52_salinas_grandes` | −23.50, −66.00 | +86 | −23.60, −65.90 | −1 | 3407 |
+| `rn52_susques` | −23.50, −66.25 | +31 | −23.40, −66.40 | +250 | 3608 |
+| `rn52_paso_jama` | −23.25, −67.00 | +36 | −23.20, −67.10 | −9 | 4281 |
+
+Shared cells (same letter): ERA5 A = Volcán + Cuesta de Bárcena; B = Tumbaya +
+Purmamarca/Chalala + Lipán bajo (RN 9 and RN 52 get the same rain); C = Maimará +
+Tilcara; D = Abra de Potrerillos + Ronqui Angosto. ERA5-Land a = Volcán + Tumbaya;
+b = Maimará + Tilcara; c = Purmamarca/Chalala + Lipán bajo; d = Abra de Potrerillos +
+Ronqui Angosto. Points in a shared ERA5 cell have identical precipitation and snowfall
+series, so they cannot be told apart by rain.
+
 ## `jama_estado` — Paso de Jama status snapshots
 
 | Column | Type | Required | Notes |
@@ -145,3 +209,4 @@ How lines and km are built (`src/corredor/geo/routes.py`):
   centre of the salt flat): the Olaroz operation itself is not mapped in OSM as a named
   object, so its plant location is not shown.
 
+| `reports/clima_grilla.md` | Model, grid cell, cell vs point elevation and shared cells per point (`corredor clima`). |

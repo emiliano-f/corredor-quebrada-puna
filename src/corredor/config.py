@@ -8,10 +8,26 @@ from datetime import date
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from corredor.http import validate_hostname
 from corredor.models import CriticalPoint, SourceConfig
+
+
+class RobotsExemption(BaseModel):
+    """A documented public API host whose robots.txt targets crawlers (ADR 0002)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    host: str
+    motivo: str = Field(min_length=1)
+    terminos_url: HttpUrl
+
+    @field_validator("host")
+    @classmethod
+    def _exact_host(cls, value: str) -> str:
+        return validate_hostname(value)
 
 
 class HttpConfig(BaseModel):
@@ -23,6 +39,15 @@ class HttpConfig(BaseModel):
     retries: int = Field(default=3, ge=0)
     robots_ttl_h: float = 24.0
     not_found_ttl_h: float = 24.0
+    robots_exempt_hosts: list[RobotsExemption] = Field(default_factory=list)
+
+    @field_validator("robots_exempt_hosts")
+    @classmethod
+    def _unique_hosts(cls, value: list[RobotsExemption]) -> list[RobotsExemption]:
+        hosts = [e.host for e in value]
+        if len(hosts) != len(set(hosts)):
+            raise ValueError("robots_exempt_hosts: duplicated host")
+        return value
 
 
 class BackfillConfig(BaseModel):
@@ -33,11 +58,30 @@ class BackfillConfig(BaseModel):
     muestra_sitemaps: list[str] = Field(default_factory=list)
 
 
+class ClimaConfig(BaseModel):
+    """Open-Meteo settings (free tier: non-commercial, CC BY 4.0)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    desde: date = date(2016, 1, 1)
+    zona_horaria: str = "America/Argentina/Jujuy"
+    modelo_historico: str = "era5_seamless"
+    modelo_pronostico: str = "best_match"
+    # Cells recorded per point: era5 = precipitation/snowfall grid, era5_land = temperature.
+    modelos_grilla: list[str] = Field(default_factory=lambda: ["era5", "era5_land"])
+    # Weighted Open-Meteo calls per UTC day; the client stops with an error above it.
+    max_llamadas_diarias: float = Field(default=500, gt=0, lt=10_000)
+    archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
+    forecast_url: str = "https://api.open-meteo.com/v1/forecast"
+    elevation_url: str = "https://api.open-meteo.com/v1/elevation"
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     http: HttpConfig
     backfill: BackfillConfig = Field(default_factory=BackfillConfig)
+    clima: ClimaConfig = Field(default_factory=ClimaConfig)
     puntos: list[CriticalPoint]
     fuentes: list[SourceConfig]
 
