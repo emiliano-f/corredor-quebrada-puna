@@ -187,3 +187,15 @@ def test_llm_cache_tracks_metadata(tmp_path: Path) -> None:
     llm.extract(art("Ruta 52 cortada"))
     llm.extract(art("Ruta 52 habilitada"))
     assert len(client.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "titular", ["Un derrumbe cortó la ruta 9 en Volcán", "Se cortó el tránsito en Volcán"]
+)
+def test_rules_corto(rules: RuleBasedExtractor, titular: str) -> None:
+    (event,) = rules.extract(art(titular))
+    assert event.punto_id == "rn9_volcan"
+
+
+def test_rules_corto_plazo_is_not_a_closure(rules: RuleBasedExtractor) -> None:
+    assert rules.extract(art("A corto plazo, obras en Volcán")) == []
