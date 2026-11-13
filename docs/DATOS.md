@@ -3,8 +3,9 @@
 Pydantic models in `src/corredor/models.py` define every row. `SCHEMA_VERSION` (currently
 **1**) is bumped once per release on any table/column change. Tables live in DuckDB
 (`DuckDBRepository`, `src/corredor/storage/repository.py`) and are exported to Parquet
-(one file per table). Only allowlisted tables can be written; upserts replace rows with
-the same key.
+(one file per table). Only allowlisted tables can be written. Column types come from the
+models (`TABLE_MODELS`), not from the first batch; an upsert replaces rows with the same
+key inside one transaction, so a failed upsert leaves the table unchanged.
 
 | Table | Model | Key |
 |---|---|---|

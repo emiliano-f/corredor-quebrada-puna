@@ -6,13 +6,17 @@ never goes into SQL strings — rows are passed as a registered DataFrame.
 
 from __future__ import annotations
 
+import types
 from collections.abc import Mapping, Sequence
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol, Union, get_args, get_origin
 
 import duckdb
 import pandas as pd
 from pydantic import BaseModel
+
+from corredor.models import Article, ClosureEvent, CriticalPoint, JamaEstado, WeatherDay
 
 # Primary key per table. Adding a table = adding it here + documenting it in docs/DATOS.md.
 TABLE_KEYS: dict[str, tuple[str, ...]] = {
@@ -23,7 +27,53 @@ TABLE_KEYS: dict[str, tuple[str, ...]] = {
     "jama_estado": ("fuente", "fetched_at"),
 }
 
+TABLE_MODELS: dict[str, type[BaseModel]] = {
+    "articulos": Article,
+    "eventos": ClosureEvent,
+    "puntos": CriticalPoint,
+    "clima_diario": WeatherDay,
+    "jama_estado": JamaEstado,
+}
+
 Row = BaseModel | Mapping[str, Any]
+
+_SCALAR_TYPES: dict[type, str] = {
+    str: "VARCHAR",
+    int: "BIGINT",
+    float: "DOUBLE",
+    bool: "BOOLEAN",
+    date: "DATE",
+    datetime: "TIMESTAMPTZ",
+}
+
+
+def duckdb_type(annotation: Any) -> str:
+    """DuckDB column type for a pydantic field annotation (Optional is unwrapped)."""
+    origin = get_origin(annotation)
+    if origin in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) == 1:
+            return duckdb_type(args[0])
+        return "VARCHAR"
+    if origin is Literal:
+        values = get_args(annotation)
+        return "BIGINT" if all(isinstance(v, int) for v in values) else "VARCHAR"
+    if origin is list:
+        (inner,) = get_args(annotation)
+        return duckdb_type(inner) + "[]"
+    for py_type, sql in _SCALAR_TYPES.items():
+        if annotation is py_type:
+            return sql
+    return "VARCHAR"
+
+
+def create_table_sql(table: str) -> str:
+    model = TABLE_MODELS[table]
+    cols = ", ".join(
+        f"{_quote(name)} {duckdb_type(field.annotation)}"
+        for name, field in model.model_fields.items()
+    )
+    return f"CREATE TABLE IF NOT EXISTS {_quote(table)} ({cols})"
 
 
 class UnknownTableError(KeyError):
@@ -37,7 +87,7 @@ class Repository(Protocol):
 
 
 def _to_frame(rows: Sequence[Row]) -> pd.DataFrame:
-    records = [r.model_dump(mode="json") if isinstance(r, BaseModel) else dict(r) for r in rows]
+    records = [r.model_dump() if isinstance(r, BaseModel) else dict(r) for r in rows]
     return pd.DataFrame.from_records(records)
 
 
@@ -70,16 +120,20 @@ class DuckDBRepository:
             return 0
         frame = _to_frame(rows).drop_duplicates(subset=list(keys), keep="last")
         qt = _quote(table)
+        cols = ", ".join(_quote(k) for k in keys)
         self._con.register("incoming", frame)
         try:
-            if not self._exists(table):
-                self._con.execute(f"CREATE TABLE {qt} AS SELECT * FROM incoming")  # noqa: S608 — allowlisted, quoted identifier
-            else:
-                cols = ", ".join(_quote(k) for k in keys)
+            self._con.execute("BEGIN TRANSACTION")
+            try:
+                self._con.execute(create_table_sql(table))
                 self._con.execute(
                     f"DELETE FROM {qt} WHERE ({cols}) IN (SELECT {cols} FROM incoming)"  # noqa: S608 — allowlisted identifiers
                 )
                 self._con.execute(f"INSERT INTO {qt} BY NAME SELECT * FROM incoming")  # noqa: S608 — allowlisted, quoted identifier
+            except Exception:
+                self._con.execute("ROLLBACK")
+                raise
+            self._con.execute("COMMIT")
         finally:
             self._con.unregister("incoming")
         return len(frame)
