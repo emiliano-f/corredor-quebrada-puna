@@ -48,6 +48,7 @@ CLOSURE: Final = _rx(
     r"|cierres?|cierra\w*|cerr(?:aron|aran|ado|ada|ados|adas|ar|ara|arian)"
     r"|interrump\w*|interrupci\w*|intransitables?|inhabilitad[ao]s?|desvios?"
     r"|bloque(?:o|ada|ado|an|aron)|clausur\w*"
+    r"|(?:ruta|rn|transito|paso|camino|circulacion)(?: nacional)?(?: \d+)? se corto"
     r"|corto(?= (?:la ruta|el transito|el paso|la circulacion|el camino)))\b"
 )
 RAW_CERRO: Final = re.compile(r"\bcerró\b")

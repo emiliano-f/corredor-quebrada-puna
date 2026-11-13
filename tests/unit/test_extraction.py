@@ -190,7 +190,12 @@ def test_llm_cache_tracks_metadata(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "titular", ["Un derrumbe cortó la ruta 9 en Volcán", "Se cortó el tránsito en Volcán"]
+    "titular",
+    [
+        "Un derrumbe cortó la ruta 9 en Volcán",
+        "Se cortó el tránsito en Volcán",
+        "La ruta 9 se cortó en Volcán",
+    ],
 )
 def test_rules_corto(rules: RuleBasedExtractor, titular: str) -> None:
     (event,) = rules.extract(art(titular))
