@@ -68,7 +68,8 @@ Implemented in `src/corredor/extraction/patterns.py`:
   (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
   tránsito, calzada, circulación, Paso de Jama, km N… — or directly followed by "en/entre
   <corridor place>", or is "intransitable"); `patterns.NEGATIVES` (Corte Suprema, corte de
-  luz, interrupción del servicio, …) are removed first. Disabled sources never count as
+  luz, …) are removed first, and `patterns.SERVICE_CUT` (interrupción del servicio/energía,
+  extraction only, so the source filters are unchanged). Disabled sources never count as
   stable in `validacion.md`.
   - `causa`: first matching group of `patterns.CAUSE_GROUPS` (aluvión/derrumbe → `aluvion`,
     crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`.

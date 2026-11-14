@@ -78,7 +78,6 @@ NEGATIVES: Final = _rx(
     r"|inscripcion\w*|ejercicio|edicion|carnaval|mes)\b"
     r"|\bvolcan(?:es)? (?:de fuego|lascar|villarrica|etna|popocatepetl|osorno|calbuco"
     r"|llaima|copahue|hunga|kilauea|taal)\b"
-    r"|\binterrupci\w* (?:del? |de la )?(?:servicio|suministro|energia|luz|agua)\b"
     r"|\bministerio de (?:infraestructura|obras publicas)\b"
     r"|\bobras? (?:publicas|sociales?|de teatro|de arte)\b"
 )
@@ -126,11 +125,15 @@ AT_PLACE: Final = _rx(
     r" (?:(?:total|parcial)(?:mente)? )?(?:en|entre|a la altura de|hacia) " + PLACE.pattern[2:]
 )
 ROAD_WINDOW: Final = 60
+# Extraction-only negatives (kept out of NEGATIVES so the source filters don't change).
+SERVICE_CUT: Final = _rx(
+    r"\binterrupci\w* (?:del? |de la )?(?:servicio|suministro|energia|luz|agua)\b"
+)
 
 
 def is_road_closure(text: str) -> bool:
     """A closure/reopening term within ROAD_WINDOW characters of a road word, or at a place."""
-    cleaned = _clean(text)
+    cleaned = SERVICE_CUT.sub(" ", _clean(text))
     for rx in (CLOSURE, REOPENING):
         for m in rx.finditer(cleaned):
             if m.group(0).startswith("intransitab") or AT_PLACE.match(cleaned, m.end()):
