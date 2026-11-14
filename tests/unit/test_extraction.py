@@ -500,6 +500,7 @@ def test_rules_per_route_any_abbreviation_before_route_number(rules: RuleBasedEx
     ("titular", "expected"),
     [
         ("Ruta 9 cortada por nieve, circular por ruta 52", {"RN9"}),
+        ("No circular por la ruta 52: corte total por derrumbe", {"RN52"}),
         ("Corte total en ruta 52 por alud: desvío por la ruta 9", {"RN52"}),
         ("Ruta 9 cortada por un alud: usar la ruta nacional 52", {"RN9"}),
         ("Piden circular con precaución por la ruta 9 y la ruta 52 cortada", {"RN9", "RN52"}),

@@ -56,7 +56,7 @@ RAW_CERRO: Final = re.compile(r"\bcerró\b")
 # A suggested alternate route ("circular por ruta 52", "desvío por la ruta 9", "usar la
 # ruta 52") is not a closure of that route; "circular con precaución por la ruta 9" is.
 ALT_ROUTE: Final = _rx(
-    r"\b(?:(?:circular|circulen|desvios?|desviad[ao]s?|desvian|alternativa)"
+    r"\b(?<!\bno )(?:(?:circular|circulen|desvios?|desviad[ao]s?|desvian|alternativa)"
     r" (?:por|a traves de|via)|usar|utilizar|tomar) (?:(?:la|el) )?(?:ruta (?:nacional |nac\.? )?"
     + _ROUTE_NUM_PREFIX
     + r"(?:9|52)|rn ?(?:9|52))(?![\d])(?! con precaucion)"
