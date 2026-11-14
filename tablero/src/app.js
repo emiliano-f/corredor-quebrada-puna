@@ -24,6 +24,22 @@
   };
   const HORIZ = { hoy: "Hoy (hasta ahora)", "24h": "Próximas 24 h", "72h": "Próximas 72 h" };
   const JAMA = { mop_cl: "MOP Chile (lado chileno)", argentina_gob_ar: "argentina.gob.ar (lado argentino)" };
+  const CAMPO = {
+    id: "Identificador", nombre_paso: "Paso", estado_prioridad: "Estado del paso", estado_vialidad: "Estado de la ruta",
+    fecha_schema: "Horario de atención", fecha_schema_cancilleria: "Horario (Cancillería)", fecha_hora_consulta: "Consultado",
+    OBJECTID: "Identificador", TRANSITABILIDAD: "Transitabilidad", ESTADOTIEMPO: "Tiempo", ESTADOCALZADA: "Calzada",
+    CADENAS: "Cadenas", RESTRICCIONES: "Restricciones", HABILITADO: "Habilitado", ESTADOINFORME: "Informe",
+    FECHA: "Fecha del informe", HORA: "Hora del informe", ADESDE: "Abierto desde", AHASTA: "Abierto hasta",
+  };
+  const DIAS = { Mo: "lun", Tu: "mar", We: "mié", Th: "jue", Fr: "vie", Sa: "sáb", Su: "dom" };
+  function valorJama(v) {
+    if (v === null || v === undefined) return "sin dato";
+    return String(v).replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/g, (d) => DIAS[d]).replace(/(\p{L}{3})-(\p{L}{3})/gu, "$1 a $2");
+  }
+  function tablaJama(rec) {
+    return el("table", { class: "tabla" }, el("tbody", {}, ...Object.entries(rec).map(([k, v]) =>
+      el("tr", {}, el("td", {}, CAMPO[k] || k), el("td", {}, valorJama(v))))));
+  }
   const COLOR = { alerta: "#b00020", sin_alerta: "#1b6e35" };
   const ORDEN = ["alerta", "sin_datos", "sin_alerta", "no_comparable"];
 
@@ -183,12 +199,10 @@
       out.push(el("h3", {}, JAMA[u.fuente] || u.fuente));
       out.push(el("p", {}, el("strong", {}, u.estado), ` · capturado ${u.fetched_at} (hace ${u.horas} h al generar)` + (u.vieja ? " · VIEJO" : "")));
       if (u.error) out.push(el("p", { class: "aviso" }, "Error de la captura: " + u.error));
-      const rows = Object.entries(u.campos).map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, v === null ? "sin dato" : v)));
-      if (rows.length) out.push(el("table", { class: "tabla" }, el("tbody", {}, ...rows)));
+      if (Object.keys(u.campos).length) out.push(tablaJama(u.campos));
       for (const o of u.otros || []) {
         out.push(el("p", {}, el("strong", {}, o.nombre_paso || "Otro registro")));
-        out.push(el("table", { class: "tabla" }, el("tbody", {}, ...Object.entries(o).map(([k, v]) =>
-          el("tr", {}, el("td", {}, k), el("td", {}, v === null ? "sin dato" : v))))));
+        out.push(tablaJama(o));
       }
     }
     out.push(el("h3", {}, "Últimos 7 días"));
