@@ -101,8 +101,12 @@ PROTEST_ACTORS: Final = _rx(
     r"\b(?:comunidad(?:es)?(?! educativ)|comuneros?|vecin[ao]s|manifestantes|docentes|trabajadores"
     r"|gremio(?:s|ales)?|autoconvocad[ao]s)\b"
 )
-# Actors stranded by the cut ("docentes varados por el corte") are not protesters.
+# Actors stranded by the cut ("docentes varados por el corte", "dejó varados a docentes")
+# are not protesters.
 _STRANDED: Final = r"(?: \w+){0,5} (?:varad\w*|quedaron|evacuad\w*|afectad\w*|damnificad\w*)"
+_STRANDED_BEFORE: Final = re.compile(
+    r"\b(?:varad\w*|evacuad\w*|afectad\w*|damnificad\w*)(?: \w+){0,2} $"
+)
 
 
 def is_protest_cut(normalized: str) -> bool:
@@ -110,7 +114,9 @@ def is_protest_cut(normalized: str) -> bool:
     if not PROTEST_CUT.search(normalized):
         return False
     return any(
-        not re.match(_STRANDED, normalized[m.end() :]) for m in PROTEST_ACTORS.finditer(normalized)
+        not re.match(_STRANDED, normalized[m.end() :])
+        and not _STRANDED_BEFORE.search(normalized[max(0, m.start() - 60) : m.start()])
+        for m in PROTEST_ACTORS.finditer(normalized)
     )
 
 
