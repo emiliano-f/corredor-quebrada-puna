@@ -348,7 +348,10 @@ def refresh_labels(path: Path, events: Sequence[ClosureEvent]) -> list[dict[str,
         evs = by_url.get(row.get("url") or "", [])
         if corte(row) != "si" or not evs:
             continue
-        same = [e for e in evs if (e.punto_id or "") == (row.get("punto_id") or "")]
+        key = ((row.get("punto_id") or ""), row.get("ruta") or "")
+        same = [e for e in evs if ((e.punto_id or ""), e.ruta) == key] or [
+            e for e in evs if (e.punto_id or "") == key[0]
+        ]
         ev = (same or evs)[0]
         diffs = []
         for label, field in BASIS.items():
