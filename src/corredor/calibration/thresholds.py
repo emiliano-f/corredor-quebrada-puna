@@ -59,6 +59,14 @@ def season(month: int) -> str:
     ]
 
 
+def percentile_of(clim: np.ndarray, vals: np.ndarray) -> np.ndarray:
+    """Mid-rank percentile (0–100) of each value within the sorted climatology; NaN stays NaN."""
+    less = np.searchsorted(clim, vals, side="left")
+    equal = np.searchsorted(clim, vals, side="right") - less
+    pct = (less + 0.5 * equal) / clim.size * 100.0
+    return np.where(np.isnan(vals), np.nan, pct)
+
+
 def unit_of(feature: str) -> str:
     return "cm" if feature.endswith("_cm") else "mm"
 
@@ -89,11 +97,7 @@ class ThresholdCalibrator:
                 clim = np.sort(group[clim_mask.loc[idx]].dropna().to_numpy())
                 if clim.size == 0:
                     continue
-                vals = group.to_numpy(dtype=float)
-                less = np.searchsorted(clim, vals, side="left")
-                equal = np.searchsorted(clim, vals, side="right") - less
-                pct = (less + 0.5 * equal) / clim.size * 100.0
-                out.loc[idx] = np.where(np.isnan(vals), np.nan, pct)
+                out.loc[idx] = percentile_of(clim, group.to_numpy(dtype=float))
             df[feature + PCT_SUFFIX] = out
         return df
 
