@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Dashboard: weather-only points (`solo_clima`, e.g. `ch27_alto`) are left out of the map, the point list and the forecast download.
 - `make tablero`: offline dashboard data layer in `tablero/dist/` (single `index.html`, bare
   unstyled views until the design brief, SVG map from `assets/geo`, no external resources, CSP
   with hashes, service worker, geolocation → nearest critical point; events read through

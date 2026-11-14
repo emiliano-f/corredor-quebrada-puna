@@ -25,6 +25,7 @@ from corredor.tablero.bundle import (
     markdown_blocks,
     nearest_point,
     read_geo,
+    risk_points,
 )
 from corredor.tablero.forecast import Climatologia, evaluar, fetch_forecasts, riesgo_punto
 from corredor.tablero.site import render, safe_json, write_site
@@ -110,7 +111,7 @@ def test_bundle_header_and_schema(cfg: AppConfig) -> None:
     assert (h["version"], h["git_commit"], h["schema_version"]) == ("0.1.0", "abc1234", 2)
     assert h["generado"] == "2026-11-14 09:00"
     assert h["pronostico_hora"] == "2026-11-14 09:00"
-    assert len(b["puntos"]) == len(cfg.puntos)
+    assert len(b["puntos"]) == len(risk_points(cfg))
     p0 = b["puntos"][0]
     assert p0["eventos"] == 1
     assert p0["celda"]["comparte_con"] == [cfg.puntos[1].id]
@@ -342,3 +343,11 @@ def test_nearest_point_in_browser_matches_python(cfg: AppConfig, tmp_path: Path)
     ).stdout  # fmt: skip
     assert f"{name} (" in dom
     assert f"a {km:.1f} km" in dom
+
+
+def test_weather_only_points_are_not_on_the_map(cfg: AppConfig) -> None:
+    solo = {p.id for p in cfg.puntos if p.solo_clima}
+    assert solo  # ch27_alto in config.yaml
+    b = build_bundle(inputs(cfg, geo=read_geo(ROOT / "assets" / "geo")))
+    assert not solo & {p["id"] for p in b["puntos"]}
+    assert not solo & {lu["id"] for lu in b["mapa"]["lugares"]}

@@ -59,6 +59,11 @@ class BundleInputs:
     now: datetime
 
 
+def risk_points(cfg: AppConfig) -> list[CriticalPoint]:
+    """Points shown on the dashboard: weather-only points (`solo_clima`) are left out."""
+    return [p for p in cfg.puntos if not p.solo_clima]
+
+
 def local_iso(ts: datetime) -> str:
     return (ts.astimezone(UTC) + LOCAL_OFFSET).strftime("%Y-%m-%d %H:%M")
 
@@ -122,8 +127,8 @@ def geo_layers(geo: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     lugares = []
     for name in ("contexto", "puntos"):
         for f in geo.get(name, {}).get("features", []):
-            if f["geometry"]["type"] != "Point":
-                continue
+            if f["geometry"]["type"] != "Point" or f["properties"].get("solo_clima"):
+                continue  # weather-only points are not risk points on the map
             x, y = proj.xy(*f["geometry"]["coordinates"][:2])
             p = f["properties"]
             lugares.append({"capa": name, "id": p.get("id", ""), "tipo": p.get("tipo", "punto"),
@@ -305,7 +310,7 @@ def build_bundle(inp: BundleInputs) -> dict[str, Any]:
     cells = _cells(inp.grilla)
     umbrales = [u.model_dump() | {"es_percentil": u.es_percentil} for u in cfg.umbrales_elegidos]
     puntos = []
-    for p in cfg.puntos:
+    for p in risk_points(cfg):
         fc = inp.pronostico.get(p.id)
         puntos.append(
             {

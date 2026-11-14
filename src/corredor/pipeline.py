@@ -418,7 +418,13 @@ def tablero(
     """Arma tablero/dist/: sitio estático sin conexión con el paquete de datos embebido."""
     from datetime import UTC, datetime, timedelta
 
-    from corredor.tablero.bundle import BundleInputs, build_bundle, markdown_blocks, read_geo
+    from corredor.tablero.bundle import (
+        BundleInputs,
+        build_bundle,
+        markdown_blocks,
+        read_geo,
+        risk_points,
+    )
     from corredor.tablero.forecast import fetch_forecasts
     from corredor.tablero.site import DIST_DIR, SIZE_BUDGET, write_site
     from corredor.weather.openmeteo import OpenMeteoClient
@@ -447,7 +453,7 @@ def tablero(
         client = OpenMeteoClient(fetcher, settings.data_dir / "clima", cfg.clima)
         try:
             pronostico = fetch_forecasts(
-                client, cfg.puntos, cfg.umbrales_elegidos, model=cfg.clima.modelo_pronostico,
+                client, risk_points(cfg), cfg.umbrales_elegidos, model=cfg.clima.modelo_pronostico,
                 hours=cfg.clima.pronostico_horas, clim_start=cfg.clima.pronostico_historico_desde,
                 now_local=now_local,
             )  # fmt: skip
@@ -466,8 +472,9 @@ def tablero(
     sin_pronostico = [p for p, f in pronostico.items() if f.error]
     typer.echo(
         f"Tablero → {DIST_DIR}/index.html ({size / 1024:.0f} KB); {len(bundle['eventos'])} "
-        f"eventos, {len(cfg.puntos)} puntos, {len(cfg.umbrales_elegidos)} umbrales elegidos; "
-        f"pronóstico incompleto en {len(sin_pronostico) if pronostico else len(cfg.puntos)} puntos."
+        f"eventos, {len(risk_points(cfg))} puntos, {len(cfg.umbrales_elegidos)} umbrales elegidos; "
+        f"pronóstico incompleto en {len(sin_pronostico) if pronostico else len(risk_points(cfg))} "
+        "puntos."
     )
     if size > SIZE_BUDGET:
         typer.echo(f"tablero/dist supera {SIZE_BUDGET // 1024 // 1024} MB.", err=True)
