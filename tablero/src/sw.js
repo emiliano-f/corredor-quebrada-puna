@@ -5,7 +5,7 @@ self.addEventListener("install", (e) => {
   self.skipWaiting();
 });
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("corredor-tablero-") && k !== CACHE).map((k) => caches.delete(k)))));
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || new URL(e.request.url).origin !== self.location.origin) return;
