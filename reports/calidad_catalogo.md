@@ -1,6 +1,6 @@
 # Calidad del catálogo
 
-> Generado: 2026-11-14 15:29 UTC · versión `0.1.0.dev0` · commit `9ece355` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 15:34 UTC · versión `0.1.0.dev0` · commit `7b22818` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Conteos calculados desde las tablas `articulos` y `eventos`. Un artículo aporta como máximo un evento; el dedup junta artículos del mismo corte (ver docs/DATOS.md).
 

@@ -1,6 +1,6 @@
 # Validación de umbrales
 
-> Generado: 2026-11-14 15:28 UTC · versión `0.1.0.dev0` · commit `9ece355` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 15:34 UTC · versión `0.1.0.dev0` · commit `7b22818` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Causas meteorológicas: aluvión y crecida contra lluvia, nieve contra nieve. Una regla por causa, igual para todos los puntos; ajuste 2016–2022, prueba 2023→hoy. Acierto = evento con alarma ese día o el anterior; falsa alarma = día con alarma sin evento ese día o el siguiente. Los mm de ERA5 no son lluvia local (ver docs/DATOS.md): por eso cada variable va también como percentil de su celda en la misma estación. Cada sección trae también la variante con aluvión y crecida juntos como una sola causa "lluvia". Junto a cada número va n = días-evento (punto, fecha) del período en que se basa; en prueba, n < 10 se marca "muestra chica". Vos elegís la regla final.
 
@@ -556,7 +556,7 @@ Eventos con punto crítico usados: aluvión 33, crecida 11 (lluvia 44), nieve 30
 
 ## Todas las fuentes: nieve en Paso de Jama por lado
 
-Eventos de nieve en `rn52_paso_jama`: 30 (AR 2, ambos 0, CL 16, lado desconocido 12, que quedan fuera de esta sección).
+Eventos de nieve en `rn52_paso_jama`: 30 (AR 1, ambos 4, CL 19, lado desconocido 6, que quedan fuera de esta sección).
 
 Falta el clima de `ch27_alto`: CL y combinado quedan sin datos.
 
@@ -574,29 +574,29 @@ Falta el clima de `ch27_alto`: CL y combinado quedan sin datos.
 
 | causa | variable | umbral | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 283 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 121 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 662 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 253 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 1320 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 490 (n=0 muestra chica) |
+| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 142 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 81 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 308 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 156 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 556 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 284 (n=3 muestra chica) |
 
 #### Candidatos en percentil por celda (climatología 2016–2022, misma estación)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 337 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 152 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 310 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 143 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=2) | 1 (n=2) | 275 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 124 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 190 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 75 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 119 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 44 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 723 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 295 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 625 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 252 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 463 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 181 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 271 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 89 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 166 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 53 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 1289 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 509 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=2) | 2 (n=2) | 983 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 373 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 667 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 220 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 363 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 105 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 183 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 69 (n=0 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 168 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 93 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 141 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 84 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=2) | 1 (n=2) | 106 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 65 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 53 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 34 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 24 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 21 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 311 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 153 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 225 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 115 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 126 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 77 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 52 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 33 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 26 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 19 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 441 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 220 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=2) | 2 (n=2) | 262 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 150 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 129 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 90 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 53 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 42 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 27 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 29 (n=3 muestra chica) |
 
 ### Nieve CL (clima de ch27_alto)
 
@@ -616,21 +616,21 @@ Sin candidatos (no hay eventos de esta causa con punto en el período de ajuste)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 338 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 152 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 311 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 143 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 276 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 124 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 190 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 75 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 119 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 44 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 724 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 295 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 626 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 252 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 463 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 181 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 271 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 89 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 166 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 53 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 1290 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 509 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 983 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 373 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 667 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 220 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 363 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 105 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 183 (n=7) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 69 (n=9 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_24h_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_24h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_72h_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_72h_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_7d_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=10) | 10 (n=10) | 0 (n=10) |
 
 ### Nieve combinado (AR + ambos + CL)
 
@@ -646,34 +646,34 @@ Sin candidatos (no hay eventos de esta causa con punto en el período de ajuste)
 
 | causa | variable | umbral | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 283 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 121 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 662 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 253 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 1320 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 490 (n=9 muestra chica) |
+| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 142 (n=11) | 1 (n=13) | 12 (n=13) | 81 (n=13) |
+| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 308 (n=11) | 3 (n=13) | 10 (n=13) | 156 (n=13) |
+| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 556 (n=11) | 3 (n=13) | 10 (n=13) | 284 (n=13) |
 
 #### Candidatos en percentil por celda (climatología 2016–2022, misma estación)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 337 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 152 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=9) | 8 (n=9) | 310 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 143 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=9) | 8 (n=9) | 275 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 124 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 190 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 75 (n=9 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 119 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 44 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 723 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 295 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=9) | 8 (n=9) | 625 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 252 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 463 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 181 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 271 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 89 (n=9 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 166 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 53 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 1289 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 509 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 983 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 373 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 667 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 220 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 363 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 105 (n=9 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 183 (n=9) | 0 (n=9 muestra chica) | 9 (n=9 muestra chica) | 69 (n=9 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 168 (n=11) | 2 (n=13) | 11 (n=13) | 93 (n=13) |
+| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=11) | 10 (n=11) | 141 (n=11) | 2 (n=13) | 11 (n=13) | 84 (n=13) |
+| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=11) | 10 (n=11) | 106 (n=11) | 2 (n=13) | 11 (n=13) | 65 (n=13) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 53 (n=11) | 1 (n=13) | 12 (n=13) | 34 (n=13) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 24 (n=11) | 1 (n=13) | 12 (n=13) | 21 (n=13) |
+| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 311 (n=11) | 3 (n=13) | 10 (n=13) | 153 (n=13) |
+| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=11) | 10 (n=11) | 225 (n=11) | 3 (n=13) | 10 (n=13) | 115 (n=13) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=11) | 11 (n=11) | 126 (n=11) | 3 (n=13) | 10 (n=13) | 77 (n=13) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 52 (n=11) | 1 (n=13) | 12 (n=13) | 33 (n=13) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 26 (n=11) | 0 (n=13) | 13 (n=13) | 19 (n=13) |
+| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 441 (n=11) | 3 (n=13) | 10 (n=13) | 220 (n=13) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=11) | 11 (n=11) | 262 (n=11) | 3 (n=13) | 10 (n=13) | 150 (n=13) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=11) | 11 (n=11) | 129 (n=11) | 2 (n=13) | 11 (n=13) | 90 (n=13) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 53 (n=11) | 0 (n=13) | 13 (n=13) | 42 (n=13) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 27 (n=11) | 0 (n=13) | 13 (n=13) | 29 (n=13) |
 
 
 ## Solo fuentes estables: nieve en Paso de Jama por lado
 
-Eventos de nieve en `rn52_paso_jama`: 27 (AR 2, ambos 0, CL 14, lado desconocido 11, que quedan fuera de esta sección).
+Eventos de nieve en `rn52_paso_jama`: 27 (AR 1, ambos 4, CL 17, lado desconocido 5, que quedan fuera de esta sección).
 
 Falta el clima de `ch27_alto`: CL y combinado quedan sin datos.
 
@@ -691,29 +691,29 @@ Falta el clima de `ch27_alto`: CL y combinado quedan sin datos.
 
 | causa | variable | umbral | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 283 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 121 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 662 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 253 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 1320 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 490 (n=0 muestra chica) |
+| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 142 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 81 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 308 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 156 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=2) | 1 (n=2) | 556 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 284 (n=3 muestra chica) |
 
 #### Candidatos en percentil por celda (climatología 2016–2022, misma estación)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 337 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 152 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 310 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 143 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=2) | 1 (n=2) | 275 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 124 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 190 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 75 (n=0 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 119 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 44 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 723 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 295 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 625 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 252 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 463 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 181 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 271 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 89 (n=0 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 166 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 53 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 1289 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 509 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=2) | 2 (n=2) | 983 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 373 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 667 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 220 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 363 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 105 (n=0 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 183 (n=2) | 0 (n=0 muestra chica) | 0 (n=0 muestra chica) | 69 (n=0 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 168 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 93 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 141 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 84 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=2) | 1 (n=2) | 106 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 65 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 53 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 34 (n=3 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 24 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 21 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 311 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 153 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=2) | 1 (n=2) | 225 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 115 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 126 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 77 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 52 (n=2) | 1 (n=3 muestra chica) | 2 (n=3 muestra chica) | 33 (n=3 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 26 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 19 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=2) | 1 (n=2) | 441 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 220 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=2) | 2 (n=2) | 262 (n=2) | 3 (n=3 muestra chica) | 0 (n=3 muestra chica) | 150 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=2) | 2 (n=2) | 129 (n=2) | 2 (n=3 muestra chica) | 1 (n=3 muestra chica) | 90 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=2) | 2 (n=2) | 53 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 42 (n=3 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=2) | 2 (n=2) | 27 (n=2) | 0 (n=3 muestra chica) | 3 (n=3 muestra chica) | 29 (n=3 muestra chica) |
 
 ### Nieve CL (clima de ch27_alto)
 
@@ -733,21 +733,21 @@ Sin candidatos (no hay eventos de esta causa con punto en el período de ajuste)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 338 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 152 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 311 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 143 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 276 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 124 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 190 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 75 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 119 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 44 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 724 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 295 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 626 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 252 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 463 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 181 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 271 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 89 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 166 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 53 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 0 (n=7) | 7 (n=7) | 1290 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 509 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=7) | 7 (n=7) | 983 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 373 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=7) | 7 (n=7) | 667 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 220 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=7) | 7 (n=7) | 363 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 105 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=7) | 7 (n=7) | 183 (n=7) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 69 (n=7 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p80 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 0 (n=9) | 0 (n=8 muestra chica) | 8 (n=8 muestra chica) | 0 (n=8 muestra chica) |
 
 ### Nieve combinado (AR + ambos + CL)
 
@@ -763,26 +763,26 @@ Sin candidatos (no hay eventos de esta causa con punto en el período de ajuste)
 
 | causa | variable | umbral | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 283 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 121 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 662 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 253 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=9) | 8 (n=9) | 1320 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 490 (n=7 muestra chica) |
+| nieve | `nieve_24h_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 142 (n=11) | 1 (n=11) | 10 (n=11) | 81 (n=11) |
+| nieve | `nieve_72h_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 308 (n=11) | 3 (n=11) | 8 (n=11) | 156 (n=11) |
+| nieve | `nieve_7d_cm` | 0.1 cm | 1 (n=11) | 10 (n=11) | 556 (n=11) | 3 (n=11) | 8 (n=11) | 284 (n=11) |
 
 #### Candidatos en percentil por celda (climatología 2016–2022, misma estación)
 
 | causa | variable | percentil | train aciertos | train fallos | train falsas alarmas | test aciertos | test fallos | test falsas alarmas |
 |---|---|---|---|---|---|---|---|---|
-| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 337 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 152 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=9) | 8 (n=9) | 310 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 143 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=9) | 8 (n=9) | 275 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 124 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 190 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 75 (n=7 muestra chica) |
-| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 119 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 44 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 723 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 295 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=9) | 8 (n=9) | 625 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 252 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 463 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 181 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 271 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 89 (n=7 muestra chica) |
-| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 166 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 53 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=9) | 8 (n=9) | 1289 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 509 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=9) | 9 (n=9) | 983 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 373 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=9) | 9 (n=9) | 667 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 220 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=9) | 9 (n=9) | 363 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 105 (n=7 muestra chica) |
-| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=9) | 9 (n=9) | 183 (n=9) | 0 (n=7 muestra chica) | 7 (n=7 muestra chica) | 69 (n=7 muestra chica) |
+| nieve | `nieve_24h_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 168 (n=11) | 2 (n=11) | 9 (n=11) | 93 (n=11) |
+| nieve | `nieve_24h_cm_pct` | p90 | 1 (n=11) | 10 (n=11) | 141 (n=11) | 2 (n=11) | 9 (n=11) | 84 (n=11) |
+| nieve | `nieve_24h_cm_pct` | p95 | 1 (n=11) | 10 (n=11) | 106 (n=11) | 2 (n=11) | 9 (n=11) | 65 (n=11) |
+| nieve | `nieve_24h_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 53 (n=11) | 1 (n=11) | 10 (n=11) | 34 (n=11) |
+| nieve | `nieve_24h_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 24 (n=11) | 1 (n=11) | 10 (n=11) | 21 (n=11) |
+| nieve | `nieve_72h_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 311 (n=11) | 3 (n=11) | 8 (n=11) | 153 (n=11) |
+| nieve | `nieve_72h_cm_pct` | p90 | 1 (n=11) | 10 (n=11) | 225 (n=11) | 3 (n=11) | 8 (n=11) | 115 (n=11) |
+| nieve | `nieve_72h_cm_pct` | p95 | 0 (n=11) | 11 (n=11) | 126 (n=11) | 3 (n=11) | 8 (n=11) | 77 (n=11) |
+| nieve | `nieve_72h_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 52 (n=11) | 1 (n=11) | 10 (n=11) | 33 (n=11) |
+| nieve | `nieve_72h_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 26 (n=11) | 0 (n=11) | 11 (n=11) | 19 (n=11) |
+| nieve | `nieve_7d_cm_pct` | p80 | 1 (n=11) | 10 (n=11) | 441 (n=11) | 3 (n=11) | 8 (n=11) | 220 (n=11) |
+| nieve | `nieve_7d_cm_pct` | p90 | 0 (n=11) | 11 (n=11) | 262 (n=11) | 3 (n=11) | 8 (n=11) | 150 (n=11) |
+| nieve | `nieve_7d_cm_pct` | p95 | 0 (n=11) | 11 (n=11) | 129 (n=11) | 2 (n=11) | 9 (n=11) | 90 (n=11) |
+| nieve | `nieve_7d_cm_pct` | p98 | 0 (n=11) | 11 (n=11) | 53 (n=11) | 0 (n=11) | 11 (n=11) | 42 (n=11) |
+| nieve | `nieve_7d_cm_pct` | p99 | 0 (n=11) | 11 (n=11) | 27 (n=11) | 0 (n=11) | 11 (n=11) | 29 (n=11) |

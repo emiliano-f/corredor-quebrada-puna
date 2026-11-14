@@ -1,6 +1,6 @@
 # Cobertura contra la lista de control
 
-> Generado: 2026-11-14 15:28 UTC · versión `0.1.0.dev0` · commit `9ece355` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 15:34 UTC · versión `0.1.0.dev0` · commit `7b22818` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Lista: `cortes_conocidos.csv` (54 eventos; E003–E005 cuentan como uno). Coincide un evento del catálogo con la misma ruta, el mismo punto (o sin punto) y fechas que se superponen con las de control ±2 días.
 
