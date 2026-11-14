@@ -65,7 +65,7 @@ def _first_position(rx: re.Pattern[str], text: str) -> int | None:
 
 
 class RuleBasedExtractor(EventExtractor):
-    PARSER_VERSION: Final = 1
+    PARSER_VERSION: Final = 2
 
     def __init__(self, points: Sequence[CriticalPoint]) -> None:
         self.points = list(points)

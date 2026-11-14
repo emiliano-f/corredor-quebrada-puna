@@ -62,7 +62,7 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 `corredor datos` turns `articulos` into `eventos` offline (no network):
 
-- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 1): text =
+- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 2): text =
   headline + lede + URL path. An article is an event only if it names the corridor
   (`patterns.is_corridor`) and a closure or reopening term about the road
   (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
