@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -279,3 +280,40 @@ def test_rules_border_closure_for_snow_stays_nieve(rules: RuleBasedExtractor) ->
 def test_rules_police_closure_with_cerro_is_kept(rules: RuleBasedExtractor) -> None:
     a = art("Gendarmería cerró la ruta 9 en Huacalera durante un procedimiento")
     assert len(rules.extract(a)) == 1
+
+
+def test_ok_corte_excludes_rows_from_field_precision(tmp_path: Path) -> None:
+    from corredor.catalog import REVIEW_COLUMNS, precision_report, read_corte, read_labels
+
+    path = tmp_path / "r.csv"
+    rows = [
+        {"estrato": "nieve", "ok_corte": "si", "ok_fecha": "si", "ok_punto": "no",
+         "ok_causa": "si"},
+        {"estrato": "otras", "ok_corte": "no", "ok_fecha": "si", "ok_punto": "si",
+         "ok_causa": "si"},
+        {"estrato": "otras", "ok_corte": "fuera", "ok_fecha": "no"},
+        {"estrato": "crecida"},
+    ]  # fmt: skip
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=REVIEW_COLUMNS)
+        w.writeheader()
+        w.writerows({k: r.get(k, "") for k in REVIEW_COLUMNS} for r in rows)
+    assert read_corte(path) == {"si": 1, "no": 1, "fuera": 1}
+    assert read_labels(path) == {"ok_fecha": [True], "ok_punto": [False], "ok_causa": [True]}
+    text = precision_report(path, "")
+    assert "| todos | 1 | 1 | 1 | 33% (n=3) |" in text
+    assert "| todos | 100% (n=1) | 0% (n=1) | 100% (n=1) |" in text
+
+
+def test_review_sample_completes_strata() -> None:
+    from corredor.catalog import review_sample
+
+    events = [
+        ev(str(i), i + 1, None, f"u{i}").model_copy(update={"causa": c})
+        for i, c in enumerate(["nieve"] * 10 + ["crecida"] * 10)
+    ]
+    out = review_sample(events, {"nieve": 7, "crecida": 3}, frozenset({"u0"}))
+    by = [s for s, _ in out]
+    assert by.count("nieve") == 1
+    assert by.count("crecida") == 5
+    assert all("u0" not in e.fuentes for _, e in out)

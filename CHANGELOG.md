@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Manual review: `ok_corte` (si/no/fuera) column; `precision.md` reports the `ok_corte` rate and
+  field precision on `ok_corte = si` rows only; the owner's first labels carried over by URL
+  (`revision_manual_v1.csv` kept) and `revision_manual_completar.csv` completes the strata.
+
+### Changed
 - Rules extractor (`PARSER_VERSION` 3): drug seizures / Gendarmería operations need a closure
   term next to a road word; health/administrative border closures (Covid…) get `causa=otro`
   with a note. `revision_manual.csv` is a stratified sample with `estrato`; `precision.md`
