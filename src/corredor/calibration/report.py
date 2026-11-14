@@ -140,5 +140,7 @@ def snow_by_side(
     if not has_cl:
         out += f"Falta el clima de `{CL_WEATHER_POINT}`: CL y combinado quedan sin datos.\n\n"
     for name, evs in side.items():
-        out += f"### Nieve {name}\n\n" + _variant("####", only, evs, features) + "\n"
+        points = {e.punto_id for e in evs}  # alarms only where these events' weather comes from
+        own = features[features["punto_id"].isin(points)]
+        out += f"### Nieve {name}\n\n" + _variant("####", only, evs, own) + "\n"
     return out
