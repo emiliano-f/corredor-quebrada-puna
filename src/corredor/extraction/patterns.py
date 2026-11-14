@@ -93,6 +93,27 @@ CAUSE_GROUPS: Final[dict[str, re.Pattern[str]]] = {
     "obra": _rx(r"\b(?:obras?|bacheo)\b"),
     "accidente": _rx(r"\b(?:accidentes?|vuelcos?|volco|choques?)\b"),
 }
+# A road cut by organised people is a protest even without the word "protesta".
+PROTEST_CUT: Final = _rx(
+    r"\b(?:cortes?|corta|cortan|cortaron|piquetes?|bloqueos?|bloque(?:an|aron|ada|ado))\b"
+)
+PROTEST_ACTORS: Final = _rx(
+    r"\b(?:comunidad(?:es)?(?! educativ)|comuneros?|vecin[ao]s|manifestantes|docentes|trabajadores"
+    r"|gremio(?:s|ales)?|autoconvocad[ao]s)\b"
+)
+# Actors stranded by the cut ("docentes varados por el corte") are not protesters.
+_STRANDED: Final = r"(?: \w+){0,5} (?:varad\w*|quedaron|evacuad\w*|afectad\w*|damnificad\w*)"
+
+
+def is_protest_cut(normalized: str) -> bool:
+    """A cut/blockade term and a protest actor in the same text, the actor not stranded."""
+    if not PROTEST_CUT.search(normalized):
+        return False
+    return any(
+        not re.match(_STRANDED, normalized[m.end() :]) for m in PROTEST_ACTORS.finditer(normalized)
+    )
+
+
 # Incidents only signal a closure when a closure term is also present.
 INCIDENT_GROUPS: Final = frozenset({"accidente"})
 

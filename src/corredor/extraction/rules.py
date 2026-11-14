@@ -260,10 +260,13 @@ class RuleBasedExtractor(EventExtractor):
             for name, rx in p.CAUSE_GROUPS.items()
             if (pos := _first_position(rx, cleaned)) is not None
         }
-        if not found:
-            return "otro"
-        specific = {k: v for k, v in found.items() if k != "meteo_generico"} or found
-        return CAUSE_MAP[min(specific, key=lambda k: (specific[k], k))]
+        causa: Causa = "otro"
+        if found:
+            specific = {k: v for k, v in found.items() if k != "meteo_generico"} or found
+            causa = CAUSE_MAP[min(specific, key=lambda k: (specific[k], k))]
+        if causa not in WEATHER_CAUSES and p.is_protest_cut(cleaned):
+            return "protesta"
+        return causa
 
     def _points(self, cleaned: str, causa: Causa) -> list[CriticalPoint]:
         """Distinct critical points named in the text, in order of appearance."""

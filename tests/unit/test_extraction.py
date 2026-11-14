@@ -558,3 +558,18 @@ def test_jama_closed_by_weather_without_snow_word_infers_snow_in_season(
         confianza,
         notas,
     )
+
+
+@pytest.mark.parametrize(
+    ("titular", "causa"),
+    [
+        ("La comunidad de Antigal corta la ruta 9 en Volcán", "protesta"),
+        ("Comuneros mantienen el corte de la ruta 52 en Purmamarca", "protesta"),
+        ("Autoconvocados bloquean la ruta 9 a la altura de Tilcara", "protesta"),
+        ("Docentes quedaron varados en Susques por el corte de la ruta 52", "otro"),
+    ],
+)
+def test_cut_by_organised_people_is_a_protest(
+    rules: RuleBasedExtractor, titular: str, causa: str
+) -> None:
+    assert {e.causa for e in rules.extract(art(titular))} == {causa}
