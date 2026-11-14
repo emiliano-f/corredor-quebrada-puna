@@ -131,6 +131,7 @@ class PronosticoPunto:
     clima_desde: date | None = None
     clima_hasta: date | None = None
     error: str | None = None
+    con_pronostico: bool = False
 
 
 def riesgo_punto(
@@ -147,7 +148,8 @@ def riesgo_punto(
         out.clima_desde, out.clima_hasta = clim.desde, clim.hasta
     base = pd.Timestamp(now_local).floor("h")
     times = [base + timedelta(hours=h) for h in HORIZONTES.values()]
-    values = features_at(hourly, times) if hourly is not None and not hourly.empty else None
+    out.con_pronostico = hourly is not None and not hourly.empty
+    values = features_at(hourly, times) if out.con_pronostico and hourly is not None else None
     for (name, _), t, i in zip(HORIZONTES.items(), times, range(len(times)), strict=True):
         feats = values[i] if values else {f: float("nan") for f in FEATURES}
         pcts = {

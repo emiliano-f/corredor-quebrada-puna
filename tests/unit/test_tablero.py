@@ -169,6 +169,8 @@ def test_failed_download_is_missing(cfg: AppConfig) -> None:
     assert "tope diario" in (r.error or "")
     assert r.horizontes["hoy"]["estado"] == "sin_datos"
     assert r.horizontes["hoy"]["variables"]["nieve_24h_cm"] == {"valor": None, "percentil": None}
+    assert r.con_pronostico is False
+    assert forecasts(cfg, [pct])[cfg.puntos[0].id].con_pronostico is True
 
 
 def test_threshold_config_is_validated() -> None:

@@ -457,7 +457,8 @@ def tablero(
         BundleInputs(
             cfg=cfg, lineage=lineage(cfg), eventos=eventos, articulos=articulos, jama=jama,
             grilla=grilla, geo=read_geo(Path("assets/geo")), pronostico=pronostico,
-            pronostico_hora=now.replace(minute=0, second=0, microsecond=0) if pronostico else None,
+            pronostico_hora=now.replace(minute=0, second=0, microsecond=0)
+            if any(f.con_pronostico for f in pronostico.values()) else None,
             uso=markdown_blocks(Path("docs/USO.md").read_text(encoding="utf-8")), now=now,
         )
     )  # fmt: skip
