@@ -1,6 +1,6 @@
 # Precisión de la extracción
 
-> Generado: 2026-11-14 21:10 UTC · versión `0.1.0.dev0` · commit `d97f263` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 21:15 UTC · versión `0.1.0.dev0` · commit `d361262` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Etiquetas leídas de `reports/revision_manual.csv` (valores sí: 1/si/ok/x; no: 0/no/mal; vacío = sin etiquetar). Muestra estratificada por causa (semilla 42: aluvion 8, crecida 8, nieve 8, otras 6).
 
