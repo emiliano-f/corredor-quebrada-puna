@@ -25,7 +25,7 @@ from corredor.tablero.bundle import (
     markdown_blocks,
     read_geo,
 )
-from corredor.tablero.forecast import Climatologia, fetch_forecasts, riesgo_punto
+from corredor.tablero.forecast import Climatologia, evaluar, fetch_forecasts, riesgo_punto
 from corredor.tablero.site import render, safe_json, write_site
 from corredor.weather.openmeteo import CallBudgetExceeded
 
@@ -286,3 +286,9 @@ def test_bundle_without_events_table(cfg: AppConfig) -> None:
     assert b["eventos"] == []
     assert b["por_anio"] == []
     assert b["limitaciones"]["eventos"] == 0
+
+
+def test_tiny_raw_value_still_alerts() -> None:
+    u = UmbralElegido(grupo="nieve", variable="nieve_24h_cm_pct", umbral=95)
+    (e,) = evaluar([u], {"nieve_24h_cm": 0.04}, {"nieve_24h_cm": 99.0})
+    assert e.estado == "alerta"  # compared unrounded, like the calibration

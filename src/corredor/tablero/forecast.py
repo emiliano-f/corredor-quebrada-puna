@@ -98,7 +98,8 @@ def evaluar(
 ) -> list[Evaluacion]:
     out = []
     for u in umbrales:
-        raw = _num(feats.get(u.base))
+        value = feats.get(u.base)
+        raw = None if value is None or np.isnan(value) else float(value)
         pct = pcts.get(u.base)
         unidad = "percentil" if u.es_percentil else ("cm" if u.base.endswith("_cm") else "mm")
         estado: Estado
@@ -108,7 +109,7 @@ def evaluar(
             estado = "sin_datos"
         else:  # same alarm rule as the calibration: >= threshold and a wet/snowy window
             estado = "alerta" if pct >= u.umbral and raw > 0 else "sin_alerta"
-        out.append(Evaluacion(u.grupo, u.variable, u.umbral, unidad, estado, raw, _num(pct)))
+        out.append(Evaluacion(u.grupo, u.variable, u.umbral, unidad, estado, _num(raw), _num(pct)))
     return out
 
 
