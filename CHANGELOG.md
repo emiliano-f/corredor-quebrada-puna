@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `docs/FUENTES.md`: control misses expected from outlets we do not collect.
 - `corredor recolectar --paralelo` (one queue per host), `--max-solicitudes` (0 = no cap), a
   listing pass with `--completo` (`recoleccion/<id>.plan.json`: sitemap URLs, slug-filter
   candidates, estimated time) and `SourceBlocked` to stop one source on 403/429 storms or

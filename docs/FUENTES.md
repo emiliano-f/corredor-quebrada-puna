@@ -108,6 +108,20 @@ Cobertura contra la lista de control del dueño (56 cortes conocidos, `reports/c
 
 **Alcance geográfico:** la RN 9 empieza en Yala (Yala → Lozano → León → Bárcena → Volcán → … → Humahuaca). Las notas sobre cortes solo al sur de Yala (San Salvador de Jujuy, Alto Comedero, Palpalá, Chango Más) se descartan en la extracción; entre Yala y León un accidente cuenta solo con corte total. Los cierres del lado chileno del Paso de Jama (Ruta CH-27) sí cuentan como cortes del corredor.
 
+### Cobertura esperada fuera de alcance
+
+Cortes de la lista de control cuyas únicas fuentes son medios que no recolectamos. Cuentan
+como faltantes en `cobertura.md`, pero no son fallas del pipeline:
+
+| Control | Medio(s) | Motivo |
+|---|---|---|
+| E010 | Diario Panorama (AR), Cooperativa (CL) | Medios no recolectados |
+| E018 | Cooperativa (CL) | Medio chileno no recolectado |
+| E019 | Pregón (AR) | Tier 2, sin recolector |
+| E023 | El Tribuno nacional (`eltribuno.com/jujuy/nota/…`) | Otro dominio que `eltribunodejujuy.com` |
+| E027 | El América (CL); UPF en X | Medio no recolectado; redes sociales excluidas |
+| E031 | Chululo / El Mercurio de Calama (CL), Pregón (AR) | Medios no recolectados |
+
 ## 6. `archivo_desde`
 
 Estables (≤2016-01-01): Jujuy al Día 2010-01, Jujuy al Momento 2011, Todo Jujuy 2012-01, El Submarino 2013-07.
