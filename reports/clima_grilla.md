@@ -1,6 +1,6 @@
 # Clima: modelo, celda de grilla y elevación por punto
 
-> Generado: 2026-11-14 00:45 UTC · versión `0.1.0.dev0` · commit `664cfbe` · SCHEMA_VERSION 2 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 15:19 UTC · versión `0.1.0.dev0` · commit `91aa899` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-Land, ECMWF/Copernicus), licencia CC BY 4.0. Son datos de reanálisis en grilla, no mediciones de una estación en el punto.
 
@@ -12,8 +12,10 @@ Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-La
 
 | Punto | Celda (lat, lon) | Elev. celda (m) | Elev. punto (m) | Celda − punto (m) | Comparte celda con |
 |---|---|---:|---:|---:|---|
-| rn9_cuesta_barcena | -24.00, -65.50 | 2901 | 1984 | 917 | rn9_volcan |
-| rn9_volcan | -24.00, -65.50 | 2901 | 2079 | 822 | rn9_cuesta_barcena |
+| rn9_yala_lozano | -24.00, -65.50 | 2901 | 1519 | 1382 | rn9_leon, rn9_cuesta_barcena, rn9_volcan |
+| rn9_leon | -24.00, -65.50 | 2901 | 1628 | 1273 | rn9_yala_lozano, rn9_cuesta_barcena, rn9_volcan |
+| rn9_cuesta_barcena | -24.00, -65.50 | 2901 | 1984 | 917 | rn9_yala_lozano, rn9_leon, rn9_volcan |
+| rn9_volcan | -24.00, -65.50 | 2901 | 2079 | 822 | rn9_yala_lozano, rn9_leon, rn9_cuesta_barcena |
 | rn9_tumbaya | -23.75, -65.50 | 3291 | 2095 | 1196 | rn52_purmamarca_chalala, rn52_lipan_bajo |
 | rn9_maimara | -23.50, -65.50 | 3584 | 2395 | 1189 | rn9_tilcara |
 | rn9_tilcara | -23.50, -65.50 | 3584 | 2472 | 1112 | rn9_maimara |
@@ -25,11 +27,14 @@ Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-La
 | rn52_salinas_grandes | -23.50, -66.00 | 3493 | 3406 | 87 | — |
 | rn52_susques | -23.50, -66.25 | 3639 | 3609 | 30 | — |
 | rn52_paso_jama | -23.25, -67.00 | 4317 | 4281 | 36 | — |
+| ch27_alto | -23.00, -67.50 | 4717 | 5076 | -359 | — |
 
 ## Celdas `era5_land`
 
 | Punto | Celda (lat, lon) | Elev. celda (m) | Elev. punto (m) | Celda − punto (m) | Comparte celda con |
 |---|---|---:|---:|---:|---|
+| rn9_yala_lozano | -24.10, -65.40 | 1693 | 1519 | 174 | — |
+| rn9_leon | -24.00, -65.40 | 1973 | 1628 | 345 | — |
 | rn9_cuesta_barcena | -24.00, -65.50 | 2688 | 1984 | 704 | — |
 | rn9_volcan | -23.90, -65.50 | 2917 | 2079 | 838 | rn9_tumbaya |
 | rn9_tumbaya | -23.90, -65.50 | 2917 | 2095 | 822 | rn9_volcan |
@@ -43,10 +48,11 @@ Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-La
 | rn52_salinas_grandes | -23.60, -65.90 | 3406 | 3406 | 0 | — |
 | rn52_susques | -23.40, -66.40 | 3858 | 3609 | 249 | — |
 | rn52_paso_jama | -23.20, -67.10 | 4272 | 4281 | -9 | — |
+| ch27_alto | -23.10, -67.50 | 4678 | 5076 | -398 | — |
 
 ## Puntos que comparten celda
 
-- `era5` (-24.00, -65.50): rn9_cuesta_barcena, rn9_volcan
+- `era5` (-24.00, -65.50): rn9_yala_lozano, rn9_leon, rn9_cuesta_barcena, rn9_volcan
 - `era5` (-23.75, -65.75): rn52_abra_potrerillos, rn52_ronqui_angosto
 - `era5` (-23.75, -65.50): rn9_tumbaya, rn52_purmamarca_chalala, rn52_lipan_bajo
 - `era5` (-23.50, -65.50): rn9_maimara, rn9_tilcara

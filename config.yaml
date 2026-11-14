@@ -218,12 +218,12 @@ puntos:
   - id: ch27_alto
     nombre: "Ruta CH-27, tramo alto (Chile)"
     ruta: otra
-    lat: -23.05149
-    lon: -67.54971
-    osm: way/53264481
+    lat: -23.08888
+    lon: -67.500537
+    osm: node/4375798373
     verificado: true
     solo_clima: true
-    fuente_geo: "OSM way/53264481 ('Ruta 27 CH'), centro del tramo; solo clima"
+    fuente_geo: "OSM node/4375798373, nodo central de way/53264481 ('Ruta 27 CH', San Pedro de Atacama - Paso Jama); solo clima"
     nota_geo: "Clima del lado chileno del Paso de Jama (eventos de nieve con lado=CL)"
 
 # Sources from the approved survey (docs/FUENTES.md). Generic outlets are added here,

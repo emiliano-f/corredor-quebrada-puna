@@ -102,3 +102,43 @@ def _variant(
         + f"\n{h} Candidatos en percentil por celda (climatología 2016–2022, misma estación)\n\n"
         + results_table(results, percentile=True)
     )
+
+
+CL_WEATHER_POINT = "ch27_alto"
+
+
+def snow_by_side(
+    title: str,
+    calibrator: ThresholdCalibrator,
+    events: Sequence[ClosureEvent],
+    features: pd.DataFrame,
+) -> str:
+    """Snow at Jama by side: CL events use the CH-27 weather point, AR/ambos use Jama."""
+    snow = [e for e in events if e.causa == "nieve" and e.punto_id == "rn52_paso_jama"]
+    side = {
+        "AR o ambos (clima de rn52_paso_jama)": [e for e in snow if e.lado in ("AR", "ambos")],
+        f"CL (clima de {CL_WEATHER_POINT})": [
+            e.model_copy(update={"punto_id": CL_WEATHER_POINT}) for e in snow if e.lado == "CL"
+        ],
+    }
+    side["combinado (AR + ambos + CL)"] = [e for v in side.values() for e in v]
+    only = ThresholdCalibrator(
+        calibrator.train_end, calibrator.clim_start, {"nieve": calibrator.groups["nieve"]}
+    )
+    unknown = sum(1 for e in snow if e.lado in (None, "desconocido"))
+
+    def n_side(lado: str) -> int:
+        return sum(1 for e in snow if e.lado == lado)
+
+    has_cl = CL_WEATHER_POINT in set(features["punto_id"])
+    out = (
+        f"## {title}: nieve en Paso de Jama por lado\n\n"
+        f"Eventos de nieve en `rn52_paso_jama`: {len(snow)} (AR {n_side('AR')}, "
+        f"ambos {n_side('ambos')}, CL {n_side('CL')}, "
+        f"lado desconocido {unknown}, que quedan fuera de esta sección).\n\n"
+    )
+    if not has_cl:
+        out += f"Falta el clima de `{CL_WEATHER_POINT}`: CL y combinado quedan sin datos.\n\n"
+    for name, evs in side.items():
+        out += f"### Nieve {name}\n\n" + _variant("####", only, evs, features) + "\n"
+    return out

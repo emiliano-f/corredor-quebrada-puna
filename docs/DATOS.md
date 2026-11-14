@@ -1,7 +1,8 @@
 # Data dictionary
 
 Pydantic models in `src/corredor/models.py` define every row. `SCHEMA_VERSION` (currently
-**2**: `puntos.osm` and `puntos.nota_geo` added) is bumped once per release on any
+**3**: `eventos.fecha_inicio`, `eventos.fecha_fin`, `eventos.lado` and `puntos.solo_clima`
+added; 2 added `puntos.osm` and `puntos.nota_geo`) is bumped once per release on any
 table/column change. Opening an older DuckDB file is safe: before writing, the repository
 adds the model columns a table lacks (`ALTER TABLE … ADD COLUMN`, null for old rows). Tables live in DuckDB
 (`DuckDBRepository`, `src/corredor/storage/repository.py`) and are exported to Parquet
@@ -37,13 +38,13 @@ key inside one transaction, so a failed upsert leaves the table unchanged.
 ## `eventos` — closure events
 
 Built by `corredor datos` (`catalog.build_events`): `RuleBasedExtractor` reads only the
-headline, lede and URL path of each `articulos` row (at most one event per article), then
+headline, lede and URL path of each `articulos` row (one event per critical point named in the article), then
 `EventDeduplicator` merges mentions of the same closure (see
 [SCRAPING.md](SCRAPING.md#event-extraction-and-deduplication)).
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
-| `evento_id` | str | yes | Stable id: first 16 hex chars of SHA-1 of the event `fecha`, `ruta` and its sorted article URLs. |
+| `evento_id` | str | yes | Stable id: first 16 hex chars of SHA-1 of the event `fecha`, `ruta`, `punto_id` and its sorted article URLs. |
 | `fecha` | date | yes | Publication date of the earliest merged article (closures are usually reported the same or next day). |
 | `hora` | str | no | |
 | `ruta` | `RN9` \| `RN52` \| `otra` | yes | |
@@ -57,7 +58,10 @@ headline, lede and URL path of each `articulos` row (at most one event per artic
 | `n_medios` | int | yes | Distinct outlets, excluding sources with `republica: true`. |
 | `metodo` | `reglas` \| `llm` | yes | Today always `reglas` (no LLM provider wired). |
 | `confianza` | `alta` \| `media` \| `baja` | yes | `alta`: point and a cause found; `media`: one of them; `baja`: no point and zero or several routes. |
-| `notas` | str | no | |
+| `notas` | str | no | `viento` for wind without snow (`causa=otro`); a note for administrative/health border closures. |
+| `fecha_inicio` | date | no | First article of the merged event (= `fecha`). |
+| `fecha_fin` | date | no | Last article merged into the event (follow-ups: reopenings, schedules, "sigue cortada", works after the closure). |
+| `lado` | `AR` \| `CL` \| `ambos` \| `desconocido` | no | Only for `rn52_paso_jama`: side of the closure from the text ("lado chileno", Chile, San Pedro de Atacama, Ruta 27/CH-27 → CL; Susques/Argentine side → AR; both → ambos). A Chilean-side closure is a corridor closure (`tipo_corte=total`). |
 
 ## `puntos` — critical points
 
@@ -73,6 +77,7 @@ headline, lede and URL path of each `articulos` row (at most one event per artic
 | `fuente_km` | str | no | How the km was measured (see "Geo data" below). |
 | `osm` | str | no | Added by the geo stage: `node/<id>` or `way/<id>` the point comes from. |
 | `nota_geo` | str | no | Added by the geo stage: why a point is uncertain or not verified. |
+| `solo_clima` | bool | no | Weather-only point (today `ch27_alto`, Ruta CH-27 high section in Chile, OSM node/4375798373, the middle node of way/53264481 'Ruta 27 CH'): has weather, no km, never a risk point on the map. Used for snow events with `lado=CL`. |
 
 `make geo` (`corredor geo`) re-derives `lat`, `lon`, `km`, `verificado`, `fuente_geo` and
 `fuente_km` from `osm` and writes `reports/geo_verificacion.md`; it exits with code 1 when
@@ -185,8 +190,10 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 | `data/snapshots/jama_estado.jsonl` | Local copy of the `data-snapshots` JSONL that `make datos` loads into `jama_estado`. |
 | `reports/calidad_catalogo.md` | `corredor reporte`: articles/events per source, year, route, cause and point; dedup ratio; 1 vs 2+ outlets; local-only events; WordPress-vs-sitemap recall check; share of events from `C_solo_ruta` pages; 20 random events. |
 | `reports/revision_manual.csv` | `corredor reporte`: stratified sample, seed 42 — 8 `aluvion`, 8 `crecida`, 8 `nieve`, 6 from the other causes (`estrato` = aluvion/crecida/nieve/otras; fewer if a stratum is smaller) — with headline and URL plus empty `ok_corte` (`si` = closure in the corridor, `no` = not a closure, `fuera` = closure outside the corridor), `ok_fecha`, `ok_punto`, `ok_causa`, `comentario` to fill by hand. Never overwritten once it has labels. The owner's first labels (old random sample) were carried over by URL; the original file is kept as `reports/revision_manual_v1.csv`, and `reports/revision_manual_completar.csv` holds only the rows drawn to complete the strata (counting `ok_corte = si` rows). |
+| `reports/control/cortes_conocidos.csv` (+ `.md`) | Owner's hand-built control list (56 known closures, 2016–2026). Read only by `corredor cobertura`; never loaded into DuckDB/Parquet. |
+| `reports/control/cobertura.md` | `corredor cobertura`: share of control events matched by the catalog (same route, same point or an event without point, event dates overlapping the control dates ±2 days; E003–E005 count as one), overall, by `confianza_fecha` and by outlet (only outlets we collect vs any other), plus the misses and the matched events. |
 | `reports/precision.md` | `corredor precision`: `ok_corte` rate (si / no / fuera), then precision per field (fecha, punto, causa) on the `ok_corte = si` rows only, overall and per `estrato`, each with n = labelled rows. |
-| `reports/validacion.md` | `corredor calibrar`: threshold candidates per cause, absolute and per-cell percentile, train 2016–2022 / test 2023→, for all sources and for stable sources only, plus a variant with aluvión + crecida merged as `lluvia`. Each hit/miss/false-alarm value shows n = event-days (point, date) of that period; test cells with n < 10 are marked "muestra chica". |
+| `reports/validacion.md` | `corredor calibrar`: threshold candidates per cause, absolute and per-cell percentile, train 2016–2022 / test 2023→, for all sources and for stable sources only, plus a variant with aluvión + crecida merged as `lluvia`. Each hit/miss/false-alarm value shows n = event-days (point, date) of that period; test cells with n < 10 are marked "muestra chica". Snow at Paso de Jama is also shown by side: `lado=CL` events against `ch27_alto` weather, `AR`/`ambos` against `rn52_paso_jama`, and combined (events with unknown side are counted and left out). |
 | `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
 | `data/checkpoints/<source_id>.json` | Resumable collection state: `units` → `{status: ok\|empty\|missing\|error, updated_at, ...}` per month (sitemaps) or year (WordPress). See SCRAPING.md. |
 | `data/recoleccion/<source_id>.json` | Counts of the last `corredor recolectar` run of that source (`CollectionStats.as_dict()`). |

@@ -62,7 +62,7 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 `corredor datos` turns `articulos` into `eventos` offline (no network):
 
-- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 3): text =
+- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 4): text =
   headline + lede + URL path. An article is an event only if it names the corridor
   (`patterns.is_corridor`) and a closure or reopening term about the road
   (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
@@ -81,8 +81,18 @@ Implemented in `src/corredor/extraction/patterns.py`:
     meteorológico)" when `patterns.HEALTH_CLOSURE` matches (Covid, cuarentena, medidas
     sanitarias…), and `otro` gets the same note for "cierre de fronteras" when no weather
     cause is named; protest/works/accident causes are kept.
-  - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de
-    Potrerillos; else `km N` → nearest point of that route within 5 km.
+  - `punto_id`: place name → point (`PLACE_POINTS`, Yala/Lozano → `rn9_yala_lozano`, León →
+    `rn9_leon`, Saladillo → `rn52_ronqui_angosto`); one event per point named. Lipán with a
+    snow cause → Abra de Potrerillos; "camino a / ruta 52 hacia Jama" without snow drops Jama
+    (destination, not place); with snow, RN 9 places next to Jama are dropped (truck queues).
+    Else `km N` → nearest point of that route within 5 km.
+  - Scope: articles naming only places south of Yala (`patterns.SOUTH`: San Salvador de
+    Jujuy, Alto Comedero, Palpalá, Chango Más) are dropped; at `rn9_yala_lozano`/`rn9_leon`
+    an accident counts only with `tipo_corte=total`.
+  - `lado` (Paso de Jama only): `patterns.SIDE_CL` (lado chileno, Chile, San Pedro de
+    Atacama, Calama, Ruta 27/CH-27) → CL, `patterns.SIDE_AR` (Susques, lado argentino) → AR,
+    both → ambos, else desconocido. A CL/ambos closure is `total`, never `precaucion`.
+  - Wind: viento blanco is `nieve`; wind without snow is `otro` with `notas` = "viento".
   - `ruta`: the only route named (a place on the other route is then dropped), else the point's route, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).
   - `tipo_corte`: `total` / `parcial` (media calzada, un carril, una mano, intermitente, demoras) / `precaucion`.
 - **LLM** (`extraction/llm.py`, optional): `LLMExtractor` sends only headline, lede and URL
@@ -90,10 +100,17 @@ Implemented in `src/corredor/extraction/patterns.py`:
   under `cache_dir` by (prompt version, URL); output is validated with the
   `ClosureEvent` schema and dropped if invalid. No provider is wired yet, so `datos` uses
   rules only even if `LLM_API_KEY` is set.
-- **Dedup** (`extraction/dedup.py`): two mentions are the same event if same route, dates
-  within ±2 days, compatible cause (equal, or one is `otro`), and either the same point,
-  or (one has no point) a Jaccard similarity ≥ 0.5 of normalized headline tokens with at
-  least 5 tokens each. `n_medios` counts distinct outlets, excluding `republica: true`.
+- **Dedup** (`extraction/dedup.py`): an event has at most one point. A mention joins an
+  event of the same route with the same point or where either has no point, if (a) dates
+  within ±2 days and the same cause family (aluvión and crecida are one family "lluvia";
+  `otro` joins a located event, or a point-less one with headline Jaccard ≥ 0.5 over ≥ 5
+  tokens), or (b) it is a follow-up (`dedup.FOLLOW_UP`: habilitan, reabren, sigue cortada,
+  horarios, alternativa, desvíos, trabajos, limpieza…) up to 7 days after a closure
+  mention of the event (a `precaucion` warning is not a closure); follow-ups inherit the
+  closure's cause. When several events match, the same point wins, then the closest date;
+  a located mention also absorbs point-less events that start within ±2 days. `fecha` =
+  `fecha_inicio` = first mention, `fecha_fin` = last. `n_medios` counts distinct outlets,
+  excluding `republica: true`.
 
 ## Running a collection
 

@@ -275,7 +275,7 @@ def _features(settings: Settings) -> pd.DataFrame:
 @app.command()
 def calibrar(config: ConfigOpt = None) -> None:
     """Calibra umbrales por causa y escribe reports/validacion.md."""
-    from corredor.calibration.report import section
+    from corredor.calibration.report import section, snow_by_side
     from corredor.calibration.thresholds import ThresholdCalibrator
     from corredor.catalog import article_refs, frame_to_events, stable_sources
 
@@ -311,6 +311,10 @@ def calibrar(config: ConfigOpt = None) -> None:
         + section("Todas las fuentes", cal, events, features)
         + "\n"
         + section("Solo fuentes estables", cal, stable_events, features)
+        + "\n"
+        + snow_by_side("Todas las fuentes", cal, events, features)
+        + "\n"
+        + snow_by_side("Solo fuentes estables", cal, stable_events, features)
     )
     out = REPORTS_DIR / "validacion.md"
     out.parent.mkdir(exist_ok=True)

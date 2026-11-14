@@ -104,6 +104,10 @@ Candidato = slug con lugar/ruta del corredor **y** término de causa/cierre.
 
 Eventos encontrados en medios WP (búsqueda por API, sin filtro de slug) que no tienen ningún evento en los medios de sitemap en la misma fecha ±2 días y en el mismo tramo/ruta. Se reporta por año y por medio de sitemap, solo en el período en que ambos tienen archivo.
 
+Cobertura contra la lista de control del dueño (56 cortes conocidos, `reports/control/`): `make cobertura` → `reports/control/cobertura.md`, por tipo de fecha y por medio (solo medios que recolectamos vs otros). La lista no se carga en las tablas.
+
+**Alcance geográfico:** la RN 9 empieza en Yala (Yala → Lozano → León → Bárcena → Volcán → … → Humahuaca). Las notas sobre cortes solo al sur de Yala (San Salvador de Jujuy, Alto Comedero, Palpalá, Chango Más) se descartan en la extracción; entre Yala y León un accidente cuenta solo con corte total. Los cierres del lado chileno del Paso de Jama (Ruta CH-27) sí cuentan como cortes del corredor.
+
 ## 6. `archivo_desde`
 
 Estables (≤2016-01-01): Jujuy al Día 2010-01, Jujuy al Momento 2011, Todo Jujuy 2012-01, El Submarino 2013-07.
