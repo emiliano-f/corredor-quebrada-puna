@@ -121,7 +121,7 @@ uv run corredor recolectar --completo            # sitemaps: every month since a
 uv run corredor recolectar --completo --paralelo --max-solicitudes 0   # full backfill
 ```
 
-`--paralelo` runs one queue per source, each with its own `PoliteFetcher`, so politeness
+`--paralelo` runs one queue per host, each with its own `PoliteFetcher` (sources on the same host share it and run one after another), so politeness
 (interval, `Crawl-delay`, robots.txt) stays per host while hosts are collected at the same
 time; DuckDB writes are serialized. A source that fails stops alone and the others keep
 running. `--max-solicitudes` overrides `backfill.max_requests_per_run` (`0` = no cap).

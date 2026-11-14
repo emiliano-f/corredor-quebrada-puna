@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlsplit
 
 import pandas as pd
 import typer
@@ -255,14 +256,26 @@ def recolectar(
             typer.echo("No hay fuentes activas para recolectar.", err=True)
             raise typer.Exit(1)
         if paralelo and len(sources) > 1:
-            # Politeness is per host: each source gets its own fetcher (own queue and ritmo).
-            own: list[NewsSource] = []
+            # Politeness is per host: one fetcher (queue and pace) per host; sources that
+            # share a host run one after another on it.
+            base = {s.id: s.base_url for s in cfg.fuentes}
+            hosts: dict[str, list[str]] = {}
             for source in sources:
+                host = urlsplit(base[source.source_id]).netloc.lower()
+                hosts.setdefault(host, []).append(source.source_id)
+            queues: list[list[NewsSource]] = []
+            for ids in hosts.values():
                 f = build_fetcher(cfg, settings, quiet=True)
                 fetchers.append(f)
-                own.extend(build_sources(cfg.fuentes, f, options, only=[source.source_id]))
-            with ThreadPoolExecutor(max_workers=len(own)) as pool:
-                results = dict(zip((s.source_id for s in own), pool.map(collect, own), strict=True))
+                queues.append(build_sources(cfg.fuentes, f, options, only=ids))
+
+            def run_queue(queue: list[NewsSource]) -> dict[str, str | None]:
+                return {s.source_id: collect(s) for s in queue}
+
+            results = {}
+            with ThreadPoolExecutor(max_workers=len(queues)) as pool:
+                for done in pool.map(run_queue, queues):
+                    results.update(done)
         else:
             results = {s.source_id: collect(s) for s in sources}
         failed = [sid for sid, failure in results.items() if failure is not None]

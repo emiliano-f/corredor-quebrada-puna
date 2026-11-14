@@ -7,7 +7,7 @@ import respx
 import yaml
 from typer.testing import CliRunner
 
-from corredor import __version__
+from corredor import __version__, pipeline
 from corredor.pipeline import app
 from corredor.reports import Lineage, report_header
 
@@ -218,3 +218,42 @@ def test_recolectar_completo_paralelo_plans_then_collects_each_source(
     con = duckdb.connect(str(tmp_path / "data" / "corredor.duckdb"), read_only=True)
     assert con.execute("select count(*) from articulos").fetchone() == (2,)
     con.close()
+
+
+@respx.mock
+def test_recolectar_paralelo_shares_one_fetcher_per_host(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    cfg["backfill"]["desde"] = "2024-01-01"
+    base = "https://mismo.example"
+    cfg["fuentes"] = [
+        {
+            "id": sid,
+            "nombre": sid,
+            "base_url": base,
+            "metodo": "sitemap",
+            "tier": 1,
+            "enabled": True,
+            "archivo_desde": "2024-01-01",
+            "params": {"sitemap_mensual": f"{base}/{sid}-{{yyyymm}}.xml"},
+        }
+        for sid in ("uno", "dos")
+    ]
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    monkeypatch.setenv("CORREDOR_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr("corredor.http.time.sleep", lambda _s: None)
+    built: list[object] = []
+    real = pipeline.build_fetcher
+
+    def counting(*args: object, **kw: object) -> object:
+        built.append(kw)
+        return real(*args, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(pipeline, "build_fetcher", counting)
+    respx.get(f"{base}/robots.txt").respond(404)
+    respx.get(url__regex=rf"{base}/(uno|dos)-20\d{{4}}\.xml").respond(404)
+    result = runner.invoke(app, ["recolectar", "--config", str(path), "--completo", "--paralelo"])
+    assert result.exit_code == 0, result.output
+    assert len(built) == 2  # the run's fetcher + one for the shared host
