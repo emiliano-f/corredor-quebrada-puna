@@ -63,6 +63,10 @@ class _Cluster:
     titles: list[frozenset[str]] = field(default_factory=list)
     follow: list[bool] = field(default_factory=list)
 
+    @property
+    def point(self) -> str | None:
+        return next((e.punto_id for e in self.events if e.punto_id), None)
+
 
 def family(causa: str) -> str:
     return _FAMILY.get(causa, causa)
@@ -94,47 +98,66 @@ class EventDeduplicator:
     ) -> list[ClosureEvent]:
         refs = articles or {}
         clusters: list[_Cluster] = []
-        for ev in sorted(events, key=lambda e: (e.fecha, e.fuentes, e.evento_id)):
+        order = sorted(events, key=lambda e: (e.fecha, e.punto_id is None, e.fuentes, e.evento_id))
+        for ev in order:
             raw_title = " ".join(refs[u].titular for u in ev.fuentes if u in refs)
             title, follow = tokens(raw_title), is_follow_up(raw_title)
-            hits = [c for c in clusters if self._matches(c, ev, title, follow)]
-            if not hits:
-                hits = [_Cluster()]
-                clusters.append(hits[0])
-            target = hits[0]
-            for other in hits[1:]:  # the event bridges clusters: join them
-                target.events.extend(other.events)
-                target.titles.extend(other.titles)
-                target.follow.extend(other.follow)
-                clusters.remove(other)
+            scored = [
+                (score, i) for i, c in enumerate(clusters)
+                if (score := self._score(c, ev, title, follow)) is not None
+            ]  # fmt: skip
+            if not scored:
+                clusters.append(_Cluster())
+                target = clusters[-1]
+            else:
+                target = clusters[min(scored)[1]]
+                if ev.punto_id is not None:  # a located event absorbs point-less matches
+                    for i in sorted((i for _, i in scored), reverse=True):
+                        other = clusters[i]
+                        near = abs((other.events[0].fecha - ev.fecha).days) <= self.window_days
+                        if other is not target and other.point is None and near:
+                            target.events.extend(other.events)
+                            target.titles.extend(other.titles)
+                            target.follow.extend(other.follow)
+                            del clusters[i]
             target.events.append(ev)
             target.titles.append(title)
             target.follow.append(follow)
         return [self._combine(c, refs) for c in clusters]
 
-    def _matches(
+    def _score(
         self, cluster: _Cluster, ev: ClosureEvent, title: frozenset[str], follow: bool
-    ) -> bool:
-        for other, other_title in zip(cluster.events, cluster.titles, strict=True):
+    ) -> tuple[int, int] | None:
+        """(point rank, day gap) if `ev` belongs to `cluster`, else None; lower is better."""
+        point = cluster.point
+        if ev.punto_id is not None and point is not None and ev.punto_id != point:
+            return None
+        rank = 0 if ev.punto_id is not None and ev.punto_id == point else 1
+        best: int | None = None
+        for other, other_title, other_follow in zip(
+            cluster.events, cluster.titles, cluster.follow, strict=True
+        ):
             if other.ruta != ev.ruta:
                 continue
             gap = abs((ev.fecha - other.fecha).days)
-            same_point = ev.punto_id is not None and ev.punto_id == other.punto_id
-            open_point = ev.punto_id is None or other.punto_id is None
-            if not (same_point or open_point):
-                continue
-            if follow and gap <= self.follow_days:
-                return True
-            if gap > self.window_days:
-                continue
-            fam_a, fam_b = family(ev.causa), family(other.causa)
-            if same_point and (fam_a == fam_b or "otro" in (fam_a, fam_b)):
-                return True
-            if open_point and fam_a == fam_b != "otro":
-                return True
-            if open_point and "otro" in (fam_a, fam_b) and self._similar(title, other_title):
-                return True
-        return False
+            ok = False
+            if (
+                follow
+                and not other_follow
+                and other.tipo_corte != "precaucion"  # a warning is not a closure
+                and 0 <= (ev.fecha - other.fecha).days <= (self.follow_days)
+            ):
+                ok = True  # schedules, reopenings, works after a closure extend it
+            elif gap <= self.window_days:
+                fam_a, fam_b = family(ev.causa), family(other.causa)
+                located = ev.punto_id is not None and point is not None
+                vague = "otro" in (fam_a, fam_b)
+                ok = fam_a == fam_b != "otro" or (
+                    vague and (located or self._similar(title, other_title))
+                )
+            if ok and (best is None or gap < best):
+                best = gap
+        return None if best is None else (rank, best)
 
     def _similar(self, a: frozenset[str], b: frozenset[str]) -> bool:
         if min(len(a), len(b)) < self.min_tokens:
@@ -158,7 +181,9 @@ class EventDeduplicator:
         return first.model_copy(
             update={
                 "evento_id": hashlib.sha1(  # noqa: S324 — identifier, not security
-                    "|".join([first.fecha.isoformat(), first.ruta, *urls]).encode()
+                    "|".join(
+                        [first.fecha.isoformat(), first.ruta, cluster.point or "", *urls]
+                    ).encode()
                 ).hexdigest()[:16],
                 "punto_id": next((e.punto_id for e in evs if e.punto_id), None),
                 "km": next((e.km for e in evs if e.km is not None), None),

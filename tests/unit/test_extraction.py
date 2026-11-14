@@ -157,11 +157,11 @@ def test_dedup_follow_up_extends_event_and_inherits_cause() -> None:
             "u3": ArticleRef("c", "Por trabajos impostergables cortarán la ruta")}  # fmt: skip
     events = [ev("1", 10, "p1", "u1"), ev("2", 16, None, "u2", causa="otro"),
               ev("3", 22, None, "u3", causa="obra")]  # fmt: skip
-    (merged,) = EventDeduplicator().merge(events, refs)
+    merged, works = EventDeduplicator().merge(events, refs)
     assert merged.causa == "aluvion"
-    assert (merged.fecha_inicio, merged.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 22))
-    assert merged.fecha == date(2024, 2, 10)
+    assert (merged.fecha_inicio, merged.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 16))
     assert merged.punto_id == "p1"
+    assert (works.causa, works.fecha) == ("obra", date(2024, 2, 22))  # > 7 days after the lead
 
 
 def test_tokens_and_jaccard() -> None:

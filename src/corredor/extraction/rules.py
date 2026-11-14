@@ -25,7 +25,7 @@ from corredor.models import (
 )
 
 # Normalised place name (patterns.PLACE) → critical point id. Places without a point
-# (Humahuaca, Uquía, Saladillo…) still mark the article as corridor, without punto_id.
+# (Humahuaca, Uquía…) still mark the article as corridor, without punto_id.
 PLACE_POINTS: Final[Mapping[str, str]] = {
     "yala": "rn9_yala_lozano",
     "lozano": "rn9_yala_lozano",
@@ -44,6 +44,7 @@ PLACE_POINTS: Final[Mapping[str, str]] = {
     "ronqui angosto": "rn52_ronqui_angosto",
     "roqui angosto": "rn52_ronqui_angosto",
     "ranqui angosto": "rn52_ronqui_angosto",
+    "saladillo": "rn52_ronqui_angosto",  # RN 52 km 48–52, next to Ronqui Angosto (km 49.7)
     "salinas grandes": "rn52_salinas_grandes",
     "susques": "rn52_susques",
     "jama": "rn52_paso_jama",
@@ -195,6 +196,12 @@ class RuleBasedExtractor(EventExtractor):
                 pid = LIPAN_SNOW_POINT
             if pid is not None and pid in self._by_id and self._by_id[pid] not in out:
                 out.append(self._by_id[pid])
+        others = [pt for pt in out if pt.id != JAMA_POINT]
+        if len(others) < len(out):
+            if causa != "nieve" and p.JAMA_DESTINATION.search(cleaned):
+                out = others  # "ruta 52, camino a Jama": Jama is the destination, not the place
+            elif others and causa == "nieve":
+                out = [pt for pt in out if pt.ruta == "RN52"]  # trucks queued on RN 9
         return out
 
     @staticmethod

@@ -60,6 +60,10 @@ SIDE_CL: Final = _rx(
     r"\b(?:lado chileno|chile|chilen[ao]s?|san pedro de atacama|calama|ruta 27|ch ?-? ?27)\b"
 )
 SIDE_AR: Final = _rx(r"\b(?:lado argentino|del lado de argentina|susques)\b")
+JAMA_DESTINATION: Final = _rx(
+    r"\b(?:camino|rumbo|acceso|ruta \d+|ruta nacional \d+|rn ?\d+|que (?:une|conduce|lleva|va))"
+    r" (?:a|al|hacia) (?:el )?(?:paso (?:internacional )?(?:de )?)?jama\b"
+)
 WIND: Final = _rx(r"\b(?:vientos?|rafagas?)\b")
 REOPENING: Final = _rx(r"\b(?:habilit\w*|rehabilit\w*|reabr\w*|reapert\w*)\b")
 TRAFFIC: Final = _rx(r"\b(?:transitabilidad|transito|km \d+|kilometro \d+)\b")

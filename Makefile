@@ -1,4 +1,4 @@
-.PHONY: setup lint format typecheck test docs-check audit check geo snapshot-jama clima datos calibrar precision reporte tablero release tag
+.PHONY: setup lint format typecheck test docs-check audit check geo snapshot-jama clima datos calibrar precision reporte cobertura tablero release tag
 
 UV ?= uv
 BUMP ?=
@@ -55,6 +55,9 @@ precision:
 
 reporte:
 	$(UV) run corredor reporte
+
+cobertura:
+	$(UV) run corredor cobertura
 
 tablero:
 	@echo "El tablero llega el día 2." >&2; exit 2
