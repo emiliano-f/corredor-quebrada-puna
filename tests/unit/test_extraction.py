@@ -480,3 +480,12 @@ def test_rules_per_route_shared_clause_and_abbreviation(rules: RuleBasedExtracto
     assert {e.ruta: e.causa for e in shared} == {"RN9": "nieve", "RN52": "nieve"}
     abbr = rules.extract(art("Ruta nro. 9 cortada por nieve. Ruta 52 cortada por obras"))
     assert {e.ruta: e.causa for e in abbr} == {"RN9": "nieve", "RN52": "obra"}
+
+
+def test_rules_per_route_sentence_starting_with_a_number(rules: RuleBasedExtractor) -> None:
+    text = (
+        "Ruta 9 cortada por obras. 10 centímetros de nieve obligaron a cerrar totalmente la ruta 52"
+    )
+    out = {e.ruta: (e.causa, e.tipo_corte) for e in rules.extract(art(text))}
+    assert out["RN9"] == ("obra", "desconocido")
+    assert out["RN52"] == ("nieve", "total")

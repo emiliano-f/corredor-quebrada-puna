@@ -55,6 +55,8 @@ JAMA_POINT: Final = "rn52_paso_jama"
 # Yala–León stretch: accidents count only with a total closure of the route.
 TOTAL_ONLY_ACCIDENT: Final = frozenset({"rn9_yala_lozano", "rn9_leon"})
 KM_TOLERANCE: Final = 5.0
+# Sentence/clause breaks for per-route events; "nro. 9", "n. 9", "no. 9" are not breaks.
+CLAUSE_BREAK: Final = re.compile(r"(?<=[;:])\s+|(?<!\bnro\.)(?<!\bno\.)(?<!\bn\.)(?<=\.)\s+")
 
 # patterns.CAUSE_GROUPS name → ClosureEvent.causa ("temporal"/"tormenta" alone is "otro").
 WEATHER_CAUSES: Final[frozenset[Causa]] = frozenset({"aluvion", "crecida", "nieve"})
@@ -140,7 +142,7 @@ class RuleBasedExtractor(EventExtractor):
         segments: dict[str, list[str]] = {}
         pending: list[str] = []
         last: str | None = None
-        for clause in re.split(r"(?<=[.;:])\s+(?!\d)", cleaned):  # "nro. 9" is not a break
+        for clause in CLAUSE_BREAK.split(cleaned):
             matches = list(p.ROUTE.finditer(clause))
             if not matches:
                 if last is None:
