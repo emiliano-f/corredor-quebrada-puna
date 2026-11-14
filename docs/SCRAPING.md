@@ -118,7 +118,23 @@ Implemented in `src/corredor/extraction/patterns.py`:
 uv run corredor recolectar                       # every enabled source; sitemaps: sample months only
 uv run corredor recolectar --fuente todojujuy    # one source (repeatable)
 uv run corredor recolectar --completo            # sitemaps: every month since archivo_desde
+uv run corredor recolectar --completo --paralelo --max-solicitudes 0   # full backfill
 ```
+
+`--paralelo` runs one queue per host, each with its own `PoliteFetcher` (sources on the same host share it and run one after another), so politeness
+(interval, `Crawl-delay`, robots.txt) stays per host while hosts are collected at the same
+time; DuckDB writes are serialized. A source that fails stops alone and the others keep
+running. `--max-solicitudes` overrides `backfill.max_requests_per_run` (`0` = no cap).
+
+With `--completo`, each sitemap source first does a listing pass (`SitemapSource.plan`:
+only sitemaps are fetched, and they stay cached) and writes
+`data/recoleccion/<source_id>.plan.json` with months, sitemap URLs, candidates after the
+slug filter, how many are already cached, how many remain and the estimated hours at the
+host's interval. Then it fetches article pages.
+
+A source is stopped (`SourceBlocked`, reported as interrupted; resume later from the
+checkpoint) after 10 consecutive live 403/429 responses (after the fetcher's retries) or
+50 consecutive live article pages with no headline and no date (likely layout change).
 
 Articles are upserted into the DuckDB table `articulos` (`data/corredor.duckdb`). Each run
 writes the per-source counts (`CollectionStats`) to `data/recoleccion/<source_id>.json`

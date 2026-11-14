@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlsplit
 
 import pandas as pd
 import typer
@@ -16,7 +19,8 @@ from corredor.config import AppConfig, Settings, load_config
 from corredor.http import FetchError, PoliteFetcher
 from corredor.models import Article, JamaEstado
 from corredor.reports import lineage, report_header, write_manifest
-from corredor.sources.generic import GenericOptions, build_sources
+from corredor.sources.base import NewsSource
+from corredor.sources.generic import GenericOptions, SourceBlocked, build_sources
 from corredor.sources.jama import append_jsonl, build_collectors
 from corredor.storage.repository import DuckDBRepository
 
@@ -64,11 +68,11 @@ def manifest(config: ConfigOpt = None) -> None:
     typer.echo(f"Manifiesto escrito en {path}")
 
 
-def build_fetcher(cfg: AppConfig, settings: Settings) -> PoliteFetcher:
-    """The single PoliteFetcher of a run (so the robots exemption is logged once)."""
+def build_fetcher(cfg: AppConfig, settings: Settings, *, quiet: bool = False) -> PoliteFetcher:
+    """The PoliteFetcher of a run (`quiet`: the robots exemption was already logged)."""
     http = cfg.http
     exempt = [e.host for e in http.robots_exempt_hosts]
-    if exempt:
+    if exempt and not quiet:
         typer.echo(
             f"robots.txt omitido (ADR 0002) solo para: {', '.join(sorted(exempt))}", err=True
         )
@@ -148,62 +152,141 @@ def recolectar(
         ),
     ] = True,
     lote: Annotated[int, typer.Option(help="Artículos por escritura en DuckDB.")] = 200,
+    paralelo: Annotated[
+        bool,
+        typer.Option(
+            "--paralelo/--secuencial",
+            help="Una cola por fuente (cada host con su propio ritmo), en paralelo.",
+        ),
+    ] = False,
+    max_solicitudes: Annotated[
+        int | None,
+        typer.Option(
+            help="Tope de requests por fuente en esta corrida (0 = sin tope). "
+            "Por defecto, backfill.max_requests_per_run."
+        ),
+    ] = None,
 ) -> None:
-    """Recolecta metadatos de artículos (fuentes genéricas y custom) y los guarda en `articulos`."""
+    """Recolecta metadatos de artículos (fuentes genéricas y custom) y los guarda en `articulos`.
+
+    Con --completo, cada fuente de sitemaps primero lista sus meses y anota en
+    `recoleccion/<id>.plan.json` cuántas URLs hay, cuántas pasan el filtro y el tiempo
+    estimado, antes de bajar páginas de artículos.
+    """
     settings = Settings()
     cfg = load_config(config or settings.config_path)
+    cap = cfg.backfill.max_requests_per_run if max_solicitudes is None else max_solicitudes
     options = GenericOptions(
         checkpoint_dir=settings.data_dir / "checkpoints",
-        max_requests=cfg.backfill.max_requests_per_run,
+        max_requests=cap or None,
         sample_months=tuple(cfg.backfill.muestra_sitemaps) if muestra else None,
     )
     fetcher = build_fetcher(cfg, settings)
     repo = DuckDBRepository(settings.db_path)
+    out_dir = settings.data_dir / "recoleccion"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    write_lock, echo_lock = threading.Lock(), threading.Lock()
+
+    def say(message: str, *, err: bool = False) -> None:
+        with echo_lock:
+            typer.echo(message, err=err)
+
+    def save(batch: list[Article]) -> int:
+        with write_lock:
+            return repo.upsert("articulos", batch)
+
+    def collect(source: NewsSource) -> str | None:
+        """Collect one source; returns the interruption reason, if any."""
+        sid = source.source_id
+        say(f"→ {sid}")
+        batch: list[Article] = []
+        total = 0
+        failure: str | None = None
+        try:
+            plan = getattr(source, "plan", None)
+            if not muestra and plan is not None:
+                estimate = plan(cfg.backfill.desde)
+                (out_dir / f"{sid}.plan.json").write_text(
+                    json.dumps(estimate, ensure_ascii=False, indent=1), encoding="utf-8"
+                )
+                say(
+                    f"  plan {sid}: {estimate['meses']} meses, "
+                    f"{estimate['urls_sitemap']} URLs en sitemaps, "
+                    f"{estimate['candidatos']} candidatas tras el filtro de slug, "
+                    f"{estimate['a_bajar']} por bajar (~{estimate['horas_estimadas']} h "
+                    f"a {estimate['intervalo_s']:g} s)"
+                )
+            for article in source.list_articles(cfg.backfill.desde):
+                batch.append(article)
+                if len(batch) >= lote:
+                    total += save(batch)
+                    batch = []
+        except (FetchError, SourceBlocked) as exc:
+            failure = f"{type(exc).__name__}: {exc}"
+        except Exception as exc:  # one broken source must not stop the others
+            if not paralelo:
+                raise
+            logging.getLogger(__name__).exception("fuente %s", sid)
+            failure = f"{type(exc).__name__}: {exc}"
+        finally:
+            # Checkpoints are written as units finish: persist what they yielded first.
+            total += save(batch)
+        stats = getattr(source, "stats", None)
+        summary = stats.as_dict() if stats is not None else {}
+        if failure is not None:
+            summary["errors"] = [*summary.get("errors", []), failure]
+        (out_dir / f"{sid}.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+        say(
+            f"  {sid}: {total} artículos guardados; listados: {summary.get('raw', '?')}, "
+            f"seleccionados: {summary.get('selected', '?')}, "
+            f"requests: {summary.get('requests', '?')}, "
+            f"errores: {len(summary.get('errors', []))}"
+            + (" (se alcanzó el tope de requests por corrida)" if summary.get("capped") else "")
+        )
+        if failure is not None:
+            say(f"  fuente interrumpida ({sid}): {failure}", err=True)
+        return failure
+
+    fetchers: list[PoliteFetcher] = []
     try:
         sources = build_sources(cfg.fuentes, fetcher, options, only=fuente)
         if not sources:
             typer.echo("No hay fuentes activas para recolectar.", err=True)
             raise typer.Exit(1)
-        failed: list[str] = []
-        for source in sources:
-            typer.echo(f"→ {source.source_id}")
-            batch: list[Article] = []
-            total = 0
-            failure: str | None = None
-            try:
-                for article in source.list_articles(cfg.backfill.desde):
-                    batch.append(article)
-                    if len(batch) >= lote:
-                        total += repo.upsert("articulos", batch)
-                        batch = []
-            except FetchError as exc:
-                failure = f"{type(exc).__name__}: {exc}"
-            finally:
-                # Checkpoints are written as units finish: persist what they yielded first.
-                total += repo.upsert("articulos", batch)
-            stats = getattr(source, "stats", None)
-            summary = stats.as_dict() if stats is not None else {}
-            if failure is not None:
-                failed.append(source.source_id)
-                summary["errors"] = [*summary.get("errors", []), failure]
-            out = settings.data_dir / "recoleccion" / f"{source.source_id}.json"
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
-            typer.echo(
-                f"  {total} artículos guardados; listados: {summary.get('raw', '?')}, "
-                f"seleccionados: {summary.get('selected', '?')}, "
-                f"requests: {summary.get('requests', '?')}, "
-                f"errores: {len(summary.get('errors', []))}"
-                + (" (se alcanzó el tope de requests por corrida)" if summary.get("capped") else "")
-            )
-            if failure is not None:
-                typer.echo(f"  fuente interrumpida: {failure}", err=True)
+        if paralelo and len(sources) > 1:
+            # Politeness is per host: one fetcher (queue and pace) per host; sources that
+            # share a host run one after another on it.
+            base = {s.id: s.base_url for s in cfg.fuentes}
+            hosts: dict[str, list[str]] = {}
+            for source in sources:
+                host = urlsplit(base[source.source_id]).netloc.lower()
+                hosts.setdefault(host, []).append(source.source_id)
+            queues: list[list[NewsSource]] = []
+            for ids in hosts.values():
+                f = build_fetcher(cfg, settings, quiet=True)
+                fetchers.append(f)
+                queues.append(build_sources(cfg.fuentes, f, options, only=ids))
+
+            def run_queue(queue: list[NewsSource]) -> dict[str, str | None]:
+                return {s.source_id: collect(s) for s in queue}
+
+            results = {}
+            with ThreadPoolExecutor(max_workers=len(queues)) as pool:
+                for done in pool.map(run_queue, queues):
+                    results.update(done)
+        else:
+            results = {s.source_id: collect(s) for s in sources}
+        failed = [sid for sid, failure in results.items() if failure is not None]
         if failed:
             typer.echo(f"Fuentes interrumpidas: {', '.join(failed)}", err=True)
             raise typer.Exit(1)
     finally:
         repo.close()
         fetcher.close()
+        for f in fetchers:
+            f.close()
 
 
 REPORTS_DIR = Path("reports")

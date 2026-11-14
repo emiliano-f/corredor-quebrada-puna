@@ -19,6 +19,7 @@ from corredor.sources.generic import (
     RssSource,
     SitemapEntry,
     SitemapSource,
+    SourceBlocked,
     WordPressApiSource,
     decompress_if_gzip,
     entry_month,
@@ -599,3 +600,69 @@ def test_sitemap_index_and_template_are_exclusive() -> None:
         )
     with pytest.raises(ValueError, match="no monthly sitemap template"):
         SitemapSource(index_cfg(), object()).month_url("2017-01")  # type: ignore[arg-type]
+
+
+def _many(n: int) -> str:
+    locs = "".join(
+        f"<url><loc>{BASE}/jujuy/alud-en-volcan-ruta-9-n{i}</loc>"
+        "<lastmod>2024-02-03T10:00:00Z</lastmod></url>"
+        for i in range(n)
+    )
+    return f"<urlset>{locs}</urlset>"
+
+
+@respx.mock
+def test_sitemap_plan_counts_before_any_article_page(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=SITEMAP.format(base=BASE))
+    pages = respx.get(url__startswith=f"{BASE}/jujuy/").respond(200, text=HEAD.format(t="x", d=""))
+    options = GenericOptions(sample_months=("2024-02",), today=date(2026, 1, 1))
+    fetcher = make_fetcher()
+    fetcher.get(f"{BASE}/jujuy/alud-en-volcan-corte-total-ruta-9-n1")  # already cached
+    calls = pages.call_count
+    plan = SitemapSource(sitemap_cfg(), fetcher, options).plan(date(2016, 1, 1))
+    assert pages.call_count == calls  # only the sitemap was fetched
+    assert plan["meses"] == 1
+    assert (plan["urls_sitemap"], plan["candidatos"], plan["en_cache"], plan["a_bajar"]) == (
+        4,
+        3,
+        1,
+        2,
+    )
+    assert plan["intervalo_s"] == 2.5
+
+
+@respx.mock
+def test_sitemap_403_storm_stops_the_source(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=_many(15))
+    pages = respx.get(url__startswith=f"{BASE}/jujuy/").respond(403)
+    options = GenericOptions(sample_months=("2024-02",), today=date(2026, 1, 1))
+    source = SitemapSource(sitemap_cfg(), make_fetcher(retries=0), options)
+    with pytest.raises(SourceBlocked, match="10 respuestas HTTP 403"):
+        list(source.list_articles(date(2016, 1, 1)))
+    assert pages.call_count == 10
+    assert "2024-02" not in source.stats.units  # unfinished month: retried on resume
+
+
+@respx.mock
+def test_sitemap_429_storm_stops_the_source(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=_many(15))
+    pages = respx.get(url__startswith=f"{BASE}/jujuy/").respond(429)
+    options = GenericOptions(sample_months=("2024-02",), today=date(2026, 1, 1))
+    source = SitemapSource(sitemap_cfg(), make_fetcher(retries=0), options)
+    with pytest.raises(SourceBlocked, match="10 respuestas HTTP 429"):
+        list(source.list_articles(date(2016, 1, 1)))
+    assert pages.call_count == 10
+
+
+@respx.mock
+def test_sitemap_pages_without_metadata_stop_the_source(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=_many(60))
+    respx.get(url__startswith=f"{BASE}/jujuy/").respond(200, text="<html></html>")
+    options = GenericOptions(sample_months=("2024-02",), today=date(2026, 1, 1))
+    source = SitemapSource(sitemap_cfg(), make_fetcher(), options)
+    with pytest.raises(SourceBlocked, match="sin metadatos"):
+        list(source.list_articles(date(2016, 1, 1)))

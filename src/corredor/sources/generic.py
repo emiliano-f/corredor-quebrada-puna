@@ -118,6 +118,14 @@ class RequestCapReached(Exception):  # noqa: N818 — control flow, not an error
     """The per-run request cap (backfill.max_requests_per_run) was reached."""
 
 
+class SourceBlocked(Exception):  # noqa: N818 — stop signal for one source, not a fetch error
+    """The outlet looks blocked (a storm of 403/429) or changed its layout: stop this source."""
+
+
+BLOCK_STREAK: Final = 10  # consecutive live 403/429 responses
+LAYOUT_STREAK: Final = 50  # consecutive live article pages (200) without any metadata
+
+
 @dataclass
 class CollectionStats:
     """What one run of a source did; printed by `corredor recolectar` and reported in PRs.
@@ -173,6 +181,7 @@ class _GenericSource(NewsSource):
         self.stats = CollectionStats()
         ckpt_dir = self.options.checkpoint_dir
         self.checkpoint = Checkpoint(ckpt_dir / f"{config.id}.json" if ckpt_dir else None)
+        self._blocked = 0
 
     @property
     def today(self) -> date:
@@ -200,12 +209,21 @@ class _GenericSource(NewsSource):
             result = self.fetcher.get(url, refresh=refresh)
         except DisallowedByRobots:
             raise
-        except FetchError:
+        except FetchError as exc:
             self.stats.requests += 1  # a failed request still counts against the cap
+            self._track_block(getattr(exc, "status", None), url)  # 429 after the retries
             raise
         if not result.from_cache:
             self.stats.requests += 1
+            self._track_block(result.status, url)
         return result
+
+    def _track_block(self, status: int | None, url: str) -> None:
+        self._blocked = self._blocked + 1 if status in (403, 429) else 0
+        if self._blocked >= BLOCK_STREAK:
+            raise SourceBlocked(
+                f"{self._blocked} respuestas HTTP {status} seguidas (última: {url})"
+            )
 
     def _error(self, message: str) -> None:
         self.stats.errors.append(message)
@@ -563,6 +581,7 @@ class SitemapSource(_GenericSource):
             )
         self._seen: set[str] = set()
         self._index: list[IndexChild] | None = None
+        self._no_meta = 0
 
     def month_url(self, month: str) -> str:
         if self.template is None:
@@ -596,28 +615,10 @@ class SitemapSource(_GenericSource):
     def _month(
         self, month: str, *, fresh_after: date | None = None, closed: bool = True
     ) -> Iterator[Article]:
-        try:
-            listings = self._listing_urls(month)
-        except DisallowedByRobots:
-            raise
-        except FetchError as exc:
-            self._error(f"{month}: {exc}")
-            self._mark(month, "error", closed=closed, error=str(exc))
+        listed = self._month_entries(month, fresh_after=fresh_after, closed=closed)
+        if listed is None:
             return
-        entries: list[SitemapEntry] = []
-        read = 0
-        for url in listings:
-            got = self._listing(url, month, fresh_after=fresh_after, closed=closed)
-            if got is None:
-                return
-            read += 1
-            if self.index_url is None:
-                entries.extend(got)
-                continue
-            months = [entry_month(e) for e in got]
-            entries.extend(e for e, m in zip(got, months, strict=True) if m in (None, month))
-            if any(m is not None and m > month for m in months):
-                break
+        entries, read = listed
         self.stats.raw += len(entries)
         if not entries:
             self._mark(month, "empty", closed=closed, urls=0, sitemaps=read)
@@ -649,6 +650,75 @@ class SitemapSource(_GenericSource):
             page_errors=failed,
             sitemaps=read,
         )
+
+    def _month_entries(
+        self, month: str, *, fresh_after: date | None, closed: bool
+    ) -> tuple[list[SitemapEntry], int] | None:
+        """(entries listed for the month, sitemaps read); None if the month was marked."""
+        try:
+            listings = self._listing_urls(month)
+        except DisallowedByRobots:
+            raise
+        except FetchError as exc:
+            self._error(f"{month}: {exc}")
+            self._mark(month, "error", closed=closed, error=str(exc))
+            return None
+        entries: list[SitemapEntry] = []
+        read = 0
+        for url in listings:
+            got = self._listing(url, month, fresh_after=fresh_after, closed=closed)
+            if got is None:
+                return None
+            read += 1
+            if self.index_url is None:
+                entries.extend(got)
+                continue
+            months = [entry_month(e) for e in got]
+            entries.extend(e for e, m in zip(got, months, strict=True) if m in (None, month))
+            if any(m is not None and m > month for m in months):
+                break
+        return entries, read
+
+    def plan(self, since: date) -> dict[str, Any]:
+        """Listing pass before any article page is fetched: sitemap URLs, candidates after
+        the slug filter, how many of them still have to be fetched, and the estimated time
+        at this host's interval. Only sitemaps are fetched (and stay cached for the run)."""
+        current = f"{self.today:%Y-%m}"
+        cached = getattr(self.fetcher, "cached", None)
+        seen: set[str] = set()
+        months = urls = candidates = pending = 0
+        try:
+            for month in self.months(since):
+                open_now = month >= current
+                if self._skip(month, open_now):
+                    continue
+                months += 1
+                fresh_after = min(_month_end(month), self.today)
+                listed = self._month_entries(month, fresh_after=fresh_after, closed=not open_now)
+                for entry in listed[0] if listed else []:
+                    if entry.loc in seen or not _same_site(entry.loc, self.config.base_url):
+                        continue
+                    seen.add(entry.loc)
+                    urls += 1
+                    if patterns.slug_level(entry.loc) is None:
+                        continue
+                    candidates += 1
+                    if cached is None or cached(entry.loc) is None:
+                        pending += 1
+        except RequestCapReached:
+            pass
+        interval_for = getattr(self.fetcher, "interval_for", None)
+        interval = float(interval_for(self.config.base_url)) if interval_for else 2.0
+        return {
+            "meses": months,
+            "urls_sitemap": urls,
+            "candidatos": candidates,
+            "en_cache": candidates - pending,
+            "a_bajar": pending,
+            "intervalo_s": interval,
+            "horas_estimadas": round(pending * interval / 3600, 1),
+            "requests_listados": self.stats.requests,
+        }
 
     def _listing_urls(self, month: str) -> list[str]:
         if self.index_url is None:
@@ -715,6 +785,14 @@ class SitemapSource(_GenericSource):
             fetched_at = result.fetched_at
             if result.ok:
                 meta = parse_article_meta(result.text)
+                if not result.from_cache:
+                    empty = not meta.titular and meta.published is None
+                    self._no_meta = self._no_meta + 1 if empty else 0
+                    if self._no_meta >= LAYOUT_STREAK:
+                        raise SourceBlocked(
+                            f"{self._no_meta} páginas seguidas sin metadatos "
+                            f"(¿cambió el diseño?; última: {entry.loc})"
+                        )
             elif result.status in (404, 410):
                 self.stats.pages_missing += 1
             else:
