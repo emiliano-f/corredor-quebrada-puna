@@ -36,7 +36,9 @@ NO = frozenset({"0", "no", "n", "false", "mal"})
 def stable_sources(cfg: AppConfig) -> frozenset[str]:
     """Outlets with archive since 2016-01-01 or earlier (HANDOFF §3.4 item 17)."""
     return frozenset(
-        s.id for s in cfg.fuentes if s.archivo_desde and s.archivo_desde <= cfg.backfill.desde
+        s.id
+        for s in cfg.fuentes
+        if s.enabled and s.archivo_desde and s.archivo_desde <= cfg.backfill.desde
     )
 
 

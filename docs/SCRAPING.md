@@ -64,8 +64,12 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 - **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 1): text =
   headline + lede + URL path. An article is an event only if it names the corridor
-  (`patterns.is_corridor`) and a closure or reopening (`is_closure` / `is_reopening`);
-  `patterns.NEGATIVES` (Corte Suprema, corte de luz, …) are removed first.
+  (`patterns.is_corridor`) and a closure or reopening term about the road
+  (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
+  tránsito, calzada, circulación, Paso de Jama, km N… — or directly followed by "en/entre
+  <corridor place>", or is "intransitable"); `patterns.NEGATIVES` (Corte Suprema, corte de
+  luz, interrupción del servicio, …) are removed first. Disabled sources never count as
+  stable in `validacion.md`.
   - `causa`: first matching group of `patterns.CAUSE_GROUPS` (aluvión/derrumbe → `aluvion`,
     crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`.
   - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de

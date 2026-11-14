@@ -78,6 +78,7 @@ NEGATIVES: Final = _rx(
     r"|inscripcion\w*|ejercicio|edicion|carnaval|mes)\b"
     r"|\bvolcan(?:es)? (?:de fuego|lascar|villarrica|etna|popocatepetl|osorno|calbuco"
     r"|llaima|copahue|hunga|kilauea|taal)\b"
+    r"|\binterrupci\w* (?:del? |de la )?(?:servicio|suministro|energia|luz|agua)\b"
     r"|\bministerio de (?:infraestructura|obras publicas)\b"
     r"|\bobras? (?:publicas|sociales?|de teatro|de arte)\b"
 )
@@ -112,6 +113,32 @@ def is_corridor(text: str) -> bool:
 def is_closure(text: str) -> bool:
     cleaned = _clean(text)
     return bool(CLOSURE.search(cleaned) or RAW_CERRO.search(text.lower()))
+
+
+# Words that tie a closure term to the road itself, or "en/entre <corridor place>".
+ROAD: Final = _rx(
+    r"\b(?:rutas?|rn ?\d+|transito|transitabilidad|calzada|carril(?:es)?|camino"
+    r"|circulacion|vehicul\w*|vialidad|banquina|automovilistas|conductores"
+    r"|paso (?:de jama|internacional|fronterizo)|km \d+|kilometro \d+)\b"
+)
+# "corte en Volcán", "cortada totalmente entre Purmamarca y …": right after the closure term.
+AT_PLACE: Final = _rx(
+    r" (?:(?:total|parcial)(?:mente)? )?(?:en|entre|a la altura de|hacia) " + PLACE.pattern[2:]
+)
+ROAD_WINDOW: Final = 60
+
+
+def is_road_closure(text: str) -> bool:
+    """A closure/reopening term within ROAD_WINDOW characters of a road word, or at a place."""
+    cleaned = _clean(text)
+    for rx in (CLOSURE, REOPENING):
+        for m in rx.finditer(cleaned):
+            if m.group(0).startswith("intransitab") or AT_PLACE.match(cleaned, m.end()):
+                return True
+            around = cleaned[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]
+            if ROAD.search(around):
+                return True
+    return bool(RAW_CERRO.search(text.lower()) and ROAD.search(cleaned))
 
 
 def is_reopening(text: str) -> bool:

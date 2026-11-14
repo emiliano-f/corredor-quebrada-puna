@@ -226,3 +226,15 @@ def test_dedup_bridging_event_joins_clusters() -> None:
               ev("3", 11, "rn52_susques", "u3")]  # fmt: skip
     (merged,) = EventDeduplicator().merge(events, refs)
     assert len(merged.fuentes) == 3
+
+
+@pytest.mark.parametrize(
+    "titular",
+    [
+        "El Tren de la Quebrada corta el servicio por 48 horas por desprendimiento en Volcán",
+        "Interrupción de energía eléctrica para el corredor San Salvador-Tilcara",
+        "Aseguran que el cierre de Mina El Aguilar provocará una crisis en Humahuaca",
+    ],
+)
+def test_rules_closure_must_be_about_the_road(rules: RuleBasedExtractor, titular: str) -> None:
+    assert rules.extract(art(titular)) == []

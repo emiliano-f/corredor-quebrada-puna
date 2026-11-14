@@ -79,7 +79,7 @@ class RuleBasedExtractor(EventExtractor):
 
     def extract(self, article: Article) -> list[ClosureEvent]:
         text = self.text_of(article)
-        if not p.is_corridor(text) or not (p.is_closure(text) or p.is_reopening(text)):
+        if not p.is_corridor(text) or not p.is_road_closure(text):
             return []
         cleaned = p.strip_negatives(p.norm(text))
         causa = self._cause(cleaned)

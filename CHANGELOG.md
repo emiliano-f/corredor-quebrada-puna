@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Rules extractor: a closure term must refer to the road (`is_road_closure`), which drops
+  service cuts, train and mine closures; first real-data `calidad_catalogo.md`,
+  `revision_manual.csv` and `validacion.md`; only enabled sources count as stable.
 - `SCHEMA_VERSION` 1 → 2 (`puntos.osm`, `puntos.nota_geo`, #25). Existing DuckDB tables
   get missing model columns added before any write.
 - `make datos` runs `recolectar`, `clima`, fetches the `data-snapshots` Jama JSONL and
