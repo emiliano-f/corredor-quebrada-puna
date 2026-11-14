@@ -84,7 +84,8 @@ class RuleBasedExtractor(EventExtractor):
             return []
         cleaned = p.strip_negatives(p.norm(text))
         causa = self._cause(cleaned)
-        admin = p.is_admin_closure(text) and causa in WEATHER_CAUSES | {"otro"}
+        weather = causa in WEATHER_CAUSES
+        admin = (weather or causa == "otro") and p.is_admin_closure(text, weather)
         if admin:
             causa = "otro"  # border closed for health/administrative reasons, not weather
         point = self._point(cleaned, causa)

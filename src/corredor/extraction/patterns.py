@@ -137,11 +137,12 @@ POLICE_OP: Final = _rx(
     r"|narco\w*|contrabando|procedimientos?)\b"
 )
 # Border closed for administrative / health reasons (not weather): causa "otro" + note.
-ADMIN_CLOSURE: Final = _rx(
+HEALTH_CLOSURE: Final = _rx(
     r"\b(?:covid\w*|coronavirus|pandemia|cuarentena|contagios|brote"
-    r"|(?:emergencia|medidas?|razones|motivos|protocolos?) sanitari\w*"
-    r"|cierr\w* (?:de )?(?:las |los )?(?:fronteras|limites))\b"
+    r"|(?:emergencia|medidas?|razones|motivos|protocolos?) sanitari\w*)\b"
 )
+# "cierre de fronteras" alone is administrative only if no weather cause is named.
+BORDER_CLOSURE: Final = _rx(r"\bcierr\w* (?:de )?(?:las |los )?(?:fronteras|limites)\b")
 ADMIN_NOTE: Final = "cierre administrativo/sanitario (no meteorológico)"
 
 
@@ -163,8 +164,10 @@ def is_road_closure(text: str) -> bool:
     return not strict and bool(RAW_CERRO.search(text.lower()) and ROAD.search(cleaned))
 
 
-def is_admin_closure(text: str) -> bool:
-    return bool(ADMIN_CLOSURE.search(_clean(text)))
+def is_admin_closure(text: str, weather: bool) -> bool:
+    """Health closure, or a border closure when the text names no weather cause."""
+    cleaned = _clean(text)
+    return bool(HEALTH_CLOSURE.search(cleaned) or (not weather and BORDER_CLOSURE.search(cleaned)))
 
 
 def is_reopening(text: str) -> bool:

@@ -268,3 +268,9 @@ def test_rules_protest_keeps_its_cause_under_covid(rules: RuleBasedExtractor) ->
 def test_rules_unauthorised_crossing_is_not_a_reopening(rules: RuleBasedExtractor) -> None:
     a = art("Gendarmería incautó cocaína en Huacalera", "en un paso fronterizo no habilitado")
     assert rules.extract(a) == []
+
+
+def test_rules_border_closure_for_snow_stays_nieve(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Cierre de fronteras por nieve en el Paso de Jama"))
+    assert e.causa == "nieve"
+    assert e.notas == ""
