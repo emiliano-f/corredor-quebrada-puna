@@ -279,3 +279,10 @@ def test_markdown_blocks() -> None:
         {"tipo": "li", "texto": "a b sigue"},
         {"tipo": "li", "texto": "c"},
     ]
+
+
+def test_bundle_without_events_table(cfg: AppConfig) -> None:
+    b = build_bundle(inputs(cfg, eventos=pd.DataFrame(), articulos=pd.DataFrame()))
+    assert b["eventos"] == []
+    assert b["por_anio"] == []
+    assert b["limitaciones"]["eventos"] == 0

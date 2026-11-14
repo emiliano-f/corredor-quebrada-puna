@@ -142,8 +142,10 @@ def _records(frame: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def _events(inp: BundleInputs, stable: frozenset[str]) -> list[dict[str, Any]]:
+    if inp.eventos.empty:
+        return []
     names = {s.id: s.nombre for s in inp.cfg.fuentes}
-    arts = {str(a["url"]): a for a in _records(inp.articulos)}
+    arts = {str(a["url"]): a for a in _records(inp.articulos)} if not inp.articulos.empty else {}
     out = []
     for r in _records(inp.eventos.sort_values(["fecha", "evento_id"])):
         refs = [arts[str(u)] for u in r["fuentes"] if str(u) in arts]
