@@ -582,6 +582,7 @@ def test_cut_by_organised_people_is_a_protest(
         ("Choque en la ruta 9 en Tilcara: el tránsito está interrumpido", 1),
         ("Transporte de carga: piden no viajar, hay desvíos en la ruta 52 en Susques", 0),
         ("Transporte de carga varado: la ruta 52 está cortada en Susques", 1),
+        ("Despiste en la ruta 52 en Susques: calzada bloqueada", 1),
     ],
 )
 def test_vehicle_story_without_closure_term_is_not_a_closure(

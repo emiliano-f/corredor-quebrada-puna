@@ -122,7 +122,7 @@ VEHICLE: Final = _rx(
 VEHICLE_CLOSURE: Final = _rx(
     r"\b(?:cortes?|cortad[ao]s?|cort(?:a|an|aron)|interrump\w*|interrupci\w*"
     r"|cerrad[ao]s?|cerr(?:aron|aran)|cierres?|cierra\w*|clausur\w*|intransitables?|inhabilitad[ao]s?"
-    r"|media calzada)\b"
+    r"|bloque(?:o|os|ada|adas|ado|ados|an|aron)|media calzada)\b"
 )
 # Incidents only signal a closure when a closure term is also present.
 INCIDENT_GROUPS: Final = frozenset({"accidente"})
