@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Rules extractor (`PARSER_VERSION` 6): a suggested alternate route is not a closure of
+  that route; an accented "cerró" no longer drops a per-route event; cut + protest actor
+  (comunidades, vecinos, gremio…) → `protesta`; Jama closed by unspecified weather → `nieve`
+  with `confianza=baja` only May–September; accident/freight `otro` stories without a
+  closure term are dropped. Dedup: point-less merges and absorptions need the same cause
+  family.
 - Rules extractor (`PARSER_VERSION` 5): articles naming several routes and no place give one
   event per route, each with the cause and kind of its own clause; "N.º 9" route prefix;
   "mano única"/"paso alternado" are partial. Dedup: ties go to the event with more mentions;
