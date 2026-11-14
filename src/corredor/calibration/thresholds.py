@@ -169,11 +169,21 @@ class ThresholdCalibrator:
                     else []
                 )
                 for value in absolute:
-                    th = Threshold(causa=causa, variable=feat, umbral=value, unidad=unit_of(feat))
+                    th = Threshold(
+                        causa=causes[0],
+                        grupo=causa,
+                        variable=feat,
+                        umbral=value,
+                        unidad=unit_of(feat),
+                    )
                     results += self._evaluate(th, indexed, feat, feat, days)
                 for value in PERCENTILES:
                     th = Threshold(
-                        causa=causa, variable=feat + PCT_SUFFIX, umbral=value, unidad=PCT_UNIT
+                        causa=causes[0],
+                        grupo=causa,
+                        variable=feat + PCT_SUFFIX,
+                        umbral=value,
+                        unidad=PCT_UNIT,
                     )
                     results += self._evaluate(th, indexed, feat + PCT_SUFFIX, feat, days)
         return results

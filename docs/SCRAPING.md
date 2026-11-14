@@ -78,8 +78,9 @@ Implemented in `src/corredor/extraction/patterns.py`:
   - `causa`: first matching group of `patterns.CAUSE_GROUPS` (aluvión/derrumbe → `aluvion`,
     crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`. A
     weather cause becomes `otro` with `notas` = "cierre administrativo/sanitario (no
-    meteorológico)" when `patterns.ADMIN_CLOSURE` matches (Covid, cuarentena, medidas
-    sanitarias, cierre de fronteras…); protest/works/accident causes are kept.
+    meteorológico)" when `patterns.HEALTH_CLOSURE` matches (Covid, cuarentena, medidas
+    sanitarias…), and `otro` gets the same note for "cierre de fronteras" when no weather
+    cause is named; protest/works/accident causes are kept.
   - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de
     Potrerillos; else `km N` → nearest point of that route within 5 km.
   - `ruta`: the only route named (a place on the other route is then dropped), else the point's route, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).

@@ -27,7 +27,7 @@ def results_table(results: Sequence[ValidationResult], percentile: bool) -> str:
     for r in results:
         if (r.threshold.unidad == PCT_UNIT) != percentile:
             continue
-        key = (r.threshold.causa, r.threshold.variable, r.threshold.umbral)
+        key = (r.threshold.grupo or r.threshold.causa, r.threshold.variable, r.threshold.umbral)
         rows.setdefault(key, {})[r.periodo] = r
     if not rows:
         return "Sin candidatos (no hay eventos de esta causa con punto en el período de ajuste).\n"

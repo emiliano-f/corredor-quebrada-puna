@@ -119,7 +119,8 @@ def test_merged_variant_pools_rain_causes() -> None:
     from corredor.calibration.thresholds import MERGED
 
     results = ThresholdCalibrator(groups=MERGED).candidates(events(), features())
-    assert {r.threshold.causa for r in results} == {"lluvia"}
+    assert {r.threshold.grupo for r in results} == {"lluvia"}
+    assert {r.threshold.causa for r in results} == {"aluvion"}
 
 
 def test_section_has_merged_variant_and_counts() -> None:

@@ -103,10 +103,11 @@ class WeatherDay(_Model):
 
 
 class Threshold(_Model):
-    causa: str  # a Causa, or a calibration group such as "lluvia" (aluvion + crecida)
+    causa: Causa
     variable: str
     umbral: float
     unidad: str
+    grupo: str = ""  # calibration group, e.g. "lluvia" = aluvion + crecida; "" = causa
 
 
 class ValidationResult(_Model):
