@@ -130,9 +130,38 @@ def test_dedup_without_point_uses_headline_jaccard() -> None:
         "u2": ArticleRef("b", "Un aluvión cortó la ruta 52 entre Purmamarca y Susques"),
         "u3": ArticleRef("c", "Ruta 52 cortada"),
     }
-    events = [ev("1", 10, None, "u1"), ev("2", 11, None, "u2"), ev("3", 11, None, "u3")]
+    events = [
+        ev("1", 10, None, "u1", causa="otro"),
+        ev("2", 11, None, "u2", causa="otro"),
+        ev("3", 11, None, "u3", causa="otro"),
+    ]
     merged = EventDeduplicator().merge(events, refs)
     assert sorted(len(e.fuentes) for e in merged) == [1, 2]
+
+
+def test_dedup_without_point_same_cause_family_merges() -> None:
+    refs = {"u1": ArticleRef("a", "Alud en Volcán"), "u2": ArticleRef("b", "Ruta 9 cortada"),
+            "u3": ArticleRef("c", "Otra nota")}  # fmt: skip
+    events = [ev("1", 10, None, "u1"), ev("2", 11, None, "u2", causa="crecida"),
+              ev("3", 11, None, "u3", causa="nieve")]  # fmt: skip
+    merged = EventDeduplicator().merge(events, refs)
+    assert sorted(len(e.fuentes) for e in merged) == [1, 2]
+    rain = next(e for e in merged if len(e.fuentes) == 2)
+    assert (rain.fecha_inicio, rain.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 11))
+    assert rain.n_medios == 2
+
+
+def test_dedup_follow_up_extends_event_and_inherits_cause() -> None:
+    refs = {"u1": ArticleRef("a", "Alud cortó la ruta 52 en Purmamarca"),
+            "u2": ArticleRef("b", "Habilitaron la alternativa hasta las 18"),
+            "u3": ArticleRef("c", "Por trabajos impostergables cortarán la ruta")}  # fmt: skip
+    events = [ev("1", 10, "p1", "u1"), ev("2", 16, None, "u2", causa="otro"),
+              ev("3", 22, None, "u3", causa="obra")]  # fmt: skip
+    (merged,) = EventDeduplicator().merge(events, refs)
+    assert merged.causa == "aluvion"
+    assert (merged.fecha_inicio, merged.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 22))
+    assert merged.fecha == date(2024, 2, 10)
+    assert merged.punto_id == "p1"
 
 
 def test_tokens_and_jaccard() -> None:
