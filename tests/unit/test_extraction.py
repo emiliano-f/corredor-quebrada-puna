@@ -274,3 +274,8 @@ def test_rules_border_closure_for_snow_stays_nieve(rules: RuleBasedExtractor) ->
     (e,) = rules.extract(art("Cierre de fronteras por nieve en el Paso de Jama"))
     assert e.causa == "nieve"
     assert e.notas == ""
+
+
+def test_rules_police_closure_with_cerro_is_kept(rules: RuleBasedExtractor) -> None:
+    a = art("Gendarmería cerró la ruta 9 en Huacalera durante un procedimiento")
+    assert len(rules.extract(a)) == 1

@@ -161,7 +161,13 @@ def is_road_closure(text: str) -> bool:
             around = cleaned[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]
             if ROAD.search(around):
                 return True
-    return not strict and bool(RAW_CERRO.search(text.lower()) and ROAD.search(cleaned))
+    raw = text.lower()
+    if strict:
+        return any(
+            ROAD.search(_clean(raw[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]))
+            for m in RAW_CERRO.finditer(raw)
+        )
+    return bool(RAW_CERRO.search(raw) and ROAD.search(cleaned))
 
 
 def is_admin_closure(text: str, weather: bool) -> bool:
