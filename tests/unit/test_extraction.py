@@ -509,3 +509,14 @@ def test_alternate_route_is_not_a_closure(
     rules: RuleBasedExtractor, titular: str, expected: set[str]
 ) -> None:
     assert {e.ruta for e in rules.extract(art(titular))} == expected
+
+
+@pytest.mark.parametrize(
+    "titular",
+    [
+        "Vialidad cerró la ruta 52. La ruta 9 está cortada por nieve",
+        "La ruta 9 cortada por alud; también se cerró la ruta 52 por nieve",
+    ],
+)
+def test_accented_cerro_keeps_both_route_events(rules: RuleBasedExtractor, titular: str) -> None:
+    assert {e.ruta for e in rules.extract(art(titular))} == {"RN9", "RN52"}
