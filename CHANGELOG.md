@@ -7,6 +7,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Dashboard: weather-only points (`solo_clima`, e.g. `ch27_alto`) are left out of the map, the point list and the forecast download.
+- `make tablero`: offline dashboard data layer in `tablero/dist/` (single `index.html`, bare
+  unstyled views until the design brief, SVG map from `assets/geo`, no external resources, CSP
+  with hashes, service worker, geolocation → nearest critical point; events read through
+  `ClosureEvent`). Forecast risk as a percentile of the
+  forecast model's own climatology (Historical Forecast API, #26); `umbrales_elegidos` in
+  `config.yaml` (empty → "Umbral pendiente de definición"); `docs/USO.md`.
+
 ### Changed
 - `SCHEMA_VERSION` 2 → 3: `eventos.fecha_inicio`, `eventos.fecha_fin`, `eventos.lado`
   (AR/CL/ambos/desconocido, Paso de Jama only) and `puntos.solo_clima`.
