@@ -25,8 +25,8 @@ def cfg() -> AppConfig:
 
 
 def test_repo_config_loads(cfg: AppConfig) -> None:
-    assert 8 <= len(cfg.puntos) <= 14
-    assert {p.ruta for p in cfg.puntos} == {"RN9", "RN52"}
+    assert 8 <= len(cfg.puntos) <= 16
+    assert {p.ruta for p in cfg.puntos if not p.solo_clima} == {"RN9", "RN52"}
     assert len({s.id for s in cfg.fuentes}) == len(cfg.fuentes)
 
 
@@ -95,7 +95,7 @@ def test_closure_event_validates_enums() -> None:
 
 
 def test_schema_version() -> None:
-    assert SCHEMA_VERSION == 2
+    assert SCHEMA_VERSION == 3
 
 
 def test_robots_exemptions_are_exactly_open_meteo(cfg: AppConfig) -> None:

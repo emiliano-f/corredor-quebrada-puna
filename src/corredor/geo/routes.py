@@ -395,6 +395,7 @@ def write_geojson(data: GeoData, out_dir: Path, points: Sequence[CriticalPoint] 
                         "fuente_geo": p.fuente_geo,
                         "fuente_km": p.fuente_km,
                         "nota_geo": p.nota_geo,
+                        "solo_clima": p.solo_clima,
                     },
                 )
                 for p in points

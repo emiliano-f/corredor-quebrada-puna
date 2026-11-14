@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 Ruta = Literal["RN9", "RN52", "otra"]
 Causa = Literal["aluvion", "crecida", "nieve", "accidente", "protesta", "obra", "otro"]
@@ -22,6 +22,7 @@ FechaFuente = Literal["published_time", "fallback"]
 MetodoFuente = Literal["wordpress_api", "sitemap", "rss", "custom", "snapshot"]
 FiltroSlug = Literal["B", "C_solo_ruta"]
 FuenteJama = Literal["mop_cl", "argentina_gob_ar"]
+Lado = Literal["AR", "CL", "ambos", "desconocido"]
 
 
 class _Model(BaseModel):
@@ -74,6 +75,11 @@ class ClosureEvent(_Model):
     metodo: Metodo
     confianza: Confianza
     notas: str = ""
+    # Added in SCHEMA_VERSION 3 (dedup/Jama fixes): first and last article date of the
+    # merged closure, and for Paso de Jama the side of the closure (CL = Ruta CH-27).
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
+    lado: Lado | None = None
 
 
 class CriticalPoint(_Model):
@@ -90,6 +96,8 @@ class CriticalPoint(_Model):
     # and a free-text note flagging uncertainty.
     osm: str = ""
     nota_geo: str = ""
+    # Added in SCHEMA_VERSION 3: weather-only point (e.g. on Chilean CH-27), not a risk point.
+    solo_clima: bool = False
 
 
 class WeatherDay(_Model):

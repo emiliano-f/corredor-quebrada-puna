@@ -120,6 +120,18 @@ class CriticalPointRegistry:
         el = elements.get(p.osm)
         if el is None:
             return _unverified(p, None, f"objeto {p.osm} no encontrado en OSM")
+        if p.solo_clima:  # weather-only point off the corridor routes: no km, no route offset
+            ok = kind != "relation"
+            updated = p.model_copy(
+                update={
+                    "lat": round(el.lat, 6),
+                    "lon": round(el.lon, 6),
+                    "km": None,
+                    "verificado": ok,
+                    "fuente_geo": f"OSM {p.osm} ('{el.name or 'sin nombre'}'), solo clima",
+                }
+            )
+            return PointCheck(updated, None, [] if ok else ["relación OSM"])
         route = routes[p.ruta]
         km, dist = route.km_at(el.latlon)
         problems: list[str] = []

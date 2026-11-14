@@ -27,7 +27,7 @@ def test_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 0, result.output
     data = json.loads((tmp_path / "manifest.json").read_text())
     assert data["version"] == __version__
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     assert len(data["sources_hash"]) == 16
 
 
@@ -62,7 +62,7 @@ def test_clima_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     args = ["clima", "--config", str(ROOT / "config.yaml"), "--hasta", "2016-01-08"]
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
-    assert "Clima: 13/13 puntos, 104 días en clima_diario" in result.output
+    assert "Clima: 16/16 puntos, 128 días en clima_diario" in result.output
     report = (tmp_path / "reports" / "clima_grilla.md").read_text()
     assert "rn9_volcan" in report
     assert (tmp_path / "data" / "clima" / "antecedentes.parquet").exists()

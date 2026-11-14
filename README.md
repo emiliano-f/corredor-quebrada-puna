@@ -1,8 +1,11 @@
 # Corredor Quebrada–Puna
 
-Alertas de riesgo de corte para la **Ruta Nacional 9** (Quebrada de Humahuaca, a lo largo
-del Tren Solar) y la **Ruta Nacional 52** (Purmamarca → Cuesta de Lipán → Susques → Paso
-de Jama), en Jujuy, Argentina.
+Alertas de riesgo de corte para la **Ruta Nacional 9** (de Yala a Humahuaca: Yala → Lozano
+→ León → Bárcena → Volcán → … → Humahuaca, a lo largo del Tren Solar) y la **Ruta Nacional
+52** (Purmamarca → Cuesta de Lipán → Susques → Paso de Jama, incluidos los cierres del lado
+chileno, Ruta CH-27), en Jujuy, Argentina. Los cortes al sur de Yala (San Salvador de Jujuy,
+Alto Comedero, Palpalá) quedan fuera del catálogo; entre Yala y León, un accidente cuenta
+solo si cortó la ruta por completo.
 
 La base es un **catálogo histórico de cortes** armado a partir de noticias locales (solo
 metadatos: enlace, medio, fecha, titular y bajada) y cruzado con datos meteorológicos
@@ -27,6 +30,7 @@ make datos          # recolectar + clima + Jama → eventos deduplicados en Duck
 make reporte        # reports/calidad_catalogo.md y reports/revision_manual.csv
 make calibrar       # reports/validacion.md (umbrales en mm/cm y en percentil por celda)
 make precision      # precisión por campo y por estrato desde reports/revision_manual.csv etiquetado
+make cobertura      # reports/control/cobertura.md: cobertura contra la lista de control (no entra al pipeline)
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas
@@ -35,7 +39,7 @@ tiene historial: los datos empiezan el día en que arrancó el colector.
 
 Etapas (una por target de Make): `make geo` (rutas, Tren Solar y puntos críticos desde
 OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make clima`, `make datos`, `make calibrar`,
-`make precision`, `make reporte`. `make tablero` queda para el día 2.
+`make precision`, `make reporte`, `make cobertura`. `make tablero` queda para el día 2.
 
 `make clima` respeta el tope diario de llamadas a Open-Meteo (`clima.max_llamadas_diarias`
 en `config.yaml`: 1500; 500 si no se configura): si lo alcanza, se detiene con un aviso y la corrida

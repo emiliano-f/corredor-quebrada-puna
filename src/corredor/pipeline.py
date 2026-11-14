@@ -275,7 +275,7 @@ def _features(settings: Settings) -> pd.DataFrame:
 @app.command()
 def calibrar(config: ConfigOpt = None) -> None:
     """Calibra umbrales por causa y escribe reports/validacion.md."""
-    from corredor.calibration.report import section
+    from corredor.calibration.report import section, snow_by_side
     from corredor.calibration.thresholds import ThresholdCalibrator
     from corredor.catalog import article_refs, frame_to_events, stable_sources
 
@@ -311,6 +311,10 @@ def calibrar(config: ConfigOpt = None) -> None:
         + section("Todas las fuentes", cal, events, features)
         + "\n"
         + section("Solo fuentes estables", cal, stable_events, features)
+        + "\n"
+        + snow_by_side("Todas las fuentes", cal, events, features)
+        + "\n"
+        + snow_by_side("Solo fuentes estables", cal, stable_events, features)
     )
     out = REPORTS_DIR / "validacion.md"
     out.parent.mkdir(exist_ok=True)
@@ -337,6 +341,40 @@ def precision(
         encoding="utf-8",
     )
     typer.echo(f"Precisión → {out}")
+
+
+CONTROL_CSV = REPORTS_DIR / "control" / "cortes_conocidos.csv"
+
+
+@app.command()
+def cobertura(
+    config: ConfigOpt = None,
+    archivo: Annotated[Path, typer.Option(help="Lista de control (CSV).")] = CONTROL_CSV,
+) -> None:
+    """Cobertura del catálogo contra la lista de control (no se carga en las tablas)."""
+    from corredor.catalog import frame_to_events
+    from corredor.coverage import evaluate, load_control
+    from corredor.coverage import report as coverage_report
+
+    settings = Settings()
+    cfg = load_config(config or settings.config_path)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        events = frame_to_events(repo.read("eventos"))
+    finally:
+        repo.close()
+    found = evaluate(load_control(archivo), events)
+    outlets = [s.nombre for s in cfg.fuentes if s.enabled]
+    out = archivo.parent / "cobertura.md"
+    out.write_text(
+        report_header("Cobertura contra la lista de control", lineage(cfg))
+        + f"Lista: `{archivo.name}` ({len(found)} eventos; E003–E005 cuentan como uno). "
+        "Coincide un evento del catálogo con la misma ruta, el mismo punto (o sin punto) y "
+        "fechas que se superponen con las de control ±2 días.\n\n"
+        + coverage_report(found, outlets),
+        encoding="utf-8",
+    )
+    typer.echo(f"Cobertura → {out}")
 
 
 @app.command()

@@ -16,10 +16,14 @@ GEO = ROOT / "assets" / "geo"
 def test_config_points_verified_with_sources() -> None:
     points = load_config(ROOT / "config.yaml").puntos
     verified = [p for p in points if p.verificado]
-    assert 8 <= len(verified) <= 12
+    assert 8 <= len(verified) <= 15
     for p in points:
         assert p.osm
         assert p.fuente_geo.startswith(f"OSM {p.osm}")
+        if p.solo_clima:
+            assert p.ruta == "otra"
+            assert p.km is None
+            continue
         assert p.fuente_km
         assert p.km
         if not p.verificado:

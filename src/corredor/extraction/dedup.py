@@ -1,27 +1,40 @@
 """Event deduplication: one closure reported by several outlets becomes one event.
 
-Two events are the same closure when they share the route, have compatible causes
-(equal, or one of them "otro") and their dates are within `window_days`, and either
-  * both have the same critical point, or
-  * at least one has no point and their headlines are similar: Jaccard similarity of
-    normalised tokens >= `min_jaccard`, both with >= `min_tokens` tokens (HANDOFF §7.4).
-Clusters grow by single linkage over events sorted by date. `n_medios` counts distinct
-outlets, excluding those with `republica: true`.
+Two events are the same closure when they share the route, their points are compatible
+(equal, or at least one without point) and their dates are within `window_days`, and
+  * same point and compatible causes (same family — aluvión and crecida are one rain
+    family — or one of them "otro"), or
+  * at least one without point and the same cause family (neither "otro"), or
+  * at least one without point and similar headlines (Jaccard of normalised tokens >=
+    `min_jaccard`, both with >= `min_tokens` tokens).
+A follow-up article (FOLLOW_UP: schedules, "habilitan", "reabren", "sigue cortada",
+works after a closure…) joins a cluster on the same route with compatible points within
+`follow_days` of any member, whatever its own cause, and inherits the cluster's cause.
+Clusters grow by single linkage over events sorted by date. The merged event keeps
+`fecha` = `fecha_inicio` (first article) and `fecha_fin` (last article). `n_medios` counts
+distinct outlets, excluding those with `republica: true`.
 """
 
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from corredor.extraction.patterns import norm
-from corredor.models import ClosureEvent, Confianza, TipoCorte
+from corredor.models import ClosureEvent, Confianza, Lado, TipoCorte
 
 STOPWORDS = frozenset(
     "a al ante con de del desde el en entre es la las lo los para por que se sin su sobre tras "  # noqa: SIM905
     "un una y o e ya hoy".split()
 )
+FOLLOW_UP = re.compile(
+    r"\b(?:habilit\w*|rehabilit\w*|reabr\w*|reapert\w*|sigue cortad\w*|continua cortad\w*"
+    r"|sigue el corte|continua el corte|continua cerrad\w*|sigue cerrad\w*|siguen los cortes"
+    r"|horarios?|alternativa|desvios?|trabajos|limpieza|pueden circular|restablec\w*)\b"
+)
+_FAMILY: dict[str, str] = {"aluvion": "lluvia", "crecida": "lluvia"}
 _CONFIANZA: dict[Confianza, int] = {"baja": 0, "media": 1, "alta": 2}
 _TIPO: dict[TipoCorte, int] = {"desconocido": 0, "precaucion": 1, "parcial": 2, "total": 3}
 
@@ -48,6 +61,19 @@ def jaccard(a: frozenset[str], b: frozenset[str]) -> float:
 class _Cluster:
     events: list[ClosureEvent] = field(default_factory=list)
     titles: list[frozenset[str]] = field(default_factory=list)
+    follow: list[bool] = field(default_factory=list)
+
+    @property
+    def point(self) -> str | None:
+        return next((e.punto_id for e in self.events if e.punto_id), None)
+
+
+def family(causa: str) -> str:
+    return _FAMILY.get(causa, causa)
+
+
+def is_follow_up(titular: str) -> bool:
+    return bool(FOLLOW_UP.search(norm(titular)))
 
 
 class EventDeduplicator:
@@ -59,7 +85,9 @@ class EventDeduplicator:
         republishers: frozenset[str] = frozenset(),
         min_jaccard: float = 0.5,
         min_tokens: int = 5,
+        follow_days: int = 7,
     ) -> None:
+        self.follow_days = follow_days
         self.window_days = window_days
         self.republishers = republishers
         self.min_jaccard = min_jaccard
@@ -70,34 +98,66 @@ class EventDeduplicator:
     ) -> list[ClosureEvent]:
         refs = articles or {}
         clusters: list[_Cluster] = []
-        for ev in sorted(events, key=lambda e: (e.fecha, e.fuentes, e.evento_id)):
-            title = tokens(" ".join(refs[u].titular for u in ev.fuentes if u in refs))
-            hits = [c for c in clusters if self._matches(c, ev, title)]
-            if not hits:
-                hits = [_Cluster()]
-                clusters.append(hits[0])
-            target = hits[0]
-            for other in hits[1:]:  # the event bridges clusters: join them
-                target.events.extend(other.events)
-                target.titles.extend(other.titles)
-                clusters.remove(other)
+        order = sorted(events, key=lambda e: (e.fecha, e.punto_id is None, e.fuentes, e.evento_id))
+        for ev in order:
+            raw_title = " ".join(refs[u].titular for u in ev.fuentes if u in refs)
+            title, follow = tokens(raw_title), is_follow_up(raw_title)
+            scored = [
+                (score, i) for i, c in enumerate(clusters)
+                if (score := self._score(c, ev, title, follow)) is not None
+            ]  # fmt: skip
+            if not scored:
+                clusters.append(_Cluster())
+                target = clusters[-1]
+            else:
+                target = clusters[min(scored)[1]]
+                if ev.punto_id is not None:  # a located event absorbs point-less matches
+                    for i in sorted((i for _, i in scored), reverse=True):
+                        other = clusters[i]
+                        near = abs((other.events[0].fecha - ev.fecha).days) <= self.window_days
+                        if other is not target and other.point is None and near:
+                            target.events.extend(other.events)
+                            target.titles.extend(other.titles)
+                            target.follow.extend(other.follow)
+                            del clusters[i]
             target.events.append(ev)
             target.titles.append(title)
+            target.follow.append(follow)
         return [self._combine(c, refs) for c in clusters]
 
-    def _matches(self, cluster: _Cluster, ev: ClosureEvent, title: frozenset[str]) -> bool:
-        for other, other_title in zip(cluster.events, cluster.titles, strict=True):
-            if other.ruta != ev.ruta or abs((ev.fecha - other.fecha).days) > self.window_days:
+    def _score(
+        self, cluster: _Cluster, ev: ClosureEvent, title: frozenset[str], follow: bool
+    ) -> tuple[int, int] | None:
+        """(point rank, day gap) if `ev` belongs to `cluster`, else None; lower is better."""
+        point = cluster.point
+        if ev.punto_id is not None and point is not None and ev.punto_id != point:
+            return None
+        rank = 0 if ev.punto_id is not None and ev.punto_id == point else 1
+        best: int | None = None
+        for other, other_title, other_follow in zip(
+            cluster.events, cluster.titles, cluster.follow, strict=True
+        ):
+            if other.ruta != ev.ruta:
                 continue
-            if other.causa != ev.causa and "otro" not in (other.causa, ev.causa):
-                continue
-            if ev.punto_id is not None and ev.punto_id == other.punto_id:
-                return True
-            if (ev.punto_id is None or other.punto_id is None) and self._similar(
-                title, other_title
+            gap = abs((ev.fecha - other.fecha).days)
+            ok = False
+            if (
+                follow
+                and not other_follow
+                and other.tipo_corte != "precaucion"  # a warning is not a closure
+                and 0 <= (ev.fecha - other.fecha).days <= (self.follow_days)
             ):
-                return True
-        return False
+                ok = True  # schedules, reopenings, works after a closure extend it
+            elif gap <= self.window_days:
+                fam_a, fam_b = family(ev.causa), family(other.causa)
+                located = ev.punto_id is not None and point is not None
+                vague = "otro" in (fam_a, fam_b)
+                ok = fam_a == fam_b != "otro" or (
+                    vague and (located or self._similar(title, other_title))
+                )
+            if ok and (best is None or gap < best):
+                best = gap
+        return None if best is None else (rank, best)
 
     def _similar(self, a: frozenset[str], b: frozenset[str]) -> bool:
         if min(len(a), len(b)) < self.min_tokens:
@@ -107,15 +167,23 @@ class EventDeduplicator:
     def _combine(self, cluster: _Cluster, refs: Mapping[str, ArticleRef]) -> ClosureEvent:
         evs = cluster.events
         if len(evs) == 1 and not refs:
-            return evs[0]
+            return evs[0].model_copy(
+                update={"fecha_inicio": evs[0].fecha, "fecha_fin": evs[0].fecha}
+            )
         urls = sorted({u for e in evs for u in e.fuentes})
         outlets = {refs[u].source_id if u in refs else u for u in urls}
-        causes = [e.causa for e in evs if e.causa != "otro"]
+        lead = [e for e, f in zip(evs, cluster.follow, strict=True) if not f] or evs
+        causes = [e.causa for e in lead if e.causa != "otro"] or [
+            e.causa for e in evs if e.causa != "otro"
+        ]
+        evs = sorted(evs, key=lambda e: (e.fecha, e.evento_id))
         first = evs[0]
         return first.model_copy(
             update={
                 "evento_id": hashlib.sha1(  # noqa: S324 — identifier, not security
-                    "|".join([first.fecha.isoformat(), first.ruta, *urls]).encode()
+                    "|".join(
+                        [first.fecha.isoformat(), first.ruta, cluster.point or "", *urls]
+                    ).encode()
                 ).hexdigest()[:16],
                 "punto_id": next((e.punto_id for e in evs if e.punto_id), None),
                 "km": next((e.km for e in evs if e.km is not None), None),
@@ -123,9 +191,22 @@ class EventDeduplicator:
                 "causa": max(set(causes), key=lambda c: (causes.count(c), c)) if causes else "otro",
                 "tipo_corte": max((e.tipo_corte for e in evs), key=_TIPO.__getitem__),
                 "fuentes": urls,
+                "fecha": first.fecha,
+                "fecha_inicio": first.fecha,
+                "fecha_fin": max(e.fecha for e in evs),
                 "n_medios": len(outlets - self.republishers),
                 "metodo": "llm" if any(e.metodo == "llm" for e in evs) else "reglas",
                 "confianza": max((e.confianza for e in evs), key=_CONFIANZA.__getitem__),
                 "notas": "; ".join(sorted({e.notas for e in evs if e.notas})),
+                "lado": _side(e.lado for e in evs),
             }
         )
+
+
+def _side(sides: Iterable[str | None]) -> Lado | None:
+    """Most informative side over the merged mentions (AR + CL → ambos)."""
+    found = set(sides)
+    if "ambos" in found or {"AR", "CL"} <= found:
+        return "ambos"
+    order: tuple[Lado, ...] = ("CL", "AR", "desconocido")
+    return next((lado for lado in order if lado in found), None)

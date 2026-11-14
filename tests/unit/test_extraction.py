@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -129,9 +130,38 @@ def test_dedup_without_point_uses_headline_jaccard() -> None:
         "u2": ArticleRef("b", "Un aluvión cortó la ruta 52 entre Purmamarca y Susques"),
         "u3": ArticleRef("c", "Ruta 52 cortada"),
     }
-    events = [ev("1", 10, None, "u1"), ev("2", 11, None, "u2"), ev("3", 11, None, "u3")]
+    events = [
+        ev("1", 10, None, "u1", causa="otro"),
+        ev("2", 11, None, "u2", causa="otro"),
+        ev("3", 11, None, "u3", causa="otro"),
+    ]
     merged = EventDeduplicator().merge(events, refs)
     assert sorted(len(e.fuentes) for e in merged) == [1, 2]
+
+
+def test_dedup_without_point_same_cause_family_merges() -> None:
+    refs = {"u1": ArticleRef("a", "Alud en Volcán"), "u2": ArticleRef("b", "Ruta 9 cortada"),
+            "u3": ArticleRef("c", "Otra nota")}  # fmt: skip
+    events = [ev("1", 10, None, "u1"), ev("2", 11, None, "u2", causa="crecida"),
+              ev("3", 11, None, "u3", causa="nieve")]  # fmt: skip
+    merged = EventDeduplicator().merge(events, refs)
+    assert sorted(len(e.fuentes) for e in merged) == [1, 2]
+    rain = next(e for e in merged if len(e.fuentes) == 2)
+    assert (rain.fecha_inicio, rain.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 11))
+    assert rain.n_medios == 2
+
+
+def test_dedup_follow_up_extends_event_and_inherits_cause() -> None:
+    refs = {"u1": ArticleRef("a", "Alud cortó la ruta 52 en Purmamarca"),
+            "u2": ArticleRef("b", "Habilitaron la alternativa hasta las 18"),
+            "u3": ArticleRef("c", "Por trabajos impostergables cortarán la ruta")}  # fmt: skip
+    events = [ev("1", 10, "p1", "u1"), ev("2", 16, None, "u2", causa="otro"),
+              ev("3", 22, None, "u3", causa="obra")]  # fmt: skip
+    merged, works = EventDeduplicator().merge(events, refs)
+    assert merged.causa == "aluvion"
+    assert (merged.fecha_inicio, merged.fecha_fin) == (date(2024, 2, 10), date(2024, 2, 16))
+    assert merged.punto_id == "p1"
+    assert (works.causa, works.fecha) == ("obra", date(2024, 2, 22))  # > 7 days after the lead
 
 
 def test_tokens_and_jaccard() -> None:
@@ -279,3 +309,90 @@ def test_rules_border_closure_for_snow_stays_nieve(rules: RuleBasedExtractor) ->
 def test_rules_police_closure_with_cerro_is_kept(rules: RuleBasedExtractor) -> None:
     a = art("Gendarmería cerró la ruta 9 en Huacalera durante un procedimiento")
     assert len(rules.extract(a)) == 1
+
+
+def test_ok_corte_excludes_rows_from_field_precision(tmp_path: Path) -> None:
+    from corredor.catalog import REVIEW_COLUMNS, precision_report, read_corte, read_labels
+
+    path = tmp_path / "r.csv"
+    rows = [
+        {"estrato": "nieve", "ok_corte": "si", "ok_fecha": "si", "ok_punto": "no",
+         "ok_causa": "si"},
+        {"estrato": "otras", "ok_corte": "no", "ok_fecha": "si", "ok_punto": "si",
+         "ok_causa": "si"},
+        {"estrato": "otras", "ok_corte": "fuera", "ok_fecha": "no"},
+        {"estrato": "crecida"},
+    ]  # fmt: skip
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=REVIEW_COLUMNS)
+        w.writeheader()
+        w.writerows({k: r.get(k, "") for k in REVIEW_COLUMNS} for r in rows)
+    assert read_corte(path) == {"si": 1, "no": 1, "fuera": 1}
+    assert read_labels(path) == {"ok_fecha": [True], "ok_punto": [False], "ok_causa": [True]}
+    text = precision_report(path, "")
+    assert "| todos | 1 | 1 | 1 | 33% (n=3) |" in text
+    assert "| todos | 100% (n=1) | 0% (n=1) | 100% (n=1) |" in text
+
+
+def test_review_sample_completes_strata() -> None:
+    from corredor.catalog import review_sample
+
+    events = [
+        ev(str(i), i + 1, None, f"u{i}").model_copy(update={"causa": c})
+        for i, c in enumerate(["nieve"] * 10 + ["crecida"] * 10)
+    ]
+    out = review_sample(events, {"nieve": 7, "crecida": 3}, frozenset({"u0"}))
+    by = [s for s, _ in out]
+    assert by.count("nieve") == 1
+    assert by.count("crecida") == 5
+    assert all("u0" not in e.fuentes for _, e in out)
+
+
+def test_rules_one_event_per_named_point(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Alud cortó la ruta 9 en Volcán y en Tumbaya"))
+    assert sorted(e.punto_id or "" for e in out) == ["rn9_tumbaya", "rn9_volcan"]
+    assert len({e.evento_id for e in out}) == 2
+
+
+@pytest.mark.parametrize(
+    ("titular", "lado"),
+    [
+        ("Paso de Jama cerrado por nevadas del lado chileno", "CL"),
+        ("Cerraron el Paso de Jama por nieve en la Ruta 27 hacia San Pedro de Atacama", "CL"),
+        ("Paso de Jama cerrado por nieve, varados en Susques", "AR"),
+        ("Paso de Jama cerrado por nieve en Susques y del lado chileno", "ambos"),
+        ("Paso de Jama cerrado por nieve", "desconocido"),
+    ],
+)  # fmt: skip
+def test_rules_jama_side(rules: RuleBasedExtractor, titular: str, lado: str) -> None:
+    jama = [e for e in rules.extract(art(titular)) if e.punto_id == "rn52_paso_jama"]
+    assert [e.lado for e in jama] == [lado]
+
+
+def test_rules_chilean_side_closure_is_total(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Paso de Jama cerrado por viento blanco del lado chileno"))
+    assert (e.causa, e.tipo_corte, e.lado) == ("nieve", "total", "CL")
+
+
+def test_rules_wind_without_snow_is_otro(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Cerraron el Paso de Jama por fuertes vientos"))
+    assert (e.causa, e.notas) == ("otro", "viento")
+
+
+def test_rules_south_of_yala_dropped(rules: RuleBasedExtractor) -> None:
+    assert rules.extract(art("Corte en ruta 9 altura de Chango Más")) == []
+    assert rules.extract(art("Corte de la ruta 9 en Alto Comedero")) == []
+
+
+def test_rules_pope_leon_is_not_a_place(rules: RuleBasedExtractor) -> None:
+    assert rules.extract(art("Cortes de tránsito por la visita del papa León XIV")) == []
+
+
+def test_dedup_keeps_the_most_informative_side() -> None:
+    a = ev("1", 10, "rn52_paso_jama", "u1").model_copy(update={"lado": "desconocido"})
+    b = ev("2", 11, "rn52_paso_jama", "u2").model_copy(update={"lado": "CL"})
+    c = ev("3", 11, "rn52_paso_jama", "u3").model_copy(update={"lado": "AR"})
+    (merged,) = EventDeduplicator().merge([a, b])
+    assert merged.lado == "CL"
+    (both,) = EventDeduplicator().merge([a, b, c])
+    assert both.lado == "ambos"

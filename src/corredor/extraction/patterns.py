@@ -36,7 +36,8 @@ ROUTE: Final = _rx(
 )
 
 PLACE: Final = _rx(
-    r"\b(?:volcan|los filtros|barcena|tumbaya|purmamarca|chalala|lipan|potrerillos"
+    r"\b(?:yala|lozano|(?<!papa )leon(?! x[iv])|volcan|los filtros|barcena|tumbaya"
+    r"|purmamarca|chalala|lipan|potrerillos"
     r"|ron?qui angosto|ranqui angosto|saladillo|salinas grandes|susques|jama|maimara"
     r"|tilcara|huacalera|humahuaca|uquia|quebrada de humahuaca)\b"
 )
@@ -52,6 +53,18 @@ CLOSURE: Final = _rx(
     r"|corto(?= (?:la ruta|el transito|el paso|la circulacion|el camino)))\b"
 )
 RAW_CERRO: Final = re.compile(r"\bcerró\b")
+# South of Yala (San Salvador de Jujuy, Alto Comedero, Palpalá): out of the corridor scope.
+SOUTH: Final = _rx(r"\b(?:san salvador de jujuy|alto comedero|palpala|chango mas)\b")
+# Paso de Jama side of the closure.
+SIDE_CL: Final = _rx(
+    r"\b(?:lado chileno|chile|chilen[ao]s?|san pedro de atacama|calama|ruta 27|ch ?-? ?27)\b"
+)
+SIDE_AR: Final = _rx(r"\b(?:lado argentino|del lado de argentina|susques)\b")
+JAMA_DESTINATION: Final = _rx(
+    r"\b(?:camino|rumbo|acceso|ruta \d+|ruta nacional \d+|rn ?\d+|que (?:une|conduce|lleva|va))"
+    r" (?:a|al|hacia) (?:el )?(?:paso (?:internacional )?(?:de )?)?jama\b"
+)
+WIND: Final = _rx(r"\b(?:vientos?|rafagas?)\b")
 REOPENING: Final = _rx(r"\b(?:habilit\w*|rehabilit\w*|reabr\w*|reapert\w*)\b")
 TRAFFIC: Final = _rx(r"\b(?:transitabilidad|transito|km \d+|kilometro \d+)\b")
 

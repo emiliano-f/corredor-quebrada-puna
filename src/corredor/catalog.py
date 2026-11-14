@@ -30,9 +30,12 @@ EVENT_COLUMNS = (
     "n_medios", "metodo", "confianza",
 )  # fmt: skip
 REVIEW_COLUMNS = (
-    "estrato", *EVENT_COLUMNS, "titular", "url", "ok_fecha", "ok_punto", "ok_causa",
-    "comentario",
+    "estrato", *EVENT_COLUMNS, "titular", "url", "ok_corte", "ok_fecha", "ok_punto",
+    "ok_causa", "comentario",
 )  # fmt: skip
+# ok_corte: si = a road closure in scope; no = not a closure; fuera = closure outside the
+# corridor. Rows with ok_corte no/fuera are left out of the fecha/punto/causa precision.
+CORTE = ("si", "no", "fuera")
 LABELS = ("ok_fecha", "ok_punto", "ok_causa")
 YES = frozenset({"1", "si", "sí", "s", "ok", "true", "x", "y", "yes"})
 NO = frozenset({"0", "no", "n", "false", "mal"})
@@ -71,10 +74,10 @@ def frame_to_events(frame: pd.DataFrame) -> list[ClosureEvent]:
 
 
 def _plain(value: object) -> object:
-    if hasattr(value, "tolist"):
+    if hasattr(value, "tolist") and not isinstance(value, pd.Timestamp):
         return value.tolist()  # numpy arrays (list columns)
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return None
+    if value is None or value is pd.NaT or (isinstance(value, float) and value != value):
+        return None  # missing optional column value (NaN / NaT)
     if isinstance(value, pd.Timestamp):
         return value.to_pydatetime()
     return value
@@ -227,7 +230,9 @@ def write_review(
     events: Sequence[ClosureEvent], refs: Mapping[str, ArticleRef], path: Path
 ) -> bool:
     """Write the manual-review CSV unless one already has labels (never overwrite them)."""
-    if path.exists() and any(read_labels(path)[label] for label in LABELS):
+    if path.exists() and (
+        any(read_labels(path)[label] for label in LABELS) or any(read_corte(path).values())
+    ):
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
@@ -249,14 +254,25 @@ def stratum_of(causa: str) -> str:
     return causa if causa in STRATA else "otras"
 
 
-def review_sample(events: Sequence[ClosureEvent]) -> list[tuple[str, ClosureEvent]]:
-    """STRATA[s] random events per stratum (fixed seed; fewer if the stratum is smaller)."""
+def review_sample(
+    events: Sequence[ClosureEvent],
+    have: Mapping[str, int] | None = None,
+    exclude_urls: frozenset[str] = frozenset(),
+) -> list[tuple[str, ClosureEvent]]:
+    """STRATA[s] random events per stratum (fixed seed; fewer if the stratum is smaller).
+
+    With `have` (rows already labelled per stratum) only the missing rows are drawn, from
+    events none of whose articles is in `exclude_urls`."""
     rng = random.Random(SEED)  # noqa: S311 — reproducible sample
     ordered = sorted(events, key=lambda e: (e.fecha, e.evento_id))
     out: list[tuple[str, ClosureEvent]] = []
     for stratum, size in STRATA.items():
-        pool = [e for e in ordered if stratum_of(e.causa) == stratum]
-        picked = rng.sample(pool, min(size, len(pool)))
+        pool = [
+            e for e in ordered
+            if stratum_of(e.causa) == stratum and not exclude_urls.intersection(e.fuentes)
+        ]  # fmt: skip
+        need = max(0, size - (have or {}).get(stratum, 0))
+        picked = rng.sample(pool, min(need, len(pool)))
         out += [(stratum, e) for e in sorted(picked, key=lambda e: (e.fecha, e.evento_id))]
     return out
 
@@ -268,12 +284,26 @@ def _cell(value: object) -> object:
     return value
 
 
+def read_corte(path: Path, stratum: str | None = None) -> dict[str, int]:
+    """Rows per ok_corte value (si/no/fuera); only rows of `stratum` when given."""
+    counts = dict.fromkeys(CORTE, 0)
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            value = (row.get("ok_corte") or "").strip().lower()
+            if value in counts and (stratum is None or (row.get("estrato") or "") == stratum):
+                counts[value] += 1
+    return counts
+
+
 def read_labels(path: Path, stratum: str | None = None) -> dict[str, list[bool]]:
-    """Labels per field; only rows of `stratum` when given."""
+    """Labels per field; only rows of `stratum` when given; rows with ok_corte no/fuera
+    are skipped (not a closure in the corridor, so fecha/punto/causa don't apply)."""
     labels: dict[str, list[bool]] = {label: [] for label in LABELS}
     with path.open(encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
             if stratum is not None and (row.get("estrato") or "") != stratum:
+                continue
+            if (row.get("ok_corte") or "").strip().lower() in ("no", "fuera"):
                 continue
             for label in LABELS:
                 value = (row.get(label) or "").strip().lower()
@@ -289,14 +319,23 @@ def _precision(vals: Sequence[bool]) -> str:
 
 
 def precision_report(path: Path, header: str) -> str:
-    rows = []
+    corte_rows, rows = [], []
     for stratum in (None, *STRATA):
+        c = read_corte(path, stratum)
+        n = sum(c.values())
+        rate = f"{c['si'] / n:.0%} (n={n})" if n else "— (n=0)"
+        corte_rows.append((stratum or "todos", c["si"], c["no"], c["fuera"], rate))
         labels = read_labels(path, stratum)
         rows.append((stratum or "todos", *(_precision(labels[label]) for label in LABELS)))
     sizes = ", ".join(f"{s} {n}" for s, n in STRATA.items())
     return (
         header + f"Etiquetas leídas de `{path}` (valores sí: 1/si/ok/x; no: 0/no/mal; vacío = sin "
-        f"etiquetar). Muestra estratificada por causa (semilla {SEED}: {sizes}); n = filas "
-        "etiquetadas en ese campo. Precisión = correctos / etiquetados.\n\n"
+        f"etiquetar). Muestra estratificada por causa (semilla {SEED}: {sizes}).\n\n"
+        "## ¿Es un corte en el corredor? (`ok_corte`)\n\n"
+        "si = corte de ruta en el corredor; no = no es un corte; fuera = corte fuera del "
+        "corredor. Tasa = si / etiquetadas.\n\n"
+        + _table(["estrato", "si", "no", "fuera", "tasa si"], corte_rows)
+        + "\n## Fecha, punto y causa (solo filas con `ok_corte` = si)\n\n"
+        "n = filas etiquetadas en ese campo. Precisión = correctos / etiquetados.\n\n"
         + _table(["estrato", *(label.removeprefix("ok_") for label in LABELS)], rows)
     )

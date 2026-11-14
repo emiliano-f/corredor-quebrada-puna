@@ -48,6 +48,28 @@ puntos:
   # Generated values (lat, lon, km, verificado, fuente_geo, fuente_km) are derived from the
   # `osm` object by `make geo` (see reports/geo_verificacion.md); `nota_geo` is manual.
   # --- RN 9 (Quebrada de Humahuaca), south to north (increasing km) ---
+  - id: rn9_yala_lozano
+    nombre: "Yala – Lozano"
+    ruta: RN9
+    km: 1708.6
+    lat: -24.083413
+    lon: -65.403202
+    osm: node/2794543216
+    verificado: true
+    fuente_geo: "OSM node/2794543216 ('Lozano'), a 428 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: "Tramo Yala–Lozano: el punto es el nodo de la localidad de Lozano"
+  - id: rn9_leon
+    nombre: "León"
+    ruta: RN9
+    km: 1714.4
+    lat: -24.03692
+    lon: -65.43084
+    osm: node/198397100
+    verificado: true
+    fuente_geo: "OSM node/198397100 ('León'), a 54 m de la traza RN9"
+    fuente_km: "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial"
+    nota_geo: ""
   - id: rn9_cuesta_barcena
     nombre: "Cuesta de Bárcena"
     ruta: RN9
@@ -192,6 +214,17 @@ puntos:
     fuente_geo: "OSM node/311458189 ('Paso de Jama'), a 0 m de la traza RN52"
     fuente_km: "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)"
     nota_geo: ""
+  # --- Solo clima (no es punto de riesgo en el mapa) ---
+  - id: ch27_alto
+    nombre: "Ruta CH-27, tramo alto (Chile)"
+    ruta: otra
+    lat: -23.08888
+    lon: -67.500537
+    osm: node/4375798373
+    verificado: true
+    solo_clima: true
+    fuente_geo: "OSM node/4375798373, nodo central de way/53264481 ('Ruta 27 CH', San Pedro de Atacama - Paso Jama); solo clima"
+    nota_geo: "Clima del lado chileno del Paso de Jama (eventos de nieve con lado=CL)"
 
 # Sources from the approved survey (docs/FUENTES.md). Generic outlets are added here,
 # not in code. `archivo_desde` = first month with archive; `republica: true` = mostly

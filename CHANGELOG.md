@@ -8,6 +8,25 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- `SCHEMA_VERSION` 2 → 3: `eventos.fecha_inicio`, `eventos.fecha_fin`, `eventos.lado`
+  (AR/CL/ambos/desconocido, Paso de Jama only) and `puntos.solo_clima`.
+- Rules extractor (`PARSER_VERSION` 4): one event per critical point named in the article;
+  RN 9 scope starts at Yala (new points `rn9_yala_lozano`, `rn9_leon`; south of Yala dropped;
+  Yala–León accidents only with a total closure); Jama side from the text, Chilean-side
+  closures are `total`; wind without snow → `otro` with note `viento`; "camino a Jama" is a
+  destination, not the place; Saladillo → `rn52_ronqui_angosto`.
+- Dedup: one point per event; point-less mentions merge by route, ±2 days and cause family
+  (aluvión + crecida); follow-ups (habilitan, reabren, sigue cortada, horarios, trabajos…)
+  extend a closure up to 7 days and inherit its cause; events carry `fecha_inicio`/`fecha_fin`.
+- Weather-only point `ch27_alto` (Ruta CH-27 high section, OSM way/53264481) and
+  `validacion.md` snow at Jama by side (AR/ambos, CL, combined).
+- `make cobertura`: coverage against the owner's control list in `reports/control/`
+  (not loaded into the pipeline).
+- Manual review: `ok_corte` (si/no/fuera) column; `precision.md` reports the `ok_corte` rate and
+  field precision on `ok_corte = si` rows only; the owner's first labels carried over by URL
+  (`revision_manual_v1.csv` kept) and `revision_manual_completar.csv` completes the strata.
+
+### Changed
 - Rules extractor (`PARSER_VERSION` 3): drug seizures / Gendarmería operations need a closure
   term next to a road word; health/administrative border closures (Covid…) get `causa=otro`
   with a note. `revision_manual.csv` is a stratified sample with `estrato`; `precision.md`

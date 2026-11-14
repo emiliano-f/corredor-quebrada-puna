@@ -7,6 +7,50 @@
   {
    "type": "Feature",
    "properties": {
+    "id": "rn9_yala_lozano",
+    "nombre": "Yala – Lozano",
+    "ruta": "RN9",
+    "km": 1708.6,
+    "verificado": true,
+    "osm": "node/2794543216",
+    "fuente_geo": "OSM node/2794543216 ('Lozano'), a 428 m de la traza RN9",
+    "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
+    "nota_geo": "Tramo Yala–Lozano: el punto es el nodo de la localidad de Lozano",
+    "solo_clima": false
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.403202,
+     -24.083413
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "rn9_leon",
+    "nombre": "León",
+    "ruta": "RN9",
+    "km": 1714.4,
+    "verificado": true,
+    "osm": "node/198397100",
+    "fuente_geo": "OSM node/198397100 ('León'), a 54 m de la traza RN9",
+    "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
+    "nota_geo": "",
+    "solo_clima": false
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -65.43084,
+     -24.03692
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
     "id": "rn9_cuesta_barcena",
     "nombre": "Cuesta de Bárcena",
     "ruta": "RN9",
@@ -15,7 +59,8 @@
     "osm": "node/13770515998",
     "fuente_geo": "OSM node/13770515998 ('Parador Cuesta de Barcena'), a 22 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -36,7 +81,8 @@
     "osm": "node/198436752",
     "fuente_geo": "OSM node/198436752 ('Volcán'), a 335 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": "'Quebrada de los Filtros' no figura en OSM; se usa el nodo del pueblo de Volcán"
+    "nota_geo": "'Quebrada de los Filtros' no figura en OSM; se usa el nodo del pueblo de Volcán",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -57,7 +103,8 @@
     "osm": "node/198431687",
     "fuente_geo": "OSM node/198431687 ('Tumbaya'), a 109 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -78,7 +125,8 @@
     "osm": "node/198401184",
     "fuente_geo": "OSM node/198401184 ('Maimará'), a 363 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -99,7 +147,8 @@
     "osm": "node/198429516",
     "fuente_geo": "OSM node/198429516 ('Tilcara'), a 661 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": "a 661 m de la traza (> 500 m)"
+    "nota_geo": "a 661 m de la traza (> 500 m)",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -120,7 +169,8 @@
     "osm": "node/198452296",
     "fuente_geo": "OSM node/198452296 ('Huacalera'), a 66 m de la traza RN9",
     "fuente_km": "OSM: distancia sobre la traza RN 9 calibrada con 6 hitos (node/361179490, node/361179492, node/2931899553, node/4000673584, node/4000743738, node/9106267155; residuo máx. 0.6 km). Los hitos están entre km 1692 y 1700: más al norte el km es extrapolado sobre la geometría OSM y puede diferir de la progresiva oficial",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -141,7 +191,8 @@
     "osm": "node/5112503888",
     "fuente_geo": "OSM node/5112503888 ('Chalala'), a 337 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -162,7 +213,8 @@
     "osm": "way/297669793",
     "fuente_geo": "OSM way/297669793 ('Cuesta de Lipán'), a 58 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -183,7 +235,8 @@
     "osm": "node/2795046332",
     "fuente_geo": "OSM node/2795046332 ('Abra Potrerillos'), a 3 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -204,7 +257,8 @@
     "osm": "node/5112503898",
     "fuente_geo": "OSM node/5112503898 ('Ronqui Angosto'), a 212 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -225,7 +279,8 @@
     "osm": "node/14054411901",
     "fuente_geo": "OSM node/14054411901 ('Cartel Salinas Grandes'), a 175 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -246,7 +301,8 @@
     "osm": "node/198427794",
     "fuente_geo": "OSM node/198427794 ('Susques'), a 292 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
@@ -267,13 +323,36 @@
     "osm": "node/311458189",
     "fuente_geo": "OSM node/311458189 ('Paso de Jama'), a 0 m de la traza RN52",
     "fuente_km": "OSM: distancia sobre relation/1745344 desde el empalme con RN 9 (km 0 supuesto; sin hitos OSM ni progresiva oficial verificada)",
-    "nota_geo": ""
+    "nota_geo": "",
+    "solo_clima": false
    },
    "geometry": {
     "type": "Point",
     "coordinates": [
      -67.062922,
      -23.226585
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "ch27_alto",
+    "nombre": "Ruta CH-27, tramo alto (Chile)",
+    "ruta": "otra",
+    "km": null,
+    "verificado": true,
+    "osm": "node/4375798373",
+    "fuente_geo": "OSM node/4375798373, nodo central de way/53264481 ('Ruta 27 CH', San Pedro de Atacama - Paso Jama); solo clima",
+    "fuente_km": "",
+    "nota_geo": "Clima del lado chileno del Paso de Jama (eventos de nieve con lado=CL)",
+    "solo_clima": true
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -67.500537,
+     -23.08888
     ]
    }
   }
