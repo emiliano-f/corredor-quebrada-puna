@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `corredor recolectar --paralelo` (one queue per host), `--max-solicitudes` (0 = no cap), a
+  listing pass with `--completo` (`recoleccion/<id>.plan.json`: sitemap URLs, slug-filter
+  candidates, estimated time) and `SourceBlocked` to stop one source on 403/429 storms or
+  pages without metadata.
+
 ### Changed
 - Rules extractor (`PARSER_VERSION` 5): articles naming several routes and no place give one
   event per route, each with the cause and kind of its own clause; "N.º 9" route prefix;
