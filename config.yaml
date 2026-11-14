@@ -44,6 +44,13 @@ clima:
 # 2026-11-13); `osm` is the matched OSM object. Nothing here is verified: Child C
 # (feature/geo) verifies order, km and coordinates and sets `verificado: true`.
 # km values are deliberately left empty until verified (do not trust the plan's km).
+# Thresholds chosen by the owner from reports/validacion.md; `make tablero` reads them.
+# Empty = every point shows "Umbral pendiente de definición" (no default threshold).
+# One entry per rule: grupo (aluvion | crecida | lluvia | nieve), variable (a feature;
+# `_pct` suffix = per-cell seasonal percentile), umbral. Example:
+#   - {grupo: lluvia, variable: lluvia_24h_mm_pct, umbral: 95}
+umbrales_elegidos: []
+
 puntos:
   # Generated values (lat, lon, km, verificado, fuente_geo, fuente_km) are derived from the
   # `osm` object by `make geo` (see reports/geo_verificacion.md); `nota_geo` is manual.

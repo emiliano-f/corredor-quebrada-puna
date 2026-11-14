@@ -57,7 +57,9 @@ reporte:
 	$(UV) run corredor reporte
 
 tablero:
-	@echo "El tablero llega el día 2." >&2; exit 2
+	-git fetch origin data-snapshots && mkdir -p data/snapshots && \
+	  git show origin/data-snapshots:snapshots/jama_estado.jsonl > data/snapshots/jama_estado.jsonl
+	$(UV) run corredor tablero
 
 # Only the integration session or the owner runs these (never child sessions).
 # main is protected: `release` opens a release/vX.Y.Z PR; `tag` runs after it is merged.

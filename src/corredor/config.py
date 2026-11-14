@@ -6,9 +6,18 @@ import hashlib
 import json
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from corredor.http import validate_hostname
@@ -74,7 +83,38 @@ class ClimaConfig(BaseModel):
     archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
     forecast_url: str = "https://api.open-meteo.com/v1/forecast"
     historical_forecast_url: str = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+    # Climatology of the forecast model (Historical Forecast API) for the dashboard risk.
+    pronostico_historico_desde: date = date(2022, 1, 1)
+    pronostico_horas: int = Field(default=72, ge=1, le=384)
     elevation_url: str = "https://api.open-meteo.com/v1/elevation"
+
+
+class UmbralElegido(BaseModel):
+    """A threshold the owner picked from reports/validacion.md (read by `make tablero`)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    grupo: Literal["aluvion", "crecida", "lluvia", "nieve"]
+    variable: str  # a weather feature, with `_pct` for the per-cell seasonal percentile
+    umbral: float
+
+    @property
+    def base(self) -> str:
+        return self.variable.removesuffix("_pct")
+
+    @property
+    def es_percentil(self) -> bool:
+        return self.variable.endswith("_pct")
+
+    @model_validator(mode="after")
+    def _known_feature(self) -> UmbralElegido:
+        from corredor.weather.features import FEATURE_COLUMNS
+
+        if self.base not in FEATURE_COLUMNS:
+            raise ValueError(f"variable desconocida: {self.variable}")
+        if self.es_percentil and not 0 < self.umbral <= 100:
+            raise ValueError("un umbral en percentil va entre 0 y 100")
+        return self
 
 
 class AppConfig(BaseModel):
@@ -85,6 +125,8 @@ class AppConfig(BaseModel):
     clima: ClimaConfig = Field(default_factory=ClimaConfig)
     puntos: list[CriticalPoint]
     fuentes: list[SourceConfig]
+    # Empty until the owner picks them: the dashboard then shows "Umbral pendiente".
+    umbrales_elegidos: list[UmbralElegido] = Field(default_factory=list)
 
     def enabled_sources(self) -> list[SourceConfig]:
         return [s for s in self.fuentes if s.enabled]
