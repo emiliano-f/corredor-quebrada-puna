@@ -41,6 +41,7 @@ LIPAN_SNOW_POINT: Final = "rn52_abra_potrerillos"
 KM_TOLERANCE: Final = 5.0
 
 # patterns.CAUSE_GROUPS name → ClosureEvent.causa ("temporal"/"tormenta" alone is "otro").
+WEATHER_CAUSES: Final[frozenset[Causa]] = frozenset({"aluvion", "crecida", "nieve"})
 CAUSE_MAP: Final[Mapping[str, Causa]] = {
     "aluvion": "aluvion",
     "crecida": "crecida",
@@ -65,7 +66,7 @@ def _first_position(rx: re.Pattern[str], text: str) -> int | None:
 
 
 class RuleBasedExtractor(EventExtractor):
-    PARSER_VERSION: Final = 2
+    PARSER_VERSION: Final = 3
 
     def __init__(self, points: Sequence[CriticalPoint]) -> None:
         self.points = list(points)
@@ -83,6 +84,9 @@ class RuleBasedExtractor(EventExtractor):
             return []
         cleaned = p.strip_negatives(p.norm(text))
         causa = self._cause(cleaned)
+        admin = p.is_admin_closure(text) and causa in WEATHER_CAUSES | {"otro"}
+        if admin:
+            causa = "otro"  # border closed for health/administrative reasons, not weather
         point = self._point(cleaned, causa)
         km = self._km(cleaned)
         routes = p.routes(text)
@@ -111,6 +115,7 @@ class RuleBasedExtractor(EventExtractor):
                 n_medios=1,
                 metodo="reglas",
                 confianza=confianza,
+                notas=p.ADMIN_NOTE if admin else "",
             )
         ]
 

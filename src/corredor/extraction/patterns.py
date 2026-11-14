@@ -131,17 +131,40 @@ SERVICE_CUT: Final = _rx(
 )
 
 
+# Drug seizures / security operations: only a closure term next to a road word counts.
+POLICE_OP: Final = _rx(
+    r"\b(?:incaut\w*|decomis\w*|secuestr\w*|cocaina|marihuana|estupefacientes?|drogas?"
+    r"|narco\w*|contrabando|procedimientos?)\b"
+)
+# Border closed for administrative / health reasons (not weather): causa "otro" + note.
+ADMIN_CLOSURE: Final = _rx(
+    r"\b(?:covid\w*|coronavirus|pandemia|cuarentena|contagios|brote"
+    r"|(?:emergencia|medidas?|razones|motivos|protocolos?) sanitari\w*"
+    r"|cierr\w* (?:de )?(?:las |los )?(?:fronteras|limites))\b"
+)
+ADMIN_NOTE: Final = "cierre administrativo/sanitario (no meteorológico)"
+
+
 def is_road_closure(text: str) -> bool:
-    """A closure/reopening term within ROAD_WINDOW characters of a road word, or at a place."""
+    """A closure/reopening term within ROAD_WINDOW characters of a road word, or at a place.
+
+    With a police-operation term (POLICE_OP) only a closure term (not a reopening one:
+    "paso no habilitado") next to a road word counts."""
     cleaned = SERVICE_CUT.sub(" ", _clean(text))
-    for rx in (CLOSURE, REOPENING):
+    strict = bool(POLICE_OP.search(cleaned))
+    for rx in (CLOSURE,) if strict else (CLOSURE, REOPENING):
         for m in rx.finditer(cleaned):
-            if m.group(0).startswith("intransitab") or AT_PLACE.match(cleaned, m.end()):
+            loose = m.group(0).startswith("intransitab") or AT_PLACE.match(cleaned, m.end())
+            if loose and not strict:
                 return True
             around = cleaned[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]
             if ROAD.search(around):
                 return True
-    return bool(RAW_CERRO.search(text.lower()) and ROAD.search(cleaned))
+    return not strict and bool(RAW_CERRO.search(text.lower()) and ROAD.search(cleaned))
+
+
+def is_admin_closure(text: str) -> bool:
+    return bool(ADMIN_CLOSURE.search(_clean(text)))
 
 
 def is_reopening(text: str) -> bool:

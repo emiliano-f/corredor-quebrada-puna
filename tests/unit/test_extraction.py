@@ -238,3 +238,33 @@ def test_dedup_bridging_event_joins_clusters() -> None:
 )
 def test_rules_closure_must_be_about_the_road(rules: RuleBasedExtractor, titular: str) -> None:
     assert rules.extract(art(titular)) == []
+
+
+def test_rules_drug_seizure_without_road_closure_is_dropped(rules: RuleBasedExtractor) -> None:
+    a = art("Gendarmería incautó cocaína en Huacalera", "Procedimiento con cierre de la causa")
+    assert rules.extract(a) == []
+    kept = art("Por un operativo antidrogas cortaron la ruta 9 en Huacalera")
+    assert len(rules.extract(kept)) == 1
+
+
+def test_rules_varados_in_jama_snow_is_kept(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Paso de Jama cerrado: hay 150 camiones varados por la nieve"))
+    assert e.causa == "nieve"
+    assert e.notas == ""
+
+
+def test_rules_health_border_closure_is_otro_with_note(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("La tercera ola de coronavirus obligó a cerrar el Paso de Jama"))
+    assert e.causa == "otro"
+    assert "sanitario" in e.notas
+
+
+def test_rules_protest_keeps_its_cause_under_covid(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Corte de la ruta 9 en Tilcara: piquete contra la cuarentena"))
+    assert e.causa == "protesta"
+    assert e.notas == ""
+
+
+def test_rules_unauthorised_crossing_is_not_a_reopening(rules: RuleBasedExtractor) -> None:
+    a = art("Gendarmería incautó cocaína en Huacalera", "en un paso fronterizo no habilitado")
+    assert rules.extract(a) == []

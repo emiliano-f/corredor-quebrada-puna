@@ -113,3 +113,18 @@ def test_section_renders_both_tables() -> None:
 def test_no_events_no_candidates() -> None:
     assert ThresholdCalibrator().candidates([], features()) == []
     assert "Sin candidatos" in section("x", ThresholdCalibrator(), [], features())
+
+
+def test_merged_variant_pools_rain_causes() -> None:
+    from corredor.calibration.thresholds import MERGED
+
+    results = ThresholdCalibrator(groups=MERGED).candidates(events(), features())
+    assert {r.threshold.causa for r in results} == {"lluvia"}
+
+
+def test_section_has_merged_variant_and_counts() -> None:
+    text = section("Todas", ThresholdCalibrator(), events(), features())
+    assert "Variante: aluvión + crecida = lluvia" in text
+    assert "| lluvia |" in text
+    assert "(n=" in text
+    assert "muestra chica" in text

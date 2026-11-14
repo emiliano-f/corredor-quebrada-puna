@@ -62,17 +62,24 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 `corredor datos` turns `articulos` into `eventos` offline (no network):
 
-- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 2): text =
+- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 3): text =
   headline + lede + URL path. An article is an event only if it names the corridor
   (`patterns.is_corridor`) and a closure or reopening term about the road
   (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
   tránsito, calzada, circulación, Paso de Jama, km N… — or directly followed by "en/entre
   <corridor place>", or is "intransitable"); `patterns.NEGATIVES` (Corte Suprema, corte de
   luz, …) are removed first, and `patterns.SERVICE_CUT` (interrupción del servicio/energía,
-  extraction only, so the source filters are unchanged). Disabled sources never count as
-  stable in `validacion.md`.
+  extraction only, so the source filters are unchanged). With a police-operation term
+  (`patterns.POLICE_OP`: incautó, secuestro, cocaína, droga, procedimiento…) only a closure
+  term (not a reopening: "paso no habilitado") within 60 characters of a road word counts,
+  so drug seizures by Gendarmería drop out; "varados" is never a negative (in Jama it
+  usually means a real snow closure). Disabled sources never count as stable in
+  `validacion.md`.
   - `causa`: first matching group of `patterns.CAUSE_GROUPS` (aluvión/derrumbe → `aluvion`,
-    crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`.
+    crecida → `crecida`, nieve/hielo/viento blanco → `nieve`, …), else `otro`. A
+    weather cause becomes `otro` with `notas` = "cierre administrativo/sanitario (no
+    meteorológico)" when `patterns.ADMIN_CLOSURE` matches (Covid, cuarentena, medidas
+    sanitarias, cierre de fronteras…); protest/works/accident causes are kept.
   - `punto_id`: place name → point (`PLACE_POINTS`); Lipán with a snow cause → Abra de
     Potrerillos; else `km N` → nearest point of that route within 5 km.
   - `ruta`: the only route named (a place on the other route is then dropped), else the point's route, else RN 9 for Humahuaca/Uquía/Quebrada, else `otra` (kept with `confianza` `baja`).
