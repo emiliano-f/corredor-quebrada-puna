@@ -417,8 +417,22 @@ def precision_report(path: Path, header: str, changes: Sequence[Mapping[str, str
             ["campo", REVISAR, ND],
             [(lb.removeprefix("ok_"), p[REVISAR], p[ND]) for lb, p in read_pending(path).items()],
         )
-        + _changes_table(changes)
+        + _changes_table(_to_relabel(path))
     )
+
+
+def _to_relabel(path: Path) -> list[dict[str, str]]:
+    """Rows with a `revisar` label, with the change recorded in `comentario`."""
+    out = []
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if any((row.get(lb) or "").strip().lower() == REVISAR for lb in LABELS):
+                note = (row.get("comentario") or "").split("antes de revisar: ")
+                out.append(
+                    {"cambio": "; ".join(note[1:]) or "—", "titular": row.get("titular") or "",
+                     "url": row.get("url") or ""}
+                )  # fmt: skip
+    return out
 
 
 def _changes_table(changes: Sequence[Mapping[str, str]]) -> str:

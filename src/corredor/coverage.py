@@ -39,6 +39,7 @@ class Unit:
 
     rows: list[ControlRow]
     matches: list[ClosureEvent] = field(default_factory=list)
+    strict: list[ClosureEvent] = field(default_factory=list)
 
     @property
     def id(self) -> str:
@@ -105,14 +106,17 @@ def units(rows: Sequence[ControlRow], groups: Iterable[Sequence[str]] = GROUPS) 
     return sorted(out, key=lambda u: u.rows[0].id)
 
 
-def matches(row: ControlRow, ev: ClosureEvent, window_days: int = 2) -> bool:
+def matches(row: ControlRow, ev: ClosureEvent, window_days: int = 2, strict: bool = False) -> bool:
+    """Strict: an event without point does not match a control event with a known place."""
     if ev.ruta not in row.rutas:
         return False
     lo, hi = row.inicio - timedelta(days=window_days), row.fin + timedelta(days=window_days)
     start, end = ev.fecha_inicio or ev.fecha, ev.fecha_fin or ev.fecha
     if end < lo or start > hi:
         return False
-    return not row.puntos or ev.punto_id is None or ev.punto_id in row.puntos
+    if not row.puntos:
+        return True
+    return ev.punto_id in row.puntos or (ev.punto_id is None and not strict)
 
 
 def is_scraped(medio: str, outlets: Iterable[str]) -> bool:
@@ -126,12 +130,17 @@ def evaluate(
     out = units(control)
     for u in out:
         u.matches = [e for e in events if any(matches(r, e, window_days) for r in u.rows)]
+        u.strict = [e for e in u.matches if any(matches(r, e, window_days, True) for r in u.rows)]
     return out
 
 
-def _rate(sel: Sequence[Unit]) -> str:
-    hit = sum(1 for u in sel if u.matches)
+def _rate(sel: Sequence[Unit], strict: bool = False) -> str:
+    hit = sum(1 for u in sel if (u.strict if strict else u.matches))
     return f"{hit}/{len(sel)} ({hit / len(sel):.0%})" if sel else "0/0"
+
+
+def _rates(sel: Sequence[Unit]) -> str:
+    return f"{_rate(sel)} | {_rate(sel, strict=True)}"
 
 
 def report(found: Sequence[Unit], outlets: Iterable[str]) -> str:
@@ -139,15 +148,18 @@ def report(found: Sequence[Unit], outlets: Iterable[str]) -> str:
     only = [u for u in found if u.medios and all(is_scraped(m, names) for m in u.medios)]
     other = [u for u in found if u not in only]
     lines = [
-        "| grupo | cubiertos / n (%) |",
-        "|---|---|",
-        f"| todos | {_rate(found)} |",
-        f"| fecha confirmada | {_rate([u for u in found if u.confirmada])} |",
-        f"| fecha aproximada | {_rate([u for u in found if not u.confirmada])} |",
-        f"| solo medios que recolectamos | {_rate(only)} |",
-        f"| algún medio que no recolectamos | {_rate(other)} |",
+        "Optimista: un evento sin punto cuenta para un evento de control con lugar. Estricta: "
+        "no cuenta.",
         "",
-        "## Faltantes",
+        "| grupo | optimista: cubiertos / n (%) | estricta: cubiertos / n (%) |",
+        "|---|---|---|",
+        f"| todos | {_rates(found)} |",
+        f"| fecha confirmada | {_rates([u for u in found if u.confirmada])} |",
+        f"| fecha aproximada | {_rates([u for u in found if not u.confirmada])} |",
+        f"| solo medios que recolectamos | {_rates(only)} |",
+        f"| algún medio que no recolectamos | {_rates(other)} |",
+        "",
+        "## Faltantes (optimista)",
         "",
         "| id | fecha | ruta | lugar | medios |",
         "|---|---|---|---|---|",
@@ -157,6 +169,9 @@ def report(found: Sequence[Unit], outlets: Iterable[str]) -> str:
             r = u.rows[0]
             rutas = "/".join(sorted(r.rutas))
             lines.append(f"| {u.id} | {r.inicio} | {rutas} | {r.lugar} | {'; '.join(u.medios)} |")
+    loose = [u for u in found if u.matches and not u.strict]
+    lines += ["", "## Cubiertos solo con eventos sin punto (faltan en la estricta)", ""]
+    lines += [f"- {u.id}: {u.rows[0].lugar}" for u in loose] or ["- ninguno"]
     lines += ["", "## Coincidencias", "", "| id | eventos del catálogo |", "|---|---|"]
     for u in found:
         if u.matches:

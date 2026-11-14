@@ -46,16 +46,17 @@ def test_groups_route_place_and_window(tmp_path: Path) -> None:
     assert len(found["E029"].matches) == 1
     assert found["E030"].matches == []
     text = report(list(found.values()), ["Todo Jujuy", "El Submarino Jujuy"])
-    assert "| todos | 2/3 (67%) |" in text
-    assert "| fecha aproximada | 0/1 (0%) |" in text
-    assert "| solo medios que recolectamos | 1/1 (100%) |" in text
+    assert "| todos | 2/3 (67%) | 2/3 (67%) |" in text
+    assert "| fecha aproximada | 0/1 (0%) | 0/1 (0%) |" in text
+    assert "| solo medios que recolectamos | 1/1 (100%) | 1/1 (100%) |" in text
     assert "| E030 |" in text
 
 
 def test_point_less_event_matches_on_route_and_date(tmp_path: Path) -> None:
     rows = load_control(control(tmp_path))
-    hits = [u.id for u in evaluate(rows, [ev(date(2024, 3, 16), "RN52", None)]) if u.matches]
-    assert hits == ["E029", "E030"]  # no point: any RN 52 control event of those dates
+    found = evaluate(rows, [ev(date(2024, 3, 16), "RN52", None)])
+    assert [u.id for u in found if u.matches] == ["E029", "E030"]  # optimistic
+    assert [u.id for u in found if u.strict] == []  # strict: both have a place
 
 
 def test_is_scraped() -> None:
