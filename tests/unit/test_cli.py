@@ -27,7 +27,7 @@ def test_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 0, result.output
     data = json.loads((tmp_path / "manifest.json").read_text())
     assert data["version"] == __version__
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     assert len(data["sources_hash"]) == 16
 
 

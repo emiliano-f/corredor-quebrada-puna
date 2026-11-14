@@ -95,7 +95,7 @@ def test_closure_event_validates_enums() -> None:
 
 
 def test_schema_version() -> None:
-    assert SCHEMA_VERSION == 2
+    assert SCHEMA_VERSION == 3
 
 
 def test_robots_exemptions_are_exactly_open_meteo(cfg: AppConfig) -> None:

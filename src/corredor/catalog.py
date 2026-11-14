@@ -74,10 +74,10 @@ def frame_to_events(frame: pd.DataFrame) -> list[ClosureEvent]:
 
 
 def _plain(value: object) -> object:
-    if hasattr(value, "tolist"):
+    if hasattr(value, "tolist") and not isinstance(value, pd.Timestamp):
         return value.tolist()  # numpy arrays (list columns)
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return None
+    if value is None or value is pd.NaT or (isinstance(value, float) and value != value):
+        return None  # missing optional column value (NaN / NaT)
     if isinstance(value, pd.Timestamp):
         return value.to_pydatetime()
     return value
