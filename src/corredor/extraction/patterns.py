@@ -114,6 +114,16 @@ def is_protest_cut(normalized: str) -> bool:
     )
 
 
+# Vehicle/accident/freight stories ("otro") count only with an explicit closure term.
+VEHICLE: Final = _rx(
+    r"\b(?:accidentes?|choques?|colisi\w*|vuelcos?|volc(?:o|aron|ado|ada)|despist\w*"
+    r"|siniestros?|transporte de carga|carga pesada)\b"
+)
+VEHICLE_CLOSURE: Final = _rx(
+    r"\b(?:cortes?|cortad[ao]s?|cort(?:a|an|aron)|interrump\w*|interrupci\w*"
+    r"|cerrad[ao]s?|cerr(?:aron|aran)|cierres?|cierra\w*|clausur\w*|intransitables?|inhabilitad[ao]s?"
+    r"|media calzada)\b"
+)
 # Incidents only signal a closure when a closure term is also present.
 INCIDENT_GROUPS: Final = frozenset({"accidente"})
 

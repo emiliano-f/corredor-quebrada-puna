@@ -121,6 +121,14 @@ class RuleBasedExtractor(EventExtractor):
         notas = p.ADMIN_NOTE if admin else ""
         if causa == "otro" and not admin and p.WIND.search(cleaned):
             notas = "viento"
+        if (
+            causa == "otro"
+            and not notas
+            and p.VEHICLE.search(cleaned)
+            and not p.VEHICLE_CLOSURE.search(cleaned)
+            and not p.is_reopening(text)  # reopenings extend an event: dedup decides
+        ):
+            return []  # a crash or a truck story without a closure term is not a closure
         tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
         infer = (
             causa == "otro"
