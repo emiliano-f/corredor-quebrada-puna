@@ -111,7 +111,7 @@ def test_full_offline_pipeline(env: Path) -> None:
         ("rn52_abra_potrerillos", "nieve", 1, 1),
         ("rn52_lipan_bajo", "aluvion", 1, 2),  # jujuyonline republica: not counted
     ]
-    assert con.execute("SELECT count(*) FROM puntos").fetchone() == (13,)
+    assert con.execute("SELECT count(*) FROM puntos").fetchone() == (16,)
     assert con.execute("SELECT count(*) FROM jama_estado").fetchone() == (1,)
     con.close()
     assert (env / "data" / "parquet" / "eventos.parquet").exists()
