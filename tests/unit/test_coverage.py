@@ -12,6 +12,7 @@ ROWS = [
     "E004,2017-01-17,desconocida,RN 9,Volcán (variantes),aluvión/alud,parcial,confirmada,n/a,La Gaceta (AR),u,",  # noqa: E501
     "E005,2017-01-25,2017-01-26,RN 9,Volcán,obra,total,confirmada,n/a,La Gaceta (AR),u,",
     "E029,2024-03-14,2024-03-29,RN 52,Ronqui Angosto – Saladillo,crecida,total,confirmada,n/a,Todo Jujuy (AR),u,",  # noqa: E501
+    "E038,2025-11-27,2025-11-27,RN 52,km 45,otro,parcial,confirmada,n/a,Todo Jujuy (AR),u,",
     "E030,2024-03,desconocida,RN 52 – Paso de Jama (CH-27),Paso de Jama,nieve,total,aproximada,CL,El América (CL),u,",  # noqa: E501
 ]  # fmt: skip
 
@@ -32,30 +33,31 @@ def control(tmp_path: Path) -> Path:
 
 def test_groups_route_place_and_window(tmp_path: Path) -> None:
     rows = load_control(control(tmp_path))
-    assert rows[3].puntos == {"rn52_ronqui_angosto"}
-    assert rows[4].puntos == {"rn52_paso_jama"}
-    assert (rows[4].inicio, rows[4].fin) == (date(2024, 3, 1), date(2024, 3, 31))
+    by_id = {r.id: r for r in rows}
+    assert by_id["E029"].puntos == {"rn52_ronqui_angosto"}
+    assert by_id["E030"].puntos == {"rn52_paso_jama"}
+    assert (by_id["E030"].inicio, by_id["E030"].fin) == (date(2024, 3, 1), date(2024, 3, 31))
     events = [
         ev(date(2017, 1, 27), "RN9", "rn9_volcan"),  # E005 + 1 day: the Volcán unit
         ev(date(2024, 3, 10), "RN52", "rn52_ronqui_angosto", date(2024, 3, 12)),  # 14 - 2
         ev(date(2024, 3, 20), "RN52", "rn52_susques"),  # other point: no match
     ]
     found = {u.id: u for u in evaluate(rows, events)}
-    assert set(found) == {"E003–E005", "E029", "E030"}
+    assert set(found) == {"E003–E005", "E029", "E030", "E038"}
     assert len(found["E003–E005"].matches) == 1
     assert len(found["E029"].matches) == 1
     assert found["E030"].matches == []
     text = report(list(found.values()), ["Todo Jujuy", "El Submarino Jujuy"])
-    assert "| todos | 2/3 (67%) | 2/3 (67%) |" in text
+    assert "| todos | 2/4 (50%) | 2/4 (50%) |" in text
     assert "| fecha aproximada | 0/1 (0%) | 0/1 (0%) |" in text
-    assert "| solo medios que recolectamos | 1/1 (100%) | 1/1 (100%) |" in text
+    assert "| solo medios que recolectamos | 1/2 (50%) | 1/2 (50%) |" in text
     assert "| E030 |" in text
 
 
 def test_point_less_event_matches_on_route_and_date(tmp_path: Path) -> None:
     rows = load_control(control(tmp_path))
     found = evaluate(rows, [ev(date(2024, 3, 16), "RN52", None)])
-    assert [u.id for u in found if u.matches] == ["E029", "E030"]  # optimistic
+    assert [u.id for u in found if u.matches] == ["E029", "E030"]  # optimistic (E038 is 2025)
     assert [u.id for u in found if u.strict] == []  # strict: both have a place
 
 
@@ -64,3 +66,10 @@ def test_is_scraped() -> None:
     assert is_scraped("El Tribuno", names)
     assert is_scraped("Todo Jujuy", names)
     assert not is_scraped("La Gaceta", names)
+
+
+def test_strict_needs_a_located_event_for_a_km_only_control(tmp_path: Path) -> None:
+    rows = load_control(control(tmp_path))
+    found = {u.id: u for u in evaluate(rows, [ev(date(2025, 11, 27), "RN52", None)])}
+    assert found["E038"].matches
+    assert not found["E038"].strict

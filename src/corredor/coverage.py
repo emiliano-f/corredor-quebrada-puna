@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import calendar
 import csv
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -18,6 +19,7 @@ from corredor.extraction import patterns as p
 from corredor.extraction.rules import JAMA_POINT, PLACE_POINTS
 from corredor.models import ClosureEvent
 
+_KM = re.compile(r"\bkm ?\d")
 GROUPS: tuple[tuple[str, ...], ...] = (("E003", "E004", "E005"),)  # Volcán, Jan 2017
 
 
@@ -31,6 +33,7 @@ class ControlRow:
     lugar: str
     confirmada: bool
     medios: tuple[str, ...]
+    localizado: bool = False  # a place, a km or Jama is named: strict needs a located event
 
 
 @dataclass
@@ -75,6 +78,10 @@ def _route_points(ruta: str, lugar: str) -> tuple[frozenset[str], frozenset[str]
     return frozenset(rutas), frozenset(puntos)
 
 
+def _located(puntos: frozenset[str], lugar: str) -> bool:
+    return bool(puntos or p.places(lugar) or _KM.search(p.norm(lugar)))
+
+
 def load_control(path: Path) -> list[ControlRow]:
     with path.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
@@ -92,6 +99,7 @@ def load_control(path: Path) -> list[ControlRow]:
             ControlRow(
                 row["id"], lo, hi, rutas, puntos, row["lugar_tramo"],
                 row["confianza_fecha"].strip() == "confirmada", medios,
+                _located(puntos, row["lugar_tramo"]),
             )
         )  # fmt: skip
     return out
@@ -114,9 +122,9 @@ def matches(row: ControlRow, ev: ClosureEvent, window_days: int = 2, strict: boo
     start, end = ev.fecha_inicio or ev.fecha, ev.fecha_fin or ev.fecha
     if end < lo or start > hi:
         return False
-    if not row.puntos:
-        return True
-    return ev.punto_id in row.puntos or (ev.punto_id is None and not strict)
+    if ev.punto_id is None:
+        return not (strict and row.localizado)
+    return not row.puntos or ev.punto_id in row.puntos
 
 
 def is_scraped(medio: str, outlets: Iterable[str]) -> bool:
