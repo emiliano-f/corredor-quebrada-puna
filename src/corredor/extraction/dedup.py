@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from corredor.extraction.patterns import norm
-from corredor.models import ClosureEvent, Confianza, TipoCorte
+from corredor.models import ClosureEvent, Confianza, Lado, TipoCorte
 
 STOPWORDS = frozenset(
     "a al ante con de del desde el en entre es la las lo los para por que se sin su sobre tras "  # noqa: SIM905
@@ -198,5 +198,15 @@ class EventDeduplicator:
                 "metodo": "llm" if any(e.metodo == "llm" for e in evs) else "reglas",
                 "confianza": max((e.confianza for e in evs), key=_CONFIANZA.__getitem__),
                 "notas": "; ".join(sorted({e.notas for e in evs if e.notas})),
+                "lado": _side(e.lado for e in evs),
             }
         )
+
+
+def _side(sides: Iterable[str | None]) -> Lado | None:
+    """Most informative side over the merged mentions (AR + CL → ambos)."""
+    found = set(sides)
+    if "ambos" in found or {"AR", "CL"} <= found:
+        return "ambos"
+    order: tuple[Lado, ...] = ("CL", "AR", "desconocido")
+    return next((lado for lado in order if lado in found), None)

@@ -386,3 +386,13 @@ def test_rules_south_of_yala_dropped(rules: RuleBasedExtractor) -> None:
 
 def test_rules_pope_leon_is_not_a_place(rules: RuleBasedExtractor) -> None:
     assert rules.extract(art("Cortes de tránsito por la visita del papa León XIV")) == []
+
+
+def test_dedup_keeps_the_most_informative_side() -> None:
+    a = ev("1", 10, "rn52_paso_jama", "u1").model_copy(update={"lado": "desconocido"})
+    b = ev("2", 11, "rn52_paso_jama", "u2").model_copy(update={"lado": "CL"})
+    c = ev("3", 11, "rn52_paso_jama", "u3").model_copy(update={"lado": "AR"})
+    (merged,) = EventDeduplicator().merge([a, b])
+    assert merged.lado == "CL"
+    (both,) = EventDeduplicator().merge([a, b, c])
+    assert both.lado == "ambos"
