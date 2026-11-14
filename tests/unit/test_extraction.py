@@ -520,3 +520,21 @@ def test_alternate_route_is_not_a_closure(
 )
 def test_accented_cerro_keeps_both_route_events(rules: RuleBasedExtractor, titular: str) -> None:
     assert {e.ruta for e in rules.extract(art(titular))} == {"RN9", "RN52"}
+
+
+def test_null_point_merge_needs_the_same_cause_family(rules: RuleBasedExtractor) -> None:
+    articles = [
+        art("El Paso de Jama cerrado por nieve", url="https://x.test/a", fecha=date(2019, 1, 31)),
+        art(
+            "Ruta 52: corte total por crecida del arroyo",
+            url="https://x.test/b",
+            fecha=date(2019, 2, 1),
+        ),
+        art("Habilitan el Paso de Jama", url="https://x.test/c", fecha=date(2019, 2, 2)),
+    ]
+    events = [e for a in articles for e in rules.extract(a)]
+    refs = {a.url: ArticleRef(a.source_id, a.titular) for a in articles}
+    merged = EventDeduplicator(2).merge(events, refs)
+    by_cause = {e.causa: e.fuentes for e in merged}
+    assert by_cause["crecida"] == ["https://x.test/b"]
+    assert by_cause["nieve"] == ["https://x.test/a", "https://x.test/c"]

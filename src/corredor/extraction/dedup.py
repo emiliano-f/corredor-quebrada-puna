@@ -9,7 +9,9 @@ Two events are the same closure when they share the route, their points are comp
     `min_jaccard`, both with >= `min_tokens` tokens).
 A follow-up article (FOLLOW_UP: schedules, "habilitan", "reabren", "sigue cortada",
 works after a closure…) joins a cluster on the same route with compatible points within
-`follow_days` of any member, whatever its own cause, and inherits the cluster's cause.
+`follow_days` of any member and inherits the cluster's cause; without a shared point, a
+follow-up that names its own cause needs the same cause family, and a located event only
+absorbs point-less clusters of a compatible family.
 Clusters grow by single linkage over events sorted by date. The merged event keeps
 `fecha` = `fecha_inicio` (first article) and `fecha_fin` (last article). `n_medios` counts
 distinct outlets, excluding those with `republica: true`.
@@ -73,6 +75,13 @@ def family(causa: str) -> str:
     return _FAMILY.get(causa, causa)
 
 
+def _compatible(a: _Cluster, b: _Cluster) -> bool:
+    """Cause families agree, or one of the clusters has no cause yet (only "otro")."""
+    fa = {family(e.causa) for e in a.events if e.causa != "otro"}
+    fb = {family(e.causa) for e in b.events if e.causa != "otro"}
+    return not fa or not fb or bool(fa & fb)
+
+
 def is_follow_up(titular: str) -> bool:
     return bool(FOLLOW_UP.search(norm(titular)))
 
@@ -116,7 +125,12 @@ class EventDeduplicator:
                     for i in sorted((i for _, i in scored), reverse=True):
                         other = clusters[i]
                         near = abs((other.events[0].fecha - ev.fecha).days) <= self.window_days
-                        if other is not target and other.point is None and near:
+                        if (
+                            other is not target
+                            and other.point is None
+                            and near
+                            and _compatible(other, target)
+                        ):
                             target.events.extend(other.events)
                             target.titles.extend(other.titles)
                             target.follow.extend(other.follow)
@@ -148,7 +162,11 @@ class EventDeduplicator:
                 and other.tipo_corte != "precaucion"  # a warning is not a closure
                 and 0 <= (ev.fecha - other.fecha).days <= (self.follow_days)
             ):
-                ok = True  # schedules, reopenings, works after a closure extend it
+                # schedules, reopenings, works after a closure extend it; without a shared
+                # point a follow-up with its own cause needs the same cause family
+                located = ev.punto_id is not None and point is not None
+                own = ev.causa not in ("otro", "obra")  # "obra" here: works after the closure
+                ok = located or not own or family(other.causa) in ("otro", family(ev.causa))
             elif gap <= self.window_days:
                 fam_a, fam_b = family(ev.causa), family(other.causa)
                 located = ev.punto_id is not None and point is not None
