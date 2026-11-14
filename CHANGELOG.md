@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Rules extractor (`PARSER_VERSION` 5): articles naming several routes and no place give one
+  event per route, each with the cause and kind of its own clause; "N.º 9" route prefix;
+  "mano única"/"paso alternado" are partial. Dedup: ties go to the event with more mentions;
+  events whose only sources republish get `confianza=baja` and a note.
+- `make precision`: labels whose catalog value changed since labelling become `revisar`
+  (listed old → new) and, like `nd`, are left out of precision; `ok_corte` "ok" counts as si.
+- `make cobertura` reports optimistic and strict coverage (strict: a point-less event does
+  not cover a control event with a place).
+- `clima.reserva_pronostico`: calls archive downloads leave for the forecast build.
 - `SCHEMA_VERSION` 2 → 3: `eventos.fecha_inicio`, `eventos.fecha_fin`, `eventos.lado`
   (AR/CL/ambos/desconocido, Paso de Jama only) and `puntos.solo_clima`.
 - Rules extractor (`PARSER_VERSION` 4): one event per critical point named in the article;

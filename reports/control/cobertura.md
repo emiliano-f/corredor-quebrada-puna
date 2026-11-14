@@ -1,18 +1,20 @@
 # Cobertura contra la lista de control
 
-> Generado: 2026-11-14 15:34 UTC · versión `0.1.0.dev0` · commit `7b22818` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 21:25 UTC · versión `0.1.0.dev0` · commit `50b4971` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Lista: `cortes_conocidos.csv` (54 eventos; E003–E005 cuentan como uno). Coincide un evento del catálogo con la misma ruta, el mismo punto (o sin punto) y fechas que se superponen con las de control ±2 días.
 
-| grupo | cubiertos / n (%) |
-|---|---|
-| todos | 38/54 (70%) |
-| fecha confirmada | 26/39 (67%) |
-| fecha aproximada | 12/15 (80%) |
-| solo medios que recolectamos | 13/23 (57%) |
-| algún medio que no recolectamos | 25/31 (81%) |
+Optimista: un evento sin punto cuenta para un evento de control con lugar. Estricta: no cuenta.
 
-## Faltantes
+| grupo | optimista: cubiertos / n (%) | estricta: cubiertos / n (%) |
+|---|---|---|
+| todos | 38/54 (70%) | 37/54 (69%) |
+| fecha confirmada | 26/39 (67%) | 25/39 (64%) |
+| fecha aproximada | 12/15 (80%) | 12/15 (80%) |
+| solo medios que recolectamos | 13/23 (57%) | 13/23 (57%) |
+| algún medio que no recolectamos | 25/31 (81%) | 24/31 (77%) |
+
+## Faltantes (optimista)
 
 | id | fecha | ruta | lugar | medios |
 |---|---|---|---|---|
@@ -32,6 +34,10 @@ Lista: `cortes_conocidos.csv` (54 eventos; E003–E005 cuentan como uno). Coinci
 | E039 | 2025-11-28 | RN52 | Purmamarca | Todo Jujuy |
 | E040 | 2025-12-27 | RN52 | Purmamarca | Todo Jujuy |
 | E042 | 2026-02-19 | RN9 | Huacalera | Somos Jujuy; Que Pasa Jujuy |
+
+## Cubiertos solo con eventos sin punto (faltan en la estricta)
+
+- E049: Zona Volcán: cerrado en la báscula de Volcán (norte) y en León (sur)
 
 ## Coincidencias
 

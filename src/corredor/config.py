@@ -71,6 +71,8 @@ class ClimaConfig(BaseModel):
     modelos_grilla: list[str] = Field(default_factory=lambda: ["era5", "era5_land"])
     # Weighted Open-Meteo calls per UTC day; the client stops with an error above it.
     max_llamadas_diarias: float = Field(default=500, gt=0, lt=10_000)
+    # Part of that cap that archive (history) downloads may not use: kept for the forecast build.
+    reserva_pronostico: float = Field(default=0, ge=0)
     archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
     forecast_url: str = "https://api.open-meteo.com/v1/forecast"
     historical_forecast_url: str = "https://historical-forecast-api.open-meteo.com/v1/forecast"

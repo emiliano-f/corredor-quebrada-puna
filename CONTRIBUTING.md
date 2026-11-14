@@ -8,7 +8,7 @@ Rules for humans and agents live in [AGENTS.md](AGENTS.md). This file covers the
 make setup        # uv sync --frozen + pre-commit install
 make check        # lint + typecheck + test + docs-check + audit
 make format       # ruff fix + format
-make clima        # Open-Meteo archive per point (respects clima.max_llamadas_diarias)
+make clima        # Open-Meteo archive per point (respects clima.max_llamadas_diarias minus clima.reserva_pronostico)
 ```
 
 `make docs-check` compares your branch against `origin/main`, so run `git fetch origin`

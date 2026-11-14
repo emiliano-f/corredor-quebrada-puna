@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from corredor.config import load_config
+from corredor.extraction import patterns as p
 from corredor.extraction.dedup import ArticleRef, EventDeduplicator, jaccard, tokens
 from corredor.extraction.llm import LLMExtractor
 from corredor.extraction.rules import RuleBasedExtractor
@@ -396,3 +397,100 @@ def test_dedup_keeps_the_most_informative_side() -> None:
     assert merged.lado == "CL"
     (both,) = EventDeduplicator().merge([a, b, c])
     assert both.lado == "ambos"
+
+
+@pytest.mark.parametrize(
+    "text", ["ruta nacional N°9", "Ruta Nacional Nº9", "ruta nacional N° 9", "ruta nacional N.º 9",
+             "Ruta N9", "ruta nro. 9"],
+)  # fmt: skip
+def test_route_number_variants(text: str) -> None:
+    assert p.routes(f"Corte en la {text}") == {"RN9"}
+
+
+def test_rules_media_calzada_is_partial_and_caution_alone_is_precaucion(
+    rules: RuleBasedExtractor,
+) -> None:
+    (e,) = rules.extract(art("Alud en Volcán: la ruta 9 sigue cortada, habilitan media calzada"))
+    assert e.tipo_corte == "parcial"
+    (c,) = rules.extract(art("Habilitaron la ruta 9 en Tumbaya: piden circular con precaución"))
+    assert c.tipo_corte == "precaucion"
+
+
+def test_rules_two_routes_without_place_give_one_event_per_route(
+    rules: RuleBasedExtractor,
+) -> None:
+    out = rules.extract(
+        art(
+            "Piden circular con precaución por la ruta nacional N°9: Tránsito por media calzada",
+            "Vialidad pudo habilitar media calzada en la ruta nacional N°9 mientras despejan "
+            "los caminos. Ruta nacional N°52: Corte Total por crecida de Arroyo",
+        )
+    )
+    by_route = {e.ruta: e for e in out}
+    assert set(by_route) == {"RN9", "RN52"}
+    assert by_route["RN9"].tipo_corte == "parcial"
+    assert (by_route["RN52"].tipo_corte, by_route["RN52"].causa) == ("total", "crecida")
+    assert len({e.evento_id for e in out}) == 2
+
+
+def test_dedup_point_less_follow_up_joins_the_larger_event() -> None:
+    refs = {"v1": ArticleRef("a", "Alud en Volcán corta la ruta 9"),
+            "v2": ArticleRef("b", "Sigue el alud en Volcán sobre la ruta 9"),
+            "l1": ArticleRef("c", "Alud en León sobre la ruta 9"),
+            "f": ArticleRef("d", "La ruta 9 no podría habilitarse hasta el domingo")}  # fmt: skip
+    events = [ev("1", 10, "rn9_leon", "l1"), ev("2", 10, "rn9_volcan", "v1"),
+              ev("3", 11, "rn9_volcan", "v2"), ev("4", 12, None, "f")]  # fmt: skip
+    merged = {e.punto_id: e for e in EventDeduplicator().merge(events, refs)}
+    assert "f" in merged["rn9_volcan"].fuentes
+    assert merged["rn9_leon"].fuentes == ["l1"]
+
+
+def test_dedup_republisher_only_event_is_low_confidence() -> None:
+    refs = {"u1": ArticleRef("rep", "Alud en Volcán corta la ruta 9")}
+    (e,) = EventDeduplicator(republishers=frozenset({"rep"})).merge([ev("1", 10, "p1", "u1")], refs)
+    assert (e.n_medios, e.confianza) == (0, "baja")
+    assert "solo fuente que republica" in e.notas
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Corte parcial por obras en ruta 9; corte total por nieve en ruta 52",
+         {"RN9": ("obra", "parcial"), "RN52": ("nieve", "total")}),
+        ("Ruta 9 cortada por nieve. Ruta 52 transitable sin inconvenientes",
+         {"RN9": ("nieve", "desconocido")}),
+        ("Ruta 9: corte por causas desconocidas. Ruta 52: corte total por nieve",
+         {"RN9": ("otro", "desconocido"), "RN52": ("nieve", "total")}),
+    ],
+)  # fmt: skip
+def test_rules_per_route_uses_only_its_own_clauses(
+    rules: RuleBasedExtractor, text: str, expected: dict[str, tuple[str, str]]
+) -> None:
+    assert {e.ruta: (e.causa, e.tipo_corte) for e in rules.extract(art(text))} == expected
+
+
+def test_rules_per_route_reopening_is_not_total(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Ruta 9 habilitada totalmente. Ruta 52 habilitada totalmente"))
+    assert out
+    assert all(e.tipo_corte != "total" for e in out)
+
+
+def test_rules_per_route_shared_clause_and_abbreviation(rules: RuleBasedExtractor) -> None:
+    shared = rules.extract(art("Corte por nieve en ruta 9 y ruta 52"))
+    assert {e.ruta: e.causa for e in shared} == {"RN9": "nieve", "RN52": "nieve"}
+    abbr = rules.extract(art("Ruta nro. 9 cortada por nieve. Ruta 52 cortada por obras"))
+    assert {e.ruta: e.causa for e in abbr} == {"RN9": "nieve", "RN52": "obra"}
+
+
+def test_rules_per_route_sentence_starting_with_a_number(rules: RuleBasedExtractor) -> None:
+    text = (
+        "Ruta 9 cortada por obras. 10 centímetros de nieve obligaron a cerrar totalmente la ruta 52"
+    )
+    out = {e.ruta: (e.causa, e.tipo_corte) for e in rules.extract(art(text))}
+    assert out["RN9"] == ("obra", "desconocido")
+    assert out["RN52"] == ("nieve", "total")
+
+
+def test_rules_per_route_any_abbreviation_before_route_number(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Ruta nac. 9 cortada por nieve. Ruta 52 cortada por obras"))
+    assert {e.ruta: e.causa for e in out} == {"RN9": "nieve", "RN52": "obra"}

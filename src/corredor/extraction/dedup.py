@@ -35,6 +35,7 @@ FOLLOW_UP = re.compile(
     r"|horarios?|alternativa|desvios?|trabajos|limpieza|pueden circular|restablec\w*)\b"
 )
 _FAMILY: dict[str, str] = {"aluvion": "lluvia", "crecida": "lluvia"}
+REPUBLISHER_NOTE = "solo fuente que republica"
 _CONFIANZA: dict[Confianza, int] = {"baja": 0, "media": 1, "alta": 2}
 _TIPO: dict[TipoCorte, int] = {"desconocido": 0, "precaucion": 1, "parcial": 2, "total": 3}
 
@@ -127,8 +128,8 @@ class EventDeduplicator:
 
     def _score(
         self, cluster: _Cluster, ev: ClosureEvent, title: frozenset[str], follow: bool
-    ) -> tuple[int, int] | None:
-        """(point rank, day gap) if `ev` belongs to `cluster`, else None; lower is better."""
+    ) -> tuple[int, int, int] | None:
+        """(point rank, day gap, -size) if `ev` belongs to `cluster`, else None; lower wins."""
         point = cluster.point
         if ev.punto_id is not None and point is not None and ev.punto_id != point:
             return None
@@ -157,7 +158,8 @@ class EventDeduplicator:
                 )
             if ok and (best is None or gap < best):
                 best = gap
-        return None if best is None else (rank, best)
+        # ties: the event with more mentions (a follow-up joins the main closure)
+        return None if best is None else (rank, best, -len(cluster.events))
 
     def _similar(self, a: frozenset[str], b: frozenset[str]) -> bool:
         if min(len(a), len(b)) < self.min_tokens:
@@ -178,6 +180,8 @@ class EventDeduplicator:
         ]
         evs = sorted(evs, key=lambda e: (e.fecha, e.evento_id))
         first = evs[0]
+        n_medios = len(outlets - self.republishers)
+        notas = {e.notas for e in evs if e.notas} | ({REPUBLISHER_NOTE} if n_medios == 0 else set())
         return first.model_copy(
             update={
                 "evento_id": hashlib.sha1(  # noqa: S324 — identifier, not security
@@ -194,10 +198,12 @@ class EventDeduplicator:
                 "fecha": first.fecha,
                 "fecha_inicio": first.fecha,
                 "fecha_fin": max(e.fecha for e in evs),
-                "n_medios": len(outlets - self.republishers),
+                "n_medios": n_medios,
                 "metodo": "llm" if any(e.metodo == "llm" for e in evs) else "reglas",
-                "confianza": max((e.confianza for e in evs), key=_CONFIANZA.__getitem__),
-                "notas": "; ".join(sorted({e.notas for e in evs if e.notas})),
+                "confianza": "baja"
+                if n_medios == 0
+                else max((e.confianza for e in evs), key=_CONFIANZA.__getitem__),
+                "notas": "; ".join(sorted(notas)),
                 "lado": _side(e.lado for e in evs),
             }
         )

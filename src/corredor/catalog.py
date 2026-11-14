@@ -39,6 +39,9 @@ CORTE = ("si", "no", "fuera")
 LABELS = ("ok_fecha", "ok_punto", "ok_causa")
 YES = frozenset({"1", "si", "sí", "s", "ok", "true", "x", "y", "yes"})
 NO = frozenset({"0", "no", "n", "false", "mal"})
+REVISAR = "revisar"  # the catalog value changed after labelling: relabel
+ND = "nd"  # not decidable from the article
+BASIS: Final[Mapping[str, str]] = {"ok_fecha": "fecha", "ok_punto": "punto_id", "ok_causa": "causa"}
 
 
 def stable_sources(cfg: AppConfig) -> frozenset[str]:
@@ -284,12 +287,18 @@ def _cell(value: object) -> object:
     return value
 
 
+def corte(row: Mapping[str, str | None]) -> str:
+    """ok_corte normalised: any yes-word ("ok", "x"…) counts as si."""
+    value = (row.get("ok_corte") or "").strip().lower()
+    return "si" if value in YES else value
+
+
 def read_corte(path: Path, stratum: str | None = None) -> dict[str, int]:
     """Rows per ok_corte value (si/no/fuera); only rows of `stratum` when given."""
     counts = dict.fromkeys(CORTE, 0)
     with path.open(encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
-            value = (row.get("ok_corte") or "").strip().lower()
+            value = corte(row)
             if value in counts and (stratum is None or (row.get("estrato") or "") == stratum):
                 counts[value] += 1
     return counts
@@ -303,7 +312,7 @@ def read_labels(path: Path, stratum: str | None = None) -> dict[str, list[bool]]
         for row in csv.DictReader(fh):
             if stratum is not None and (row.get("estrato") or "") != stratum:
                 continue
-            if (row.get("ok_corte") or "").strip().lower() in ("no", "fuera"):
+            if corte(row) in ("no", "fuera"):
                 continue
             for label in LABELS:
                 value = (row.get(label) or "").strip().lower()
@@ -314,11 +323,77 @@ def read_labels(path: Path, stratum: str | None = None) -> dict[str, list[bool]]
     return labels
 
 
+def _value(field: str, value: object) -> str:
+    if value is None or (isinstance(value, float) and value != value):
+        return ""
+    return str(value)[:10] if field == "fecha" else str(value)
+
+
+def refresh_labels(path: Path, events: Sequence[ClosureEvent]) -> list[dict[str, str]]:
+    """Mark `revisar` the labels whose basis (fecha, punto_id, causa) changed in the catalog.
+
+    Each row keeps the values it was labelled on; when the current event of its URL differs,
+    the row gets the new values, the label of each changed field becomes `revisar` and the
+    old value goes to `comentario`. Returns the changed rows (old → new) and rewrites `path`.
+    """
+    by_url: dict[str, list[ClosureEvent]] = {}
+    for ev in events:
+        for url in ev.fuentes:
+            by_url.setdefault(url, []).append(ev)
+    with path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh)
+        fields, rows = list(reader.fieldnames or REVIEW_COLUMNS), list(reader)
+    changes: list[dict[str, str]] = []
+    for row in rows:
+        evs = by_url.get(row.get("url") or "", [])
+        if corte(row) != "si" or not evs:
+            continue
+        key = ((row.get("punto_id") or ""), row.get("ruta") or "")
+        same = [e for e in evs if ((e.punto_id or ""), e.ruta) == key] or [
+            e for e in evs if (e.punto_id or "") == key[0]
+        ]
+        ev = (same or evs)[0]
+        diffs = []
+        for label, field in BASIS.items():
+            old, new = row.get(field) or "", _value(field, getattr(ev, field))
+            if old == new:
+                continue
+            diffs.append(f"{field}: {old or '—'} → {new or '—'}")
+            row[field] = new
+            if (row.get(label) or "").strip().lower() not in ("", REVISAR, ND):
+                row[label] = REVISAR
+        if diffs:
+            note = "antes de revisar: " + "; ".join(diffs)
+            row["comentario"] = "; ".join(x for x in (row.get("comentario"), note) if x)
+            changes.append(
+                {"cambio": "; ".join(diffs), "titular": row.get("titular") or "",
+                 "url": row.get("url") or ""}
+            )  # fmt: skip
+    if changes:
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
+    return changes
+
+
+def read_pending(path: Path) -> dict[str, dict[str, int]]:
+    """Per label: how many are `revisar` and how many `nd` (both left out of precision)."""
+    out = {label: {REVISAR: 0, ND: 0} for label in LABELS}
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            for label in LABELS:
+                value = (row.get(label) or "").strip().lower()
+                if value in out[label]:
+                    out[label][value] += 1
+    return out
+
+
 def _precision(vals: Sequence[bool]) -> str:
     return f"{sum(vals) / len(vals):.0%} (n={len(vals)})" if vals else "— (n=0)"
 
 
-def precision_report(path: Path, header: str) -> str:
+def precision_report(path: Path, header: str, changes: Sequence[Mapping[str, str]] = ()) -> str:
     corte_rows, rows = [], []
     for stratum in (None, *STRATA):
         c = read_corte(path, stratum)
@@ -338,4 +413,34 @@ def precision_report(path: Path, header: str) -> str:
         + "\n## Fecha, punto y causa (solo filas con `ok_corte` = si)\n\n"
         "n = filas etiquetadas en ese campo. Precisión = correctos / etiquetados.\n\n"
         + _table(["estrato", *(label.removeprefix("ok_") for label in LABELS)], rows)
+        + "\n## Etiquetas fuera de la precisión\n\n"
+        f"`{REVISAR}` = el valor del catálogo cambió después de etiquetar; `{ND}` = no se "
+        "puede decidir con la nota.\n\n"
+        + _table(
+            ["campo", REVISAR, ND],
+            [(lb.removeprefix("ok_"), p[REVISAR], p[ND]) for lb, p in read_pending(path).items()],
+        )
+        + _changes_table(_to_relabel(path))
+    )
+
+
+def _to_relabel(path: Path) -> list[dict[str, str]]:
+    """Rows with a `revisar` label, with the change recorded in `comentario`."""
+    out = []
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if any((row.get(lb) or "").strip().lower() == REVISAR for lb in LABELS):
+                note = (row.get("comentario") or "").split("antes de revisar: ")
+                out.append(
+                    {"cambio": "; ".join(note[1:]) or "—", "titular": row.get("titular") or "",
+                     "url": row.get("url") or ""}
+                )  # fmt: skip
+    return out
+
+
+def _changes_table(changes: Sequence[Mapping[str, str]]) -> str:
+    if not changes:
+        return ""
+    return "\n## Filas para volver a etiquetar (valor al etiquetar → valor actual)\n\n" + _table(
+        ["cambio", "titular", "url"], [(c["cambio"], c["titular"], c["url"]) for c in changes]
     )

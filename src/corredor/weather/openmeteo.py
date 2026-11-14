@@ -96,14 +96,17 @@ class CallLedger:
     def used_today(self) -> float:
         return self._load().get(self._today().isoformat(), 0.0)
 
-    def reserve(self, weight: float) -> None:
+    def reserve(self, weight: float, keep: float = 0.0) -> None:
+        """Count `weight` calls; fail if that leaves less than `keep` of today's cap."""
         counts = self._load()
         key = self._today().isoformat()
         used = counts.get(key, 0.0)
-        if used + weight > self.max_per_day:
+        if used + weight > self.max_per_day - keep:
+            kept = f", reservando {keep:.0f} para el pronóstico" if keep else ""
             raise CallBudgetExceeded(
                 f"Open-Meteo: {used:.1f} + {weight:.1f} llamadas superaría el tope diario de "
-                f"{self.max_per_day:.0f} (clima.max_llamadas_diarias)"
+                f"{self.max_per_day:.0f}{kept} (clima.max_llamadas_diarias, "
+                "clima.reserva_pronostico)"
             )
         counts[key] = used + weight
         self._save(counts)
@@ -337,7 +340,8 @@ class OpenMeteoClient:
         result = peek(url) if callable(peek) else None
         if result is None:
             weight = call_weight(n_variables, n_days)
-            self.ledger.reserve(weight)
+            archive = base_url == self.config.archive_url
+            self.ledger.reserve(weight, self.config.reserva_pronostico if archive else 0.0)
             result = self.fetcher.get(url)
             if result.from_cache:
                 self.ledger.refund(weight)

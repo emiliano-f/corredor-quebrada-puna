@@ -43,7 +43,9 @@ OpenStreetMap; los GeoJSON quedan en `assets/geo/`), `make clima`, `make datos`,
 
 `make clima` respeta el tope diario de llamadas a Open-Meteo (`clima.max_llamadas_diarias`
 en `config.yaml`: 1500; 500 si no se configura): si lo alcanza, se detiene con un aviso y la corrida
-siguiente sigue desde la caché.
+siguiente sigue desde la caché. Las descargas del archivo histórico dejan libre
+`clima.reserva_pronostico` (300 en `config.yaml`) para que el armado del pronóstico del tablero
+siempre tenga llamadas.
 
 La configuración vive en [`config.yaml`](config.yaml) (puntos críticos y fuentes). Ninguna
 etapa necesita claves; la extracción con LLM es opcional y solo se activa con la variable
