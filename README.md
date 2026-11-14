@@ -26,7 +26,7 @@ uv run corredor recolectar # metadatos de notas de las fuentes activas → data/
 make datos          # recolectar + clima + Jama → eventos deduplicados en DuckDB y Parquet
 make reporte        # reports/calidad_catalogo.md y reports/revision_manual.csv
 make calibrar       # reports/validacion.md (umbrales en mm/cm y en percentil por celda)
-make precision      # precisión por campo desde reports/revision_manual.csv etiquetado
+make precision      # precisión por campo y por estrato desde reports/revision_manual.csv etiquetado
 ```
 
 El estado del Paso de Jama (Vialidad MOP Chile y argentina.gob.ar) se guarda cada 3 horas

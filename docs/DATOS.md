@@ -184,9 +184,9 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 | `data/parquet/<table>.parquet` | One Parquet file per table, written by `corredor datos`. |
 | `data/snapshots/jama_estado.jsonl` | Local copy of the `data-snapshots` JSONL that `make datos` loads into `jama_estado`. |
 | `reports/calidad_catalogo.md` | `corredor reporte`: articles/events per source, year, route, cause and point; dedup ratio; 1 vs 2+ outlets; local-only events; WordPress-vs-sitemap recall check; share of events from `C_solo_ruta` pages; 20 random events. |
-| `reports/revision_manual.csv` | `corredor reporte`: 30 random events (seed 42) with headline and URL plus empty `ok_fecha`, `ok_punto`, `ok_causa`, `comentario` to fill by hand (`si`/`no`). Never overwritten once it has labels. |
-| `reports/precision.md` | `corredor precision`: precision per field from the labelled CSV. |
-| `reports/validacion.md` | `corredor calibrar`: threshold candidates per cause, absolute and per-cell percentile, train 2016–2022 / test 2023→, for all sources and for stable sources only. |
+| `reports/revision_manual.csv` | `corredor reporte`: stratified sample, seed 42 — 8 `aluvion`, 8 `crecida`, 8 `nieve`, 6 from the other causes (`estrato` = aluvion/crecida/nieve/otras; fewer if a stratum is smaller) — with headline and URL plus empty `ok_fecha`, `ok_punto`, `ok_causa`, `comentario` to fill by hand (`si`/`no`). Never overwritten once it has labels. |
+| `reports/precision.md` | `corredor precision`: precision per field (fecha, punto, causa), overall and per `estrato`, each with n = labelled rows. |
+| `reports/validacion.md` | `corredor calibrar`: threshold candidates per cause, absolute and per-cell percentile, train 2016–2022 / test 2023→, for all sources and for stable sources only, plus a variant with aluvión + crecida merged as `lluvia`. Each hit/miss/false-alarm value shows n = event-days (point, date) of that period; test cells with n < 10 are marked "muestra chica". |
 | `snapshots/jama_estado.jsonl` (branch `data-snapshots`) | Paso de Jama snapshots, one `jama_estado` row per line. |
 | `data/checkpoints/<source_id>.json` | Resumable collection state: `units` → `{status: ok\|empty\|missing\|error, updated_at, ...}` per month (sitemaps) or year (WordPress). See SCRAPING.md. |
 | `data/recoleccion/<source_id>.json` | Counts of the last `corredor recolectar` run of that source (`CollectionStats.as_dict()`). |

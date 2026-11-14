@@ -16,7 +16,7 @@ An alarm needs feature >= threshold and a raw value > 0 (a dry day is never an a
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date, timedelta
 from typing import Final, Literal
 
@@ -39,6 +39,13 @@ CAUSE_FEATURES: Final[dict[Causa, tuple[str, ...]]] = {
     "crecida": RAIN,
     "nieve": SNOW,
 }
+Grupo = tuple[tuple[Causa, ...], tuple[str, ...]]
+SEPARATE: Final[dict[str, Grupo]] = {c: ((c,), f) for c, f in CAUSE_FEATURES.items()}
+# Variant: aluvion and crecida pooled into one rain cause.
+MERGED: Final[dict[str, Grupo]] = {
+    "lluvia": (("aluvion", "crecida"), RAIN),
+    "nieve": (("nieve",), SNOW),
+}
 ABS_QUANTILES: Final = (0.1, 0.25, 0.5, 0.75)
 PERCENTILES: Final = (80.0, 90.0, 95.0, 98.0, 99.0)
 PCT_UNIT: Final = "percentil estacional"
@@ -58,10 +65,14 @@ def unit_of(feature: str) -> str:
 
 class ThresholdCalibrator:
     def __init__(
-        self, train_end: date = date(2022, 12, 31), clim_start: date = date(2016, 1, 1)
+        self,
+        train_end: date = date(2022, 12, 31),
+        clim_start: date = date(2016, 1, 1),
+        groups: Mapping[str, Grupo] = SEPARATE,
     ) -> None:
         self.train_end = train_end
         self.clim_start = clim_start
+        self.groups = dict(groups)
 
     def prepare(self, features: pd.DataFrame) -> pd.DataFrame:
         """Features + `<feature>_pct` (seasonal percentile in the point's train climatology)."""
@@ -90,16 +101,18 @@ class ThresholdCalibrator:
         return "train" if d <= self.train_end else "test"
 
     @staticmethod
-    def _event_days(events: Sequence[ClosureEvent], causa: Causa) -> set[tuple[str, date]]:
-        return {(e.punto_id, e.fecha) for e in events if e.causa == causa and e.punto_id}
+    def _event_days(
+        events: Sequence[ClosureEvent], causes: tuple[Causa, ...]
+    ) -> set[tuple[str, date]]:
+        return {(e.punto_id, e.fecha) for e in events if e.causa in causes and e.punto_id}
 
     def compare(self, events: Sequence[ClosureEvent], features: pd.DataFrame) -> pd.DataFrame:
         """Train medians on event vs non-event days (same points and seasons as the events)."""
         df = self.prepare(features)
         train = df[(df["fecha"] >= self.clim_start) & (df["fecha"] <= self.train_end)]
         rows = []
-        for causa, feats in CAUSE_FEATURES.items():
-            days = {k for k in self._event_days(events, causa) if self._period(k[1]) == "train"}
+        for causa, (causes, feats) in self.groups.items():
+            days = {k for k in self._event_days(events, causes) if self._period(k[1]) == "train"}
             if not days:
                 continue
             keys = list(zip(train["punto_id"], train["fecha"], strict=True))
@@ -139,8 +152,8 @@ class ThresholdCalibrator:
         df = self.prepare(features)
         df = df[df["fecha"] >= self.clim_start]
         results: list[ValidationResult] = []
-        for causa, feats in CAUSE_FEATURES.items():
-            days = self._event_days(events, causa)
+        for causa, (causes, feats) in self.groups.items():
+            days = self._event_days(events, causes)
             train_days = [k for k in days if self._period(k[1]) == "train"]
             if not train_days:
                 continue
@@ -156,11 +169,21 @@ class ThresholdCalibrator:
                     else []
                 )
                 for value in absolute:
-                    th = Threshold(causa=causa, variable=feat, umbral=value, unidad=unit_of(feat))
+                    th = Threshold(
+                        causa=causes[0],
+                        grupo=causa,
+                        variable=feat,
+                        umbral=value,
+                        unidad=unit_of(feat),
+                    )
                     results += self._evaluate(th, indexed, feat, feat, days)
                 for value in PERCENTILES:
                     th = Threshold(
-                        causa=causa, variable=feat + PCT_SUFFIX, umbral=value, unidad=PCT_UNIT
+                        causa=causes[0],
+                        grupo=causa,
+                        variable=feat + PCT_SUFFIX,
+                        umbral=value,
+                        unidad=PCT_UNIT,
                     )
                     results += self._evaluate(th, indexed, feat + PCT_SUFFIX, feat, days)
         return results

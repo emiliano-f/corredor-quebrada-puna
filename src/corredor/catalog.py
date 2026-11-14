@@ -12,6 +12,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
+from typing import Final
 
 import pandas as pd
 
@@ -21,11 +22,15 @@ from corredor.extraction.dedup import ArticleRef, EventDeduplicator
 from corredor.models import Article, ClosureEvent, SourceConfig
 
 SEED = 42
-REVIEW_SIZE = 30
 SAMPLE_SIZE = 20
-REVIEW_COLUMNS = (
+# Stratified manual-review sample: events per stratum (other causes pooled in "otras").
+STRATA: Final[dict[str, int]] = {"aluvion": 8, "crecida": 8, "nieve": 8, "otras": 6}
+EVENT_COLUMNS = (
     "evento_id", "fecha", "ruta", "punto_id", "km", "paraje", "causa", "tipo_corte",
-    "n_medios", "metodo", "confianza", "titular", "url", "ok_fecha", "ok_punto", "ok_causa",
+    "n_medios", "metodo", "confianza",
+)  # fmt: skip
+REVIEW_COLUMNS = (
+    "estrato", *EVENT_COLUMNS, "titular", "url", "ok_fecha", "ok_punto", "ok_causa",
     "comentario",
 )  # fmt: skip
 LABELS = ("ok_fecha", "ok_punto", "ok_causa")
@@ -36,7 +41,9 @@ NO = frozenset({"0", "no", "n", "false", "mal"})
 def stable_sources(cfg: AppConfig) -> frozenset[str]:
     """Outlets with archive since 2016-01-01 or earlier (HANDOFF §3.4 item 17)."""
     return frozenset(
-        s.id for s in cfg.fuentes if s.archivo_desde and s.archivo_desde <= cfg.backfill.desde
+        s.id
+        for s in cfg.fuentes
+        if s.enabled and s.archivo_desde and s.archivo_desde <= cfg.backfill.desde
     )
 
 
@@ -156,7 +163,9 @@ def quality_report(
         out.append(
             f"\nSitemaps: artículos por filtro B **{filt.get('B', 0)}**, C_solo_ruta "
             f"**{filt.get('C_solo_ruta', 0)}**. Eventos que vienen **solo** de páginas "
-            f"C_solo_ruta: **{only_c}** ({share}). Si es < 5 %, se propone volver al filtro B.\n"
+            f"C_solo_ruta: **{only_c}** ({share}). Decisión (Emiliano, 2026-11-13): se mantiene el "
+            "filtro C aunque el aporte sea < 5 %; la regla del 5 % era por costo de descarga, y "
+            "las páginas quedan en caché y el incremento nocturno es de un mes.\n"
         )
 
     out.append("\n## Por año (fuentes estables vs nuevas)\n\n")
@@ -221,21 +230,35 @@ def write_review(
     if path.exists() and any(read_labels(path)[label] for label in LABELS):
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    sample = random.Random(SEED).sample(  # noqa: S311 — reproducible sample
-        list(events), min(REVIEW_SIZE, len(events))
-    )
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=REVIEW_COLUMNS)
         writer.writeheader()
-        for e in sorted(sample, key=lambda e: (e.fecha, e.evento_id)):
+        for stratum, e in review_sample(events):
             url = e.fuentes[0]
             row = {
-                **{k: getattr(e, k) for k in REVIEW_COLUMNS[:11]},
+                "estrato": stratum,
+                **{k: getattr(e, k) for k in EVENT_COLUMNS},
                 "titular": refs[url].titular if url in refs else "",
                 "url": url,
             }
             writer.writerow({k: _cell(v) for k, v in row.items()})
     return True
+
+
+def stratum_of(causa: str) -> str:
+    return causa if causa in STRATA else "otras"
+
+
+def review_sample(events: Sequence[ClosureEvent]) -> list[tuple[str, ClosureEvent]]:
+    """STRATA[s] random events per stratum (fixed seed; fewer if the stratum is smaller)."""
+    rng = random.Random(SEED)  # noqa: S311 — reproducible sample
+    ordered = sorted(events, key=lambda e: (e.fecha, e.evento_id))
+    out: list[tuple[str, ClosureEvent]] = []
+    for stratum, size in STRATA.items():
+        pool = [e for e in ordered if stratum_of(e.causa) == stratum]
+        picked = rng.sample(pool, min(size, len(pool)))
+        out += [(stratum, e) for e in sorted(picked, key=lambda e: (e.fecha, e.evento_id))]
+    return out
 
 
 def _cell(value: object) -> object:
@@ -245,10 +268,13 @@ def _cell(value: object) -> object:
     return value
 
 
-def read_labels(path: Path) -> dict[str, list[bool]]:
+def read_labels(path: Path, stratum: str | None = None) -> dict[str, list[bool]]:
+    """Labels per field; only rows of `stratum` when given."""
     labels: dict[str, list[bool]] = {label: [] for label in LABELS}
     with path.open(encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
+            if stratum is not None and (row.get("estrato") or "") != stratum:
+                continue
             for label in LABELS:
                 value = (row.get(label) or "").strip().lower()
                 if value in YES:
@@ -258,14 +284,19 @@ def read_labels(path: Path) -> dict[str, list[bool]]:
     return labels
 
 
+def _precision(vals: Sequence[bool]) -> str:
+    return f"{sum(vals) / len(vals):.0%} (n={len(vals)})" if vals else "— (n=0)"
+
+
 def precision_report(path: Path, header: str) -> str:
-    labels = read_labels(path)
     rows = []
-    for label in LABELS:
-        vals = labels[label]
-        prec = f"{sum(vals) / len(vals):.0%}" if vals else "—"
-        rows.append((label.removeprefix("ok_"), len(vals), sum(vals), prec))
+    for stratum in (None, *STRATA):
+        labels = read_labels(path, stratum)
+        rows.append((stratum or "todos", *(_precision(labels[label]) for label in LABELS)))
+    sizes = ", ".join(f"{s} {n}" for s, n in STRATA.items())
     return (
         header + f"Etiquetas leídas de `{path}` (valores sí: 1/si/ok/x; no: 0/no/mal; vacío = sin "
-        "etiquetar).\n\n" + _table(["campo", "etiquetados", "correctos", "precisión"], rows)
+        f"etiquetar). Muestra estratificada por causa (semilla {SEED}: {sizes}); n = filas "
+        "etiquetadas en ese campo. Precisión = correctos / etiquetados.\n\n"
+        + _table(["estrato", *(label.removeprefix("ok_") for label in LABELS)], rows)
     )

@@ -87,7 +87,7 @@ Candidato = slug con lugar/ruta del corredor **y** término de causa/cierre.
 | **Total** | 498.548 | 756 | **892** | 1.897 | | | |
 
 - B ≈ 892 páginas ≈ 37 min a 2,5 s/página. C ≈ 1.900 páginas ≈ 80 min.
-- **Elegido: C.** Cada artículo registra `filtro_slug` (B | C_solo_ruta); el reporte de calidad mide cuántos eventos aportan solo las páginas C_solo_ruta. Si son menos del 5 %, se propone volver a B.
+- **Elegido: C.** Cada artículo registra `filtro_slug` (B | C_solo_ruta); el reporte de calidad mide cuántos eventos aportan solo las páginas C_solo_ruta. Primera corrida real: 7 eventos (3,1 %). **Decisión (2026-11-13): se mantiene C** aunque sea < 5 %: la regla del 5 % era por costo de descarga, y las páginas quedan en caché y el incremento nocturno es de un mes.
 - El filtro por slug pierde notas con slug genérico; el chequeo de recall (§5) lo mide.
 - **Los conteos A/B/C subestiman.** La regex del relevamiento no reconocía "Nº"/"nro"/"número" en la ruta, formas como "cierran"/"cortaron", ni causas como viento blanco o temporal, y descartaba las URLs con barra final. La versión corregida (HANDOFF §7.1–7.2) está en `patterns.slug_level` y la usa `SitemapSource`; los conteos reales por corrida quedan en `data/recoleccion/<fuente>.json`.
 - Los meses vacíos (Somos Jujuy 2022-09, Prensa 2016-01→04) pueden ser errores de red cacheados como vacío: re-verificar. En producción el checkpoint distingue `empty`, `missing` (404) y `error` ([SCRAPING.md](SCRAPING.md#running-a-collection)).

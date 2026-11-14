@@ -301,7 +301,10 @@ def calibrar(config: ConfigOpt = None) -> None:
             "2023→hoy. Acierto = evento con alarma ese día o el anterior; falsa alarma = "
             "día con alarma sin evento ese día o el siguiente. Los mm de ERA5 no son lluvia "
             "local (ver docs/DATOS.md): por eso cada variable va también como percentil de "
-            "su celda en la misma estación. Vos elegís la regla final.\n\n"
+            "su celda en la misma estación. Cada sección trae también la variante con aluvión y "
+            'crecida juntos como una sola causa "lluvia". Junto a cada número va n = días-evento '
+            "(punto, fecha) del período en que se basa; en prueba, n < 10 se marca "
+            '"muestra chica". Vos elegís la regla final.\n\n'
             f"Fuentes estables (archivo desde ≤ {cfg.backfill.desde}): "
             f"{', '.join(sorted(stable))}.\n\n"
         )

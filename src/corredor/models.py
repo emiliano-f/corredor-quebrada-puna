@@ -107,6 +107,7 @@ class Threshold(_Model):
     variable: str
     umbral: float
     unidad: str
+    grupo: str = ""  # calibration group, e.g. "lluvia" = aluvion + crecida; "" = causa
 
 
 class ValidationResult(_Model):

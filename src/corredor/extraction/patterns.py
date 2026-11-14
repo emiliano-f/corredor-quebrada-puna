@@ -114,6 +114,68 @@ def is_closure(text: str) -> bool:
     return bool(CLOSURE.search(cleaned) or RAW_CERRO.search(text.lower()))
 
 
+# Words that tie a closure term to the road itself, or "en/entre <corridor place>".
+ROAD: Final = _rx(
+    r"\b(?:rutas?|rn ?\d+|transito|transitabilidad|calzada|carril(?:es)?|camino"
+    r"|circulacion|vehicul\w*|vialidad|banquina|automovilistas|conductores"
+    r"|paso (?:de jama|internacional|fronterizo)|km \d+|kilometro \d+)\b"
+)
+# "corte en Volcán", "cortada totalmente entre Purmamarca y …": right after the closure term.
+AT_PLACE: Final = _rx(
+    r" (?:(?:total|parcial)(?:mente)? )?(?:en|entre|a la altura de|hacia) " + PLACE.pattern[2:]
+)
+ROAD_WINDOW: Final = 60
+# Extraction-only negatives (kept out of NEGATIVES so the source filters don't change).
+SERVICE_CUT: Final = _rx(
+    r"\binterrupci\w* (?:del? |de la )?(?:servicio|suministro|energia|luz|agua)\b"
+)
+
+
+# Drug seizures / security operations: only a closure term next to a road word counts.
+POLICE_OP: Final = _rx(
+    r"\b(?:incaut\w*|decomis\w*|secuestr\w*|cocaina|marihuana|estupefacientes?|drogas?"
+    r"|narco\w*|contrabando|procedimientos?)\b"
+)
+# Border closed for administrative / health reasons (not weather): causa "otro" + note.
+HEALTH_CLOSURE: Final = _rx(
+    r"\b(?:covid\w*|coronavirus|pandemia|cuarentena|contagios|brote"
+    r"|(?:emergencia|medidas?|razones|motivos|protocolos?) sanitari\w*)\b"
+)
+# "cierre de fronteras" alone is administrative only if no weather cause is named.
+BORDER_CLOSURE: Final = _rx(r"\bcierr\w* (?:de )?(?:las |los )?(?:fronteras|limites)\b")
+ADMIN_NOTE: Final = "cierre administrativo/sanitario (no meteorológico)"
+
+
+def is_road_closure(text: str) -> bool:
+    """A closure/reopening term within ROAD_WINDOW characters of a road word, or at a place.
+
+    With a police-operation term (POLICE_OP) only a closure term (not a reopening one:
+    "paso no habilitado") next to a road word counts."""
+    cleaned = SERVICE_CUT.sub(" ", _clean(text))
+    strict = bool(POLICE_OP.search(cleaned))
+    for rx in (CLOSURE,) if strict else (CLOSURE, REOPENING):
+        for m in rx.finditer(cleaned):
+            loose = m.group(0).startswith("intransitab") or AT_PLACE.match(cleaned, m.end())
+            if loose and not strict:
+                return True
+            around = cleaned[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]
+            if ROAD.search(around):
+                return True
+    raw = text.lower()
+    if strict:
+        return any(
+            ROAD.search(_clean(raw[max(0, m.start() - ROAD_WINDOW) : m.end() + ROAD_WINDOW]))
+            for m in RAW_CERRO.finditer(raw)
+        )
+    return bool(RAW_CERRO.search(raw) and ROAD.search(cleaned))
+
+
+def is_admin_closure(text: str, weather: bool) -> bool:
+    """Health closure, or a border closure when the text names no weather cause."""
+    cleaned = _clean(text)
+    return bool(HEALTH_CLOSURE.search(cleaned) or (not weather and BORDER_CLOSURE.search(cleaned)))
+
+
 def is_reopening(text: str) -> bool:
     return bool(REOPENING.search(_clean(text)))
 

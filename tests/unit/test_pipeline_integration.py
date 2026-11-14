@@ -139,8 +139,8 @@ def test_full_offline_pipeline(env: Path) -> None:
         writer.writerows(labelled)
     _run("precision")
     prec = (env / "reports" / "precision.md").read_text()
-    assert "| fecha | 3 | 3 | 100% |" in prec
-    assert "| punto | 3 | 2 | 67% |" in prec
+    assert "| todos | 100% (n=3) | 67% (n=3) | — (n=0) |" in prec
+    assert "| otras | — (n=0) | — (n=0) | — (n=0) |" in prec
     _run("reporte")
     assert "ok_punto" in path.read_text()
     assert next(iter(csv.DictReader(path.open())))["ok_fecha"] == "si"  # labels not overwritten
