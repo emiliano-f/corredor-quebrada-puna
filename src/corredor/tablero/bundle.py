@@ -187,12 +187,7 @@ def _ms_hhmm(v: Any) -> Any:
     )
 
 
-def jama_fields(snap: JamaEstado) -> dict[str, Any]:
-    """Allowlisted payload fields (already filtered at collection) as display values."""
-    if not snap.payload_json:
-        return {}
-    rows = json.loads(snap.payload_json)
-    row = rows[0] if isinstance(rows, list) and rows else rows if isinstance(rows, dict) else {}
+def _display(row: Mapping[str, Any]) -> dict[str, Any]:
     out = {}
     for k, v in sorted(row.items()):
         if k == "FECHA" and isinstance(v, int):
@@ -203,10 +198,26 @@ def jama_fields(snap: JamaEstado) -> dict[str, Any]:
     return out
 
 
-def _estado_jama(fuente: str, f: Mapping[str, Any]) -> str:
+def jama_records(snap: JamaEstado) -> list[dict[str, Any]]:
+    """Allowlisted payload records (already filtered at collection) as display values.
+
+    The first is the crossing itself; argentina.gob.ar may append Jama Norte/Sur while their
+    status differs from the usual one.
+    """
+    if not snap.payload_json:
+        return []
+    rows = json.loads(snap.payload_json)
+    rows = rows if isinstance(rows, list) else [rows]
+    return [_display(r) for r in rows if isinstance(r, dict)]
+
+
+def _estado_jama(fuente: str, records: Sequence[Mapping[str, Any]]) -> str:
     keys = ("TRANSITABILIDAD",) if fuente == "mop_cl" else ("estado_prioridad", "estado_vialidad")
-    vals = [str(f[k]) for k in keys if f.get(k)]
-    return " / ".join(vals) if vals else "sin estado"
+    parts = []
+    for i, f in enumerate(records):
+        vals = " / ".join(str(f[k]) for k in keys if f.get(k)) or "sin estado"
+        parts.append(vals if i == 0 else f"{f.get('nombre_paso') or 'otro registro'}: {vals}")
+    return " · ".join(parts) if parts else "sin estado"
 
 
 def jama_section(snaps: Sequence[JamaEstado], now: datetime) -> dict[str, Any]:
@@ -216,17 +227,18 @@ def jama_section(snaps: Sequence[JamaEstado], now: datetime) -> dict[str, Any]:
         ultimos[s.fuente] = s
     fuentes = []
     for fuente, s in sorted(ultimos.items()):
-        f = jama_fields(s)
+        recs = jama_records(s)
         age = now - s.fetched_at
         fuentes.append(
             {"fuente": fuente, "fetched_at": local_iso(s.fetched_at), "error": s.error,
-             "estado": _estado_jama(fuente, f), "campos": f,
+             "estado": _estado_jama(fuente, recs), "campos": recs[0] if recs else {},
+             "otros": recs[1:],
              "horas": round(age.total_seconds() / 3600, 1), "vieja": age > JAMA_STALE}
         )  # fmt: skip
     since = now - timedelta(days=JAMA_DAYS)
     linea = [
         {"fuente": s.fuente, "fetched_at": local_iso(s.fetched_at), "error": s.error,
-         "estado": _estado_jama(s.fuente, jama_fields(s))}
+         "estado": _estado_jama(s.fuente, jama_records(s))}
         for s in ordered if s.fetched_at >= since
     ]  # fmt: skip
     return {

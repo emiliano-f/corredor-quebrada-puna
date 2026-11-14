@@ -292,3 +292,18 @@ def test_tiny_raw_value_still_alerts() -> None:
     u = UmbralElegido(grupo="nieve", variable="nieve_24h_cm_pct", umbral=95)
     (e,) = evaluar([u], {"nieve_24h_cm": 0.04}, {"nieve_24h_cm": 99.0})
     assert e.estado == "alerta"  # compared unrounded, like the calibration
+
+
+def test_jama_extra_records_are_kept() -> None:
+    main = {"id": 19, "nombre_paso": "Jama", "estado_prioridad": "ABIERTO",
+            "estado_vialidad": "HABILITADA"}  # fmt: skip
+    norte = {"id": 90, "nombre_paso": "Jama Norte", "estado_prioridad": "CERRADO",
+             "estado_vialidad": "NIEVE"}  # fmt: skip
+    payload = json.dumps([main, norte])
+    s = JamaEstado(fuente="argentina_gob_ar", fetched_at=NOW, payload_json=payload)
+    out = jama_section([s], NOW)
+    (u,) = out["ultimos"]
+    assert u["estado"] == "ABIERTO / HABILITADA · Jama Norte: CERRADO / NIEVE"
+    assert u["campos"]["nombre_paso"] == "Jama"
+    assert u["otros"][0]["nombre_paso"] == "Jama Norte"
+    assert out["linea"][0]["estado"] == u["estado"]

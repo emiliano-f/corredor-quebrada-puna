@@ -185,6 +185,11 @@
       if (u.error) out.push(el("p", { class: "aviso" }, "Error de la captura: " + u.error));
       const rows = Object.entries(u.campos).map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, v === null ? "sin dato" : v)));
       if (rows.length) out.push(el("table", { class: "tabla" }, el("tbody", {}, ...rows)));
+      for (const o of u.otros || []) {
+        out.push(el("p", {}, el("strong", {}, o.nombre_paso || "Otro registro")));
+        out.push(el("table", { class: "tabla" }, el("tbody", {}, ...Object.entries(o).map(([k, v]) =>
+          el("tr", {}, el("td", {}, k), el("td", {}, v === null ? "sin dato" : v))))));
+      }
     }
     out.push(el("h3", {}, "Últimos 7 días"));
     if (!J.linea.length) out.push(el("p", {}, "Sin capturas en los últimos 7 días."));
