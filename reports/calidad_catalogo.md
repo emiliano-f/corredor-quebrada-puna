@@ -1,20 +1,20 @@
 # Calidad del catálogo
 
-> Generado: 2026-11-14 00:51 UTC · versión `0.1.0.dev0` · commit `f8c4a4c` · SCHEMA_VERSION 2 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 01:09 UTC · versión `0.1.0.dev0` · commit `e86aa5e` · SCHEMA_VERSION 2 · fuentes `b3dab32ad1adf821`
 
 Conteos calculados desde las tablas `articulos` y `eventos`. Un artículo aporta como máximo un evento; el dedup junta artículos del mismo corte (ver docs/DATOS.md).
 
 - Artículos: **1393**
-- Eventos (tras dedup): **228**
-- Menciones antes del dedup: **489** → ratio de dedup **2.14** menciones/evento
-- Eventos con 1 medio: **198**; con 2+ medios: **30**
-- Método: reglas **228**, LLM **0**
+- Eventos (tras dedup): **227**
+- Menciones antes del dedup: **488** → ratio de dedup **2.15** menciones/evento
+- Eventos con 1 medio: **197**; con 2+ medios: **30**
+- Método: reglas **227**, LLM **0**
 
 ## Por fuente
 
 | fuente | método | marcas | artículos | eventos |
 |---|---|---|---|---|
-| elsubmarino | wordpress_api | estable | 658 | 144 |
+| elsubmarino | wordpress_api | estable | 658 | 143 |
 | eltribunojujuy | custom | estable | 287 | 36 |
 | jujuyaldia | sitemap | estable | 34 | 10 |
 | jujuyalmomento | sitemap | estable | 81 | 20 |
@@ -25,7 +25,7 @@ Conteos calculados desde las tablas `articulos` y `eventos`. Un artículo aporta
 | todojujuy | sitemap | estable | 89 | 18 |
 | vialidadnacional | custom |  | 42 | 3 |
 
-Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que vienen **solo** de páginas C_solo_ruta: **7** (3.1%). Si es < 5 %, se propone volver al filtro B.
+Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que vienen **solo** de páginas C_solo_ruta: **7** (3.1%). Decisión (Emiliano, 2026-11-13): se mantiene el filtro C aunque el aporte sea < 5 %; la regla del 5 % era por costo de descarga, y las páginas quedan en caché y el incremento nocturno es de un mes.
 
 ## Por año (fuentes estables vs nuevas)
 
@@ -33,7 +33,7 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 |---|---|---|
 | 2016 | 2 | 0 |
 | 2017 | 47 | 0 |
-| 2018 | 19 | 0 |
+| 2018 | 18 | 0 |
 | 2019 | 17 | 0 |
 | 2020 | 4 | 1 |
 | 2021 | 16 | 0 |
@@ -47,7 +47,7 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 
 | ruta | eventos |
 |---|---|
-| RN9 | 116 |
+| RN9 | 115 |
 | RN52 | 111 |
 | otra | 1 |
 
@@ -55,7 +55,7 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 
 | causa | eventos |
 |---|---|
-| otro | 108 |
+| otro | 107 |
 | aluvion | 45 |
 | nieve | 36 |
 | protesta | 20 |
@@ -75,10 +75,10 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 | rn9_maimara | 7 |
 | rn9_tumbaya | 6 |
 | rn52_susques | 4 |
-| rn9_huacalera | 4 |
 | rn52_lipan_bajo | 3 |
 | rn52_ronqui_angosto | 3 |
 | rn9_cuesta_barcena | 3 |
+| rn9_huacalera | 3 |
 | rn52_salinas_grandes | 2 |
 
 ## Solo medios locales chicos
@@ -87,7 +87,7 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 
 ## Chequeo de recall (WordPress vs sitemaps)
 
-157 de 169 eventos de medios WordPress no tienen ningún evento de medios de sitemap en la misma ruta ±2 días. Los sitemaps hoy cubren solo los meses de muestra, así que este número mide sobre todo esa diferencia de cobertura.
+156 de 168 eventos de medios WordPress no tienen ningún evento de medios de sitemap en la misma ruta ±2 días. Los sitemaps hoy cubren solo los meses de muestra, así que este número mide sobre todo esa diferencia de cobertura.
 
 ## Muestra aleatoria de 20 eventos (semilla 42)
 
@@ -102,14 +102,14 @@ Sitemaps: artículos por filtro B **185**, C_solo_ruta **50**. Eventos que viene
 | 2017-01-18 | RN9 | — | aluvion | 1 | [Nuevo horario para transitar por la Ruta 9](https://www.jujuyalmomento.com/zona-del-alud/nuevo-horario-transitar-la-ruta-9-n40431) |
 | 2017-01-25 | RN9 | — | otro | 1 | [Por trabajos impostergables: cortarán ruta nacional 9 - Jujuy al día](https://www.jujuyaldia.com.ar/2017/01/24/por-trabajos-impostergables-cortaran-ruta-nacional-9/) |
 | 2018-03-29 | RN52 | — | aluvion | 1 | [Todas las rutas hacia el norte están habilitadas pero recomiendan precaución](https://elsubmarinojujuy.com.ar/todas-las-rutas-hacia-el-norte-estan-habililtadas-pero-recomiendan-precaucion/) |
-| 2018-03-31 | RN9 | rn9_huacalera | otro | 1 | [En tres procedimientos, la gendarmería incautó más de 27 mil dosis de cocaína](https://elsubmarinojujuy.com.ar/en-tres-procedimientos-la-gendarmeria-incauto-mas-de-27-mil-dosis-de-cocaina/) |
-| 2018-06-12 | RN52 | rn52_paso_jama | nieve | 1 | [Continúa cerrado el Paso de Jama por acumulación de nieve](https://elsubmarinojujuy.com.ar/continua-cerrado-el-paso-de-jama-por-acumulacion-de-nieve/) |
-| 2018-07-21 | RN52 | rn52_paso_jama | nieve | 1 | [El Paso de Jama está cerrado por las condiciones climáticas](https://elsubmarinojujuy.com.ar/el-paso-de-jama-esta-cerrado-por-las-condiciones-climaticas/) |
-| 2019-02-01 | RN9 | — | aluvion | 1 | [Cortes de rutas por desmoronamiento por la ruta nacional 9](https://elsubmarinojujuy.com.ar/cortes-de-rutas-por-desmoronamiento-por-la-ruta-nacional-9/) |
-| 2022-01-20 | RN52 | rn52_paso_jama | otro | 1 | [Covid: Alrededor de medio millar camiones están varados en Jama](https://elsubmarinojujuy.com.ar/covid-alrededor-de-medio-millar-camiones-estan-varados-en-jama/) |
-| 2023-08-10 | RN9 | — | protesta | 1 | [Habilitan paso sobre la ruta nacional 9 en Purmamarca, Tilcara y Humahuaca por las PASO](https://elsubmarinojujuy.com.ar/habilitan-paso-sobre-la-ruta-nacional-9-en-purmamarca-tilcara-y-humahuaca-por-las-paso/) |
-| 2024-03-15 | RN52 | rn52_paso_jama | aluvion | 1 | [Estado de las rutas en Jujuy por las tormentas: Personas varadas en Catua](https://elsubmarinojujuy.com.ar/estado-de-las-rutas-en-jujuy-por-las-tormentas-personas-varadas-en-catua/) |
-| 2025-01-16 | RN9 | — | otro | 1 | [Corte con desvio a colectora en ruta 9 altura de Chango Mas](https://eltribunodejujuy.com/informacion-general/2025-1-16-19-59-0-corte-con-desvio-a-colectora-en-ruta-9-altura-de-chango-mas) |
-| 2025-06-25 | RN52 | rn52_paso_jama | nieve | 1 | [Cerraron temporalmente el Paso de JAMA por las condiciones climáticas](https://radioazultilcara.com.ar/cerraron-temporalmente-el-paso-de-jama-por-las-condiciones-climaticas/) |
-| 2026-02-19 | RN52 | rn52_paso_jama | otro | 1 | [Panorama actual en el Paso de Jama: gran cantidad de jujeños intentan cruzar hacia Chile](https://radioazultilcara.com.ar/panorama-actual-en-el-paso-de-jama-gran-cantidad-de-jujenos-intentan-cruzar-hacia-chile/) |
+| 2018-04-01 | RN52 | rn52_paso_jama | otro | 1 | [El Parador del Automóvil Club Argentino en Jama estará cerrado por 10 días](https://elsubmarinojujuy.com.ar/el-parador-de-automovil-club-argentino-en-jama-estara-cerrado-por-10-dias/) |
+| 2018-06-15 | RN52 | rn52_paso_jama | nieve | 1 | [Está abierto el tránsito por el Paso de Jama, en ambas direcciones](https://elsubmarinojujuy.com.ar/esta-abierto-el-transito-por-el-paso-de-jama-en-ambas-direcciones/) |
+| 2018-07-24 | RN52 | rn52_paso_jama | nieve | 1 | [Por acumulación de nieve del lado chileno, cierran hasta nuevo aviso el Paso de Jama](https://elsubmarinojujuy.com.ar/por-acumulacion-de-nieve-del-lado-chileno-cierran-hasta-nuevo-aviso-el-paso-de-jama/) |
+| 2019-02-01 | otra | — | crecida | 1 | [Piden circular con precaución por la ruta nacional N°9: Tránsito por media calzada](https://elsubmarinojujuy.com.ar/piden-circular-con-precaucion-por-la-ruta-nacional-n9-transito-por-media-calzada/) |
+| 2022-05-01 | RN52 | rn52_paso_jama | otro | 1 | [Habilitaron el Paso de Jama para el turismo](https://elsubmarinojujuy.com.ar/habilitaron-el-paso-de-jama-para-el-turismo/) |
+| 2023-08-11 | RN9 | — | protesta | 1 | [La Ruta Nacional 9 sigue cortada en Abra Pampa y La Quiaca: Se liberarán para las elecciones primarias](https://elsubmarinojujuy.com.ar/la-ruta-nacional-9-sigue-cortada-en-abra-pampa-y-la-quiaca-se-liberaran-para-las-elecciones-primarias/) |
+| 2024-03-16 | RN52 | — | otro | 1 | [Cayó puente en la ruta 52, que quedó intransitable](https://eltribunodejujuy.com/informacion-general/2024-3-16-1-0-0-cayo-puente-en-la-ruta-52-que-quedo-intransitable) |
+| 2025-02-07 | RN9 | — | otro | 1 | [Corte total en ruta nacional 9](https://eltribunodejujuy.com/informacion-general/2025-2-7-8-27-0-corte-total-en-ruta-nacional-9) |
+| 2025-06-28 | RN52 | rn52_paso_jama | nieve | 1 | [El gobierno de Jujuy asiste a personas varadas y trabaja para rehabilitar el tránsito](https://elsubmarinojujuy.com.ar/el-gobierno-de-jujuy-asiste-a-personas-varadas-y-trabaja-para-rehabilitar-el-transito/) |
 | 2026-02-24 | RN52 | rn52_paso_jama | nieve | 1 | [Cierre del Paso de Jama por mal tiempo en la cordillera](https://radioazultilcara.com.ar/cierre-del-paso-de-jama-por-mal-tiempo-en-la-cordillera/) |
+| 2026-03-30 | RN52 | rn52_paso_jama | aluvion | 2 | [El Paso de Jama cerrado por tormentas mientras Sico opera solo para camiones](https://elsubmarinojujuy.com.ar/el-paso-de-jama-cerrado-por-tormentas-mientras-sico-opera-solo-para-camiones/) |
