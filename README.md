@@ -82,7 +82,9 @@ de entorno `LLM_API_KEY`.
   prueba con 2023 en adelante (ver [reports/validacion.md](reports/validacion.md)).
 - **Extracción por reglas:** los eventos salen del titular, la bajada y la URL, no del
   texto de la nota; una nota sin lugar ni km queda sin punto crítico. La precisión medida
-  a mano está en `reports/precision.md`.
+  a mano está en `reports/precision.md`. En Paso de Jama, un cierre "por condiciones
+  climáticas" sin la palabra nieve se cuenta como nieve solo de mayo a septiembre, con
+  confianza baja y la nota "causa inferida por temporada".
 - **Puntos críticos:** las coordenadas salen de un objeto de OpenStreetMap y solo se marcan
   `verificado: true` si están a menos de 500 m de la traza (ver
   [reports/geo_verificacion.md](reports/geo_verificacion.md)). Los km son distancias medidas

@@ -55,6 +55,9 @@ JAMA_POINT: Final = "rn52_paso_jama"
 # Yala–León stretch: accidents count only with a total closure of the route.
 TOTAL_ONLY_ACCIDENT: Final = frozenset({"rn9_yala_lozano", "rn9_leon"})
 KM_TOLERANCE: Final = 5.0
+# Jama closed "por condiciones climáticas" with no snow word: snow only in the snow season.
+SNOW_SEASON: Final = range(5, 10)  # May–September
+INFERRED_NOTE: Final = "causa inferida por temporada"
 # Clause breaks for per-route events; a period right before a route number ("nac. 9") is not.
 CLAUSE_BREAK: Final = re.compile(r"(?<=[;:])\s+|(?<=\.)\s+(?!(?:9|52)\b)")
 
@@ -85,7 +88,7 @@ def _first_position(rx: re.Pattern[str], text: str) -> int | None:
 
 
 class RuleBasedExtractor(EventExtractor):
-    PARSER_VERSION: Final = 5
+    PARSER_VERSION: Final = 6
 
     def __init__(self, points: Sequence[CriticalPoint]) -> None:
         self.points = list(points)
@@ -101,7 +104,9 @@ class RuleBasedExtractor(EventExtractor):
         text = self.text_of(article)
         if not p.is_corridor(text) or not p.is_road_closure(text):
             return []
-        cleaned = p.strip_negatives(p.norm(text))
+        # "cerró" loses its accent in norm() and would read as "cerro" (hill): keep it a verb.
+        verb = p.RAW_CERRO.sub("clausuró", text.lower())
+        cleaned = p.without_alternates(p.strip_negatives(p.norm(verb)))
         if p.SOUTH.search(cleaned) and not p.PLACE.search(cleaned):
             return []  # entirely south of Yala: out of scope
         causa = self._cause(cleaned)
@@ -116,7 +121,43 @@ class RuleBasedExtractor(EventExtractor):
         notas = p.ADMIN_NOTE if admin else ""
         if causa == "otro" and not admin and p.WIND.search(cleaned):
             notas = "viento"
+        if (
+            causa == "otro"
+            and not notas
+            and p.VEHICLE.search(cleaned)
+            and not p.VEHICLE_CLOSURE.search(cleaned)
+            and not p.is_reopening(text)  # reopenings extend an event: dedup decides
+        ):
+            return []  # a crash or a truck story without a closure term is not a closure
         tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
+        infer = (
+            causa == "otro"
+            and not notas
+            and article.fecha.month in SNOW_SEASON
+            and bool(p.CLIMATE_IMPLICIT.search(cleaned))
+            and p.is_closure(text)
+        )
+        return [self._season(ev) if infer else ev for ev in self._build(
+            article, found, routes, causa, tipo, notas, cleaned, text
+        )]  # fmt: skip
+
+    @staticmethod
+    def _season(ev: ClosureEvent) -> ClosureEvent:
+        if ev.punto_id != JAMA_POINT or ev.causa != "otro":
+            return ev
+        return ev.model_copy(update={"causa": "nieve", "confianza": "baja", "notas": INFERRED_NOTE})
+
+    def _build(
+        self,
+        article: Article,
+        found: list[CriticalPoint],
+        routes: set[str],
+        causa: Causa,
+        tipo: TipoCorte,
+        notas: str,
+        cleaned: str,
+        text: str,
+    ) -> list[ClosureEvent]:
         if len(routes) > 1 and not found and self._km(cleaned) is None:
             return self._per_route(article, notas, cleaned, text)  # one event per route
         if len(found) > 1:
@@ -227,10 +268,13 @@ class RuleBasedExtractor(EventExtractor):
             for name, rx in p.CAUSE_GROUPS.items()
             if (pos := _first_position(rx, cleaned)) is not None
         }
-        if not found:
-            return "otro"
-        specific = {k: v for k, v in found.items() if k != "meteo_generico"} or found
-        return CAUSE_MAP[min(specific, key=lambda k: (specific[k], k))]
+        causa: Causa = "otro"
+        if found:
+            specific = {k: v for k, v in found.items() if k != "meteo_generico"} or found
+            causa = CAUSE_MAP[min(specific, key=lambda k: (specific[k], k))]
+        if causa not in WEATHER_CAUSES and p.is_protest_cut(cleaned):
+            return "protesta"
+        return causa
 
     def _points(self, cleaned: str, causa: Causa) -> list[CriticalPoint]:
         """Distinct critical points named in the text, in order of appearance."""

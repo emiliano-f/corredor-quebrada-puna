@@ -62,7 +62,7 @@ Implemented in `src/corredor/extraction/patterns.py`:
 
 `corredor datos` turns `articulos` into `eventos` offline (no network):
 
-- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 4): text =
+- **Rules** (`extraction/rules.py`, `RuleBasedExtractor.PARSER_VERSION` 6): text =
   headline + lede + URL path. An article is an event only if it names the corridor
   (`patterns.is_corridor`) and a closure or reopening term about the road
   (`patterns.is_road_closure`: the term is within 60 characters of a road word — ruta,
@@ -80,7 +80,22 @@ Implemented in `src/corredor/extraction/patterns.py`:
     weather cause becomes `otro` with `notas` = "cierre administrativo/sanitario (no
     meteorológico)" when `patterns.HEALTH_CLOSURE` matches (Covid, cuarentena, medidas
     sanitarias…), and `otro` gets the same note for "cierre de fronteras" when no weather
-    cause is named; protest/works/accident causes are kept.
+    cause is named; protest/works/accident causes are kept. A cut/blockade term (corte,
+    corta, piquete, bloqueo…) with a protest actor (`patterns.PROTEST_ACTORS`: comunidades,
+    comuneros, vecinos, manifestantes, docentes, trabajadores, gremio, autoconvocados; not
+    "comunidad educativa", not an actor stranded by the cut: "docentes varados") is
+    `protesta`. Paso de Jama closed by unspecified weather (`patterns.CLIMATE_IMPLICIT`:
+    condiciones climáticas, mal tiempo, temporal) with no snow word is `nieve` with
+    `confianza=baja` and `notas` = "causa inferida por temporada" only in May–September,
+    else `otro`.
+  - An `otro` story about an accident or freight traffic (`patterns.VEHICLE`: accidente,
+    choque, vuelco, despiste, siniestro, transporte de carga…) is dropped unless it has a
+    closure term (`patterns.VEHICLE_CLOSURE`: corte, cortada, interrumpido, cerrado, cierre,
+    intransitable, inhabilitado, media calzada…) or is a reopening.
+  - A suggested alternate route (`patterns.ALT_ROUTE`: "circular por ruta 52", "desvío por
+    la ruta 9", "usar la ruta 52") is not a route of the article; "circular con precaución
+    por la ruta 9" is. The accented "cerró" stays a closure verb when the text is split
+    per route.
   - `punto_id`: place name → point (`PLACE_POINTS`, Yala/Lozano → `rn9_yala_lozano`, León →
     `rn9_leon`, Saladillo → `rn52_ronqui_angosto`); one event per point named. Lipán with a
     snow cause → Abra de Potrerillos; "camino a / ruta 52 hacia Jama" without snow drops Jama
@@ -107,8 +122,10 @@ Implemented in `src/corredor/extraction/patterns.py`:
   tokens), or (b) it is a follow-up (`dedup.FOLLOW_UP`: habilitan, reabren, sigue cortada,
   horarios, alternativa, desvíos, trabajos, limpieza…) up to 7 days after a closure
   mention of the event (a `precaucion` warning is not a closure); follow-ups inherit the
-  closure's cause. When several events match, the same point wins, then the closest date;
-  a located mention also absorbs point-less events that start within ±2 days. `fecha` =
+  closure's cause; a point-less follow-up that names its own cause (other than `otro` or
+  `obra`) joins only an event of the same family or with cause `otro`. When several events match, the same point wins, then the closest date;
+  a located mention also absorbs point-less events that start within ±2 days and share a
+  cause family (or have only `otro` mentions); otherwise a new event starts. `fecha` =
   `fecha_inicio` = first mention, `fecha_fin` = last. `n_medios` counts distinct outlets,
   excluding `republica: true`.
 

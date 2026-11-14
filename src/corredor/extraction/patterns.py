@@ -53,6 +53,14 @@ CLOSURE: Final = _rx(
     r"|corto(?= (?:la ruta|el transito|el paso|la circulacion|el camino)))\b"
 )
 RAW_CERRO: Final = re.compile(r"\bcerró\b")
+# A suggested alternate route ("circular por ruta 52", "desvío por la ruta 9", "usar la
+# ruta 52") is not a closure of that route; "circular con precaución por la ruta 9" is.
+ALT_ROUTE: Final = _rx(
+    r"\b(?<!\bno )(?:(?:circular|circulen|desvios?|desviad[ao]s?|desvian|alternativa)"
+    r" (?:por|a traves de|via)|usar|utilizar|tomar) (?:(?:la|el) )?(?:ruta (?:nacional |nac\.? )?"
+    + _ROUTE_NUM_PREFIX
+    + r"(?:9|52)|rn ?(?:9|52))(?![\d])(?! con precaucion)"
+)
 # South of Yala (San Salvador de Jujuy, Alto Comedero, Palpalá): out of the corridor scope.
 SOUTH: Final = _rx(r"\b(?:san salvador de jujuy|alto comedero|palpala|chango mas)\b")
 # Paso de Jama side of the closure.
@@ -65,6 +73,11 @@ JAMA_DESTINATION: Final = _rx(
     r" (?:a|al|hacia) (?:el )?(?:paso (?:internacional )?(?:de )?)?jama\b"
 )
 WIND: Final = _rx(r"\b(?:vientos?|rafagas?)\b")
+# Weather named without a specific cause ("cerrado por condiciones climáticas").
+CLIMATE_IMPLICIT: Final = _rx(
+    r"\b(?:condiciones (?:climaticas|meteorologic\w*|del tiempo)|mal tiempo|temporal(?:es)?"
+    r"|inclemencias?(?: climaticas)?)\b"
+)
 REOPENING: Final = _rx(r"\b(?:habilit\w*|rehabilit\w*|reabr\w*|reapert\w*)\b")
 TRAFFIC: Final = _rx(r"\b(?:transitabilidad|transito|km \d+|kilometro \d+)\b")
 
@@ -80,6 +93,43 @@ CAUSE_GROUPS: Final[dict[str, re.Pattern[str]]] = {
     "obra": _rx(r"\b(?:obras?|bacheo)\b"),
     "accidente": _rx(r"\b(?:accidentes?|vuelcos?|volco|choques?)\b"),
 }
+# A road cut by organised people is a protest even without the word "protesta".
+PROTEST_CUT: Final = _rx(
+    r"\b(?:cortes?|corta|cortan|cortaron|piquetes?|bloqueos?|bloque(?:an|aron|ada|ado))\b"
+)
+PROTEST_ACTORS: Final = _rx(
+    r"\b(?:comunidad(?:es)?(?! educativ)|comuneros?|vecin[ao]s|manifestantes|docentes|trabajadores"
+    r"|gremio(?:s|ales)?|autoconvocad[ao]s)\b"
+)
+# Actors stranded by the cut ("docentes varados por el corte", "dejó varados a docentes")
+# are not protesters.
+_STRANDED: Final = r"(?: \w+){0,5} (?:varad\w*|quedaron|evacuad\w*|afectad\w*|damnificad\w*)"
+_STRANDED_BEFORE: Final = re.compile(
+    r"\b(?:varad\w*|evacuad\w*|afectad\w*|damnificad\w*)(?: \w+){0,2} $"
+)
+
+
+def is_protest_cut(normalized: str) -> bool:
+    """A cut/blockade term and a protest actor in the same text, the actor not stranded."""
+    if not PROTEST_CUT.search(normalized):
+        return False
+    return any(
+        not re.match(_STRANDED, normalized[m.end() :])
+        and not _STRANDED_BEFORE.search(normalized[max(0, m.start() - 60) : m.start()])
+        for m in PROTEST_ACTORS.finditer(normalized)
+    )
+
+
+# Vehicle/accident/freight stories ("otro") count only with an explicit closure term.
+VEHICLE: Final = _rx(
+    r"\b(?:accidentes?|choques?|colisi\w*|vuelcos?|volc(?:o|aron|ado|ada)|despist\w*"
+    r"|siniestros?|transporte de carga|carga pesada)\b"
+)
+VEHICLE_CLOSURE: Final = _rx(
+    r"\b(?:cortes?|cortad[ao]s?|cort(?:a|an|aron)|interrump\w*|interrupci\w*"
+    r"|cerrad[ao]s?|cerr(?:aron|aran)|cierres?|cierra\w*|clausur\w*|intransitables?|inhabilitad[ao]s?"
+    r"|bloque(?:o|os|ada|adas|ado|ados|an|aron)|media calzada)\b"
+)
 # Incidents only signal a closure when a closure term is also present.
 INCIDENT_GROUPS: Final = frozenset({"accidente"})
 
@@ -106,9 +156,14 @@ def _clean(text: str) -> str:
     return strip_negatives(norm(text))
 
 
+def without_alternates(normalized: str) -> str:
+    return ALT_ROUTE.sub(" ", normalized)
+
+
 def routes(text: str) -> set[str]:
+    """Routes named in the text, leaving out suggested alternate routes (ALT_ROUTE)."""
     found = set()
-    for m in ROUTE.finditer(_clean(text)):
+    for m in ROUTE.finditer(without_alternates(_clean(text))):
         found.add("RN" + (m.group("n1") or m.group("n2")))
     return found
 

@@ -494,3 +494,100 @@ def test_rules_per_route_sentence_starting_with_a_number(rules: RuleBasedExtract
 def test_rules_per_route_any_abbreviation_before_route_number(rules: RuleBasedExtractor) -> None:
     out = rules.extract(art("Ruta nac. 9 cortada por nieve. Ruta 52 cortada por obras"))
     assert {e.ruta: e.causa for e in out} == {"RN9": "nieve", "RN52": "obra"}
+
+
+@pytest.mark.parametrize(
+    ("titular", "expected"),
+    [
+        ("Ruta 9 cortada por nieve, circular por ruta 52", {"RN9"}),
+        ("No circular por la ruta 52: corte total por derrumbe", {"RN52"}),
+        ("Corte total en ruta 52 por alud: desvío por la ruta 9", {"RN52"}),
+        ("Ruta 9 cortada por un alud: usar la ruta nacional 52", {"RN9"}),
+        ("Piden circular con precaución por la ruta 9 y la ruta 52 cortada", {"RN9", "RN52"}),
+    ],
+)
+def test_alternate_route_is_not_a_closure(
+    rules: RuleBasedExtractor, titular: str, expected: set[str]
+) -> None:
+    assert {e.ruta for e in rules.extract(art(titular))} == expected
+
+
+@pytest.mark.parametrize(
+    "titular",
+    [
+        "Vialidad cerró la ruta 52. La ruta 9 está cortada por nieve",
+        "La ruta 9 cortada por alud; también se cerró la ruta 52 por nieve",
+    ],
+)
+def test_accented_cerro_keeps_both_route_events(rules: RuleBasedExtractor, titular: str) -> None:
+    assert {e.ruta for e in rules.extract(art(titular))} == {"RN9", "RN52"}
+
+
+def test_null_point_merge_needs_the_same_cause_family(rules: RuleBasedExtractor) -> None:
+    articles = [
+        art("El Paso de Jama cerrado por nieve", url="https://x.test/a", fecha=date(2019, 1, 31)),
+        art(
+            "Ruta 52: corte total por crecida del arroyo",
+            url="https://x.test/b",
+            fecha=date(2019, 2, 1),
+        ),
+        art("Habilitan el Paso de Jama", url="https://x.test/c", fecha=date(2019, 2, 2)),
+    ]
+    events = [e for a in articles for e in rules.extract(a)]
+    refs = {a.url: ArticleRef(a.source_id, a.titular) for a in articles}
+    merged = EventDeduplicator(2).merge(events, refs)
+    by_cause = {e.causa: e.fuentes for e in merged}
+    assert by_cause["crecida"] == ["https://x.test/b"]
+    assert by_cause["nieve"] == ["https://x.test/a", "https://x.test/c"]
+
+
+@pytest.mark.parametrize(
+    ("fecha", "causa", "confianza", "notas"),
+    [
+        (date(2025, 7, 12), "nieve", "baja", "causa inferida por temporada"),
+        (date(2025, 12, 27), "otro", "media", ""),
+    ],
+)
+def test_jama_closed_by_weather_without_snow_word_infers_snow_in_season(
+    rules: RuleBasedExtractor, fecha: date, causa: str, confianza: str, notas: str
+) -> None:
+    titular = "El Paso de Jama está intransitable por condiciones climáticas: fue cerrado"
+    [ev] = rules.extract(art(titular, fecha=fecha))
+    assert (ev.punto_id, ev.causa, ev.confianza, ev.notas) == (
+        "rn52_paso_jama",
+        causa,
+        confianza,
+        notas,
+    )
+
+
+@pytest.mark.parametrize(
+    ("titular", "causa"),
+    [
+        ("La comunidad de Antigal corta la ruta 9 en Volcán", "protesta"),
+        ("Comuneros mantienen el corte de la ruta 52 en Purmamarca", "protesta"),
+        ("Autoconvocados bloquean la ruta 9 a la altura de Tilcara", "protesta"),
+        ("Docentes quedaron varados en Susques por el corte de la ruta 52", "otro"),
+        ("El corte de la ruta 52 en Susques dejó varados a docentes", "otro"),
+    ],
+)
+def test_cut_by_organised_people_is_a_protest(
+    rules: RuleBasedExtractor, titular: str, causa: str
+) -> None:
+    assert {e.causa for e in rules.extract(art(titular))} == {causa}
+
+
+@pytest.mark.parametrize(
+    ("titular", "n_events"),
+    [
+        ("Despiste de un auto en la ruta 9 en Tilcara: desvío del tránsito", 0),
+        ("Choque en la ruta 9 en Tilcara: el tránsito está interrumpido", 1),
+        ("Transporte de carga: piden no viajar, hay desvíos en la ruta 52 en Susques", 0),
+        ("Transporte de carga varado: la ruta 52 está cortada en Susques", 1),
+        ("Despiste en la ruta 52 en Susques: calzada bloqueada", 1),
+    ],
+)
+def test_vehicle_story_without_closure_term_is_not_a_closure(
+    rules: RuleBasedExtractor, titular: str, n_events: int
+) -> None:
+    assert len(rules.extract(art(titular))) == n_events

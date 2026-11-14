@@ -58,7 +58,7 @@ headline, lede and URL path of each `articulos` row (one event per critical poin
 | `n_medios` | int | yes | Distinct outlets, excluding sources with `republica: true`. |
 | `metodo` | `reglas` \| `llm` | yes | Today always `reglas` (no LLM provider wired). |
 | `confianza` | `alta` \| `media` \| `baja` | yes | `alta`: point and a cause found; `media`: one of them; `baja`: no point and zero or several routes, or only republishing sources (`n_medios = 0`, note "solo fuente que republica"). |
-| `notas` | str | no | `viento` for wind without snow (`causa=otro`); a note for administrative/health border closures. |
+| `notas` | str | no | `viento` for wind without snow (`causa=otro`); a note for administrative/health border closures; "causa inferida por temporada" for Jama `nieve` inferred from the month. |
 | `fecha_inicio` | date | no | First article of the merged event (= `fecha`). |
 | `fecha_fin` | date | no | Last article merged into the event (follow-ups: reopenings, schedules, "sigue cortada", works after the closure). |
 | `lado` | `AR` \| `CL` \| `ambos` \| `desconocido` | no | Only for `rn52_paso_jama`: side of the closure from the text ("lado chileno", Chile, San Pedro de Atacama, Ruta 27/CH-27 → CL; Susques/Argentine side → AR; both → ambos). A Chilean-side closure is a corridor closure (`tipo_corte=total`). |
