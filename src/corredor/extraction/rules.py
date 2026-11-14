@@ -55,8 +55,8 @@ JAMA_POINT: Final = "rn52_paso_jama"
 # Yala–León stretch: accidents count only with a total closure of the route.
 TOTAL_ONLY_ACCIDENT: Final = frozenset({"rn9_yala_lozano", "rn9_leon"})
 KM_TOLERANCE: Final = 5.0
-# Sentence/clause breaks for per-route events; "nro. 9", "n. 9", "no. 9" are not breaks.
-CLAUSE_BREAK: Final = re.compile(r"(?<=[;:])\s+|(?<!\bnro\.)(?<!\bno\.)(?<!\bn\.)(?<=\.)\s+")
+# Clause breaks for per-route events; a period right before a route number ("nac. 9") is not.
+CLAUSE_BREAK: Final = re.compile(r"(?<=[;:])\s+|(?<=\.)\s+(?!(?:9|52)\b)")
 
 # patterns.CAUSE_GROUPS name → ClosureEvent.causa ("temporal"/"tormenta" alone is "otro").
 WEATHER_CAUSES: Final[frozenset[Causa]] = frozenset({"aluvion", "crecida", "nieve"})

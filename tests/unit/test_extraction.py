@@ -489,3 +489,8 @@ def test_rules_per_route_sentence_starting_with_a_number(rules: RuleBasedExtract
     out = {e.ruta: (e.causa, e.tipo_corte) for e in rules.extract(art(text))}
     assert out["RN9"] == ("obra", "desconocido")
     assert out["RN52"] == ("nieve", "total")
+
+
+def test_rules_per_route_any_abbreviation_before_route_number(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Ruta nac. 9 cortada por nieve. Ruta 52 cortada por obras"))
+    assert {e.ruta: e.causa for e in out} == {"RN9": "nieve", "RN52": "obra"}
