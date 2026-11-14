@@ -8,7 +8,7 @@ import yaml
 from typer.testing import CliRunner
 
 from corredor import __version__
-from corredor.pipeline import NOT_READY_EXIT, app
+from corredor.pipeline import app
 from corredor.reports import Lineage, report_header
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,15 +27,8 @@ def test_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 0, result.output
     data = json.loads((tmp_path / "manifest.json").read_text())
     assert data["version"] == __version__
-    assert data["schema_version"] == 1
+    assert data["schema_version"] == 2
     assert len(data["sources_hash"]) == 16
-
-
-@pytest.mark.parametrize("stage", ["datos", "calibrar", "precision", "reporte"])
-def test_unwired_stages_fail_clearly(stage: str) -> None:
-    result = runner.invoke(app, [stage])
-    assert result.exit_code == NOT_READY_EXIT
-    assert "todavía no está implementada" in result.output
 
 
 def test_report_header() -> None:

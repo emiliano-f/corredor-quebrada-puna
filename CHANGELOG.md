@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- `SCHEMA_VERSION` 1 → 2 (`puntos.osm`, `puntos.nota_geo`, #25). Existing DuckDB tables
+  get missing model columns added before any write.
+- `make datos` runs `recolectar`, `clima`, fetches the `data-snapshots` Jama JSONL and
+  then `corredor datos`.
 - `clima.max_llamadas_diarias` in `config.yaml` 500 → 1500 (owner's decision) to finish
   the 2016→today archive for all 13 points in one day; the code default stays 500.
 - Jama snapshots store only allowlisted status/schedule/timestamp fields per source; other
@@ -23,6 +27,11 @@ All notable changes to this project are documented here. The format follows
   parser (all `User-agent: *` groups combined).
 
 ### Added
+- Integration: `RuleBasedExtractor`, `EventDeduplicator` (±2 days, point or headline
+  Jaccard), optional `LLMExtractor` (validated, cached, not wired to a provider),
+  `ThresholdCalibrator` (absolute and per-cell seasonal percentile candidates) and the
+  `datos`, `reporte`, `calibrar`, `precision` commands writing `eventos`, Parquet exports,
+  `reports/calidad_catalogo.md`, `revision_manual.csv`, `validacion.md`, `precision.md`.
 - `OpenMeteoClient.historical_forecast(point, start, end, model)`: hourly series from the
   Historical Forecast API for a given forecast model, cached under
   `data/clima/pronostico_historico/` (no downloads yet; for day 2, #26).
