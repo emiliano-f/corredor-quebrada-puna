@@ -473,3 +473,10 @@ def test_rules_per_route_reopening_is_not_total(rules: RuleBasedExtractor) -> No
     out = rules.extract(art("Ruta 9 habilitada totalmente. Ruta 52 habilitada totalmente"))
     assert out
     assert all(e.tipo_corte != "total" for e in out)
+
+
+def test_rules_per_route_shared_clause_and_abbreviation(rules: RuleBasedExtractor) -> None:
+    shared = rules.extract(art("Corte por nieve en ruta 9 y ruta 52"))
+    assert {e.ruta: e.causa for e in shared} == {"RN9": "nieve", "RN52": "nieve"}
+    abbr = rules.extract(art("Ruta nro. 9 cortada por nieve. Ruta 52 cortada por obras"))
+    assert {e.ruta: e.causa for e in abbr} == {"RN9": "nieve", "RN52": "obra"}

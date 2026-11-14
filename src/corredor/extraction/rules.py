@@ -140,7 +140,7 @@ class RuleBasedExtractor(EventExtractor):
         segments: dict[str, list[str]] = {}
         pending: list[str] = []
         last: str | None = None
-        for clause in re.split(r"(?<=[.;:])\s+", cleaned):
+        for clause in re.split(r"(?<=[.;:])\s+(?!\d)", cleaned):  # "nro. 9" is not a break
             matches = list(p.ROUTE.finditer(clause))
             if not matches:
                 if last is None:
@@ -152,7 +152,10 @@ class RuleBasedExtractor(EventExtractor):
                 ruta = "RN" + (m.group("n1") or m.group("n2"))
                 start = 0 if k == 0 else m.start()
                 end = matches[k + 1].start() if k + 1 < len(matches) else len(clause)
-                segments.setdefault(ruta, []).extend([*pending, clause[start:end]])
+                part = clause[start:end]
+                if not p.is_road_closure(part):  # "corte en ruta 9 y ruta 52": shared clause
+                    part = clause
+                segments.setdefault(ruta, []).extend([*pending, part])
                 pending, last = [], ruta
         out = []
         for ruta, parts in segments.items():
