@@ -1,6 +1,6 @@
 # Validación de umbrales
 
-> Generado: 2026-11-14 21:18 UTC · versión `0.1.0.dev0` · commit `62f273a` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
+> Generado: 2026-11-14 21:21 UTC · versión `0.1.0.dev0` · commit `806c21d` · SCHEMA_VERSION 3 · fuentes `b3dab32ad1adf821`
 
 Causas meteorológicas: aluvión y crecida contra lluvia, nieve contra nieve. Una regla por causa, igual para todos los puntos; ajuste 2016–2022, prueba 2023→hoy. Acierto = evento con alarma ese día o el anterior; falsa alarma = día con alarma sin evento ese día o el siguiente. Los mm de ERA5 no son lluvia local (ver docs/DATOS.md): por eso cada variable va también como percentil de su celda en la misma estación. Cada sección trae también la variante con aluvión y crecida juntos como una sola causa "lluvia". Junto a cada número va n = días-evento (punto, fecha) del período en que se basa; en prueba, n < 10 se marca "muestra chica". Vos elegís la regla final.
 
