@@ -116,7 +116,7 @@ class RuleBasedExtractor(EventExtractor):
             notas = "viento"
         tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
         if len(routes) > 1 and not found and self._km(cleaned) is None:
-            return self._per_route(article, causa, notas, cleaned, text)  # one event per route
+            return self._per_route(article, notas, cleaned, text)  # one event per route
         if len(found) > 1:
             return [
                 ev for pt in found
@@ -134,22 +134,35 @@ class RuleBasedExtractor(EventExtractor):
         return [ev] if ev else []
 
     def _per_route(
-        self, article: Article, causa: Causa, notas: str, cleaned: str, text: str
+        self, article: Article, notas: str, cleaned: str, text: str
     ) -> list[ClosureEvent]:
-        """Several routes and no place: each route gets the cause and kind of its own clause."""
-        segments: dict[str, str] = {}
-        matches = list(p.ROUTE.finditer(cleaned))
-        for i, m in enumerate(matches):
-            ruta = "RN" + (m.group("n1") or m.group("n2"))
-            start = 0 if i == 0 else m.start()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(cleaned)
-            segments[ruta] = (segments.get(ruta, "") + " " + cleaned[start:end]).strip()
+        """Several routes and no place: one event per route, built only from its own clauses."""
+        segments: dict[str, list[str]] = {}
+        pending: list[str] = []
+        last: str | None = None
+        for clause in re.split(r"(?<=[.;:])\s+", cleaned):
+            matches = list(p.ROUTE.finditer(clause))
+            if not matches:
+                if last is None:
+                    pending.append(clause)
+                else:
+                    segments[last].append(clause)
+                continue
+            for k, m in enumerate(matches):
+                ruta = "RN" + (m.group("n1") or m.group("n2"))
+                start = 0 if k == 0 else m.start()
+                end = matches[k + 1].start() if k + 1 < len(matches) else len(clause)
+                segments.setdefault(ruta, []).extend([*pending, clause[start:end]])
+                pending, last = [], ruta
         out = []
-        for ruta, seg in segments.items():
-            own = self._cause(seg)
+        for ruta, parts in segments.items():
+            seg = " ".join(parts)
+            if not p.is_road_closure(seg):
+                continue  # this route is only mentioned, not closed or reopened
+            reopening = p.is_reopening(seg) and not p.is_closure(seg)
             ev = self._event(
-                article, None, causa if own == "otro" else own, self._kind(seg), notas, seg,
-                text, cast(Ruta, ruta), None, "media", tag=ruta,
+                article, None, self._cause(seg), self._kind(seg, reopening), notas, seg, text,
+                cast(Ruta, ruta), None, "media", tag=ruta,
             )  # fmt: skip
             if ev:
                 out.append(ev)

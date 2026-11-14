@@ -450,3 +450,26 @@ def test_dedup_republisher_only_event_is_low_confidence() -> None:
     (e,) = EventDeduplicator(republishers=frozenset({"rep"})).merge([ev("1", 10, "p1", "u1")], refs)
     assert (e.n_medios, e.confianza) == (0, "baja")
     assert "solo fuente que republica" in e.notas
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Corte parcial por obras en ruta 9; corte total por nieve en ruta 52",
+         {"RN9": ("obra", "parcial"), "RN52": ("nieve", "total")}),
+        ("Ruta 9 cortada por nieve. Ruta 52 transitable sin inconvenientes",
+         {"RN9": ("nieve", "desconocido")}),
+        ("Ruta 9: corte por causas desconocidas. Ruta 52: corte total por nieve",
+         {"RN9": ("otro", "desconocido"), "RN52": ("nieve", "total")}),
+    ],
+)  # fmt: skip
+def test_rules_per_route_uses_only_its_own_clauses(
+    rules: RuleBasedExtractor, text: str, expected: dict[str, tuple[str, str]]
+) -> None:
+    assert {e.ruta: (e.causa, e.tipo_corte) for e in rules.extract(art(text))} == expected
+
+
+def test_rules_per_route_reopening_is_not_total(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Ruta 9 habilitada totalmente. Ruta 52 habilitada totalmente"))
+    assert out
+    assert all(e.tipo_corte != "total" for e in out)
