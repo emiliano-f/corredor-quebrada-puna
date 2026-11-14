@@ -346,3 +346,43 @@ def test_review_sample_completes_strata() -> None:
     assert by.count("nieve") == 1
     assert by.count("crecida") == 5
     assert all("u0" not in e.fuentes for _, e in out)
+
+
+def test_rules_one_event_per_named_point(rules: RuleBasedExtractor) -> None:
+    out = rules.extract(art("Alud cortó la ruta 9 en Volcán y en Tumbaya"))
+    assert sorted(e.punto_id or "" for e in out) == ["rn9_tumbaya", "rn9_volcan"]
+    assert len({e.evento_id for e in out}) == 2
+
+
+@pytest.mark.parametrize(
+    ("titular", "lado"),
+    [
+        ("Paso de Jama cerrado por nevadas del lado chileno", "CL"),
+        ("Cerraron el Paso de Jama por nieve en la Ruta 27 hacia San Pedro de Atacama", "CL"),
+        ("Paso de Jama cerrado por nieve, varados en Susques", "AR"),
+        ("Paso de Jama cerrado por nieve en Susques y del lado chileno", "ambos"),
+        ("Paso de Jama cerrado por nieve", "desconocido"),
+    ],
+)  # fmt: skip
+def test_rules_jama_side(rules: RuleBasedExtractor, titular: str, lado: str) -> None:
+    jama = [e for e in rules.extract(art(titular)) if e.punto_id == "rn52_paso_jama"]
+    assert [e.lado for e in jama] == [lado]
+
+
+def test_rules_chilean_side_closure_is_total(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Paso de Jama cerrado por viento blanco del lado chileno"))
+    assert (e.causa, e.tipo_corte, e.lado) == ("nieve", "total", "CL")
+
+
+def test_rules_wind_without_snow_is_otro(rules: RuleBasedExtractor) -> None:
+    (e,) = rules.extract(art("Cerraron el Paso de Jama por fuertes vientos"))
+    assert (e.causa, e.notas) == ("otro", "viento")
+
+
+def test_rules_south_of_yala_dropped(rules: RuleBasedExtractor) -> None:
+    assert rules.extract(art("Corte en ruta 9 altura de Chango Más")) == []
+    assert rules.extract(art("Corte de la ruta 9 en Alto Comedero")) == []
+
+
+def test_rules_pope_leon_is_not_a_place(rules: RuleBasedExtractor) -> None:
+    assert rules.extract(art("Cortes de tránsito por la visita del papa León XIV")) == []

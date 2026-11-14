@@ -13,11 +13,23 @@ from typing import Final
 
 from corredor.extraction import patterns as p
 from corredor.extraction.base import EventExtractor
-from corredor.models import Article, Causa, ClosureEvent, Confianza, CriticalPoint, Ruta, TipoCorte
+from corredor.models import (
+    Article,
+    Causa,
+    ClosureEvent,
+    Confianza,
+    CriticalPoint,
+    Lado,
+    Ruta,
+    TipoCorte,
+)
 
 # Normalised place name (patterns.PLACE) → critical point id. Places without a point
 # (Humahuaca, Uquía, Saladillo…) still mark the article as corridor, without punto_id.
 PLACE_POINTS: Final[Mapping[str, str]] = {
+    "yala": "rn9_yala_lozano",
+    "lozano": "rn9_yala_lozano",
+    "leon": "rn9_leon",
     "barcena": "rn9_cuesta_barcena",
     "volcan": "rn9_volcan",
     "los filtros": "rn9_volcan",
@@ -38,6 +50,9 @@ PLACE_POINTS: Final[Mapping[str, str]] = {
 }
 RN9_PLACES: Final = frozenset({"humahuaca", "uquia", "quebrada de humahuaca"})
 LIPAN_SNOW_POINT: Final = "rn52_abra_potrerillos"
+JAMA_POINT: Final = "rn52_paso_jama"
+# Yala–León stretch: accidents count only with a total closure of the route.
+TOTAL_ONLY_ACCIDENT: Final = frozenset({"rn9_yala_lozano", "rn9_leon"})
 KM_TOLERANCE: Final = 5.0
 
 # patterns.CAUSE_GROUPS name → ClosureEvent.causa ("temporal"/"tormenta" alone is "otro").
@@ -66,7 +81,7 @@ def _first_position(rx: re.Pattern[str], text: str) -> int | None:
 
 
 class RuleBasedExtractor(EventExtractor):
-    PARSER_VERSION: Final = 3
+    PARSER_VERSION: Final = 4
 
     def __init__(self, points: Sequence[CriticalPoint]) -> None:
         self.points = list(points)
@@ -83,42 +98,81 @@ class RuleBasedExtractor(EventExtractor):
         if not p.is_corridor(text) or not p.is_road_closure(text):
             return []
         cleaned = p.strip_negatives(p.norm(text))
+        if p.SOUTH.search(cleaned) and not p.PLACE.search(cleaned):
+            return []  # entirely south of Yala: out of scope
         causa = self._cause(cleaned)
         weather = causa in WEATHER_CAUSES
         admin = (weather or causa == "otro") and p.is_admin_closure(text, weather)
         if admin:
             causa = "otro"  # border closed for health/administrative reasons, not weather
-        point = self._point(cleaned, causa)
-        km = self._km(cleaned)
         routes = p.routes(text)
-        if point is not None and len(routes) == 1 and point.ruta not in routes:
-            point = None  # an explicitly named route wins over a place on the other one
+        found = self._points(cleaned, causa)
+        if len(routes) == 1:  # an explicitly named route wins over places on the other one
+            found = [pt for pt in found if pt.ruta in routes]
+        notas = p.ADMIN_NOTE if admin else ""
+        if causa == "otro" and not admin and p.WIND.search(cleaned):
+            notas = "viento"
+        tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
+        if len(found) > 1:
+            return [
+                ev for pt in found
+                if (ev := self._event(article, pt, causa, tipo, notas, cleaned, text, multi=True))
+            ]  # fmt: skip
+        point = found[0] if found else None
+        km = self._km(cleaned)
         ruta = self._route(point, routes, cleaned)
         if point is None and km is not None and ruta != "otra":
             point = self._nearest(ruta, km)
         confianza: Confianza = "alta" if point and causa != "otro" else "media"
         if point is None and len(routes) != 1:
             confianza = "baja"
-        places = sorted(p.places(text))
-        return [
-            ClosureEvent(
-                evento_id=hashlib.sha1(  # noqa: S324 — identifier, not security
-                    f"{article.source_id}|{article.url}".encode()
-                ).hexdigest()[:16],
-                fecha=article.fecha,
-                ruta=ruta,
-                punto_id=point.id if point else None,
-                km=km,
-                paraje=", ".join(places),
-                causa=causa,
-                tipo_corte=self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text)),
-                fuentes=[article.url],
-                n_medios=1,
-                metodo="reglas",
-                confianza=confianza,
-                notas=p.ADMIN_NOTE if admin else "",
-            )
-        ]
+        ev = self._event(article, point, causa, tipo, notas, cleaned, text, ruta, km, confianza)
+        return [ev] if ev else []
+
+    def _event(
+        self,
+        article: Article,
+        point: CriticalPoint | None,
+        causa: Causa,
+        tipo: TipoCorte,
+        notas: str,
+        cleaned: str,
+        text: str,
+        ruta: Ruta | None = None,
+        km: float | None = None,
+        confianza: Confianza = "alta",
+        multi: bool = False,
+    ) -> ClosureEvent | None:
+        pid = point.id if point else None
+        if causa == "accidente" and pid in TOTAL_ONLY_ACCIDENT and tipo != "total":
+            return None
+        lado: Lado | None = None
+        if pid == JAMA_POINT:
+            cl, ar = bool(p.SIDE_CL.search(cleaned)), bool(p.SIDE_AR.search(cleaned))
+            lado = "ambos" if cl and ar else "CL" if cl else "AR" if ar else "desconocido"
+            if (
+                lado in ("CL", "ambos")
+                and tipo in ("precaucion", "desconocido")
+                and p.is_closure(text)
+            ):
+                tipo = "total"  # the Chilean side closed: the corridor is closed
+        key = f"{article.source_id}|{article.url}" + (f"|{pid}" if multi else "")
+        return ClosureEvent(
+            evento_id=hashlib.sha1(key.encode()).hexdigest()[:16],  # noqa: S324 — identifier
+            fecha=article.fecha,
+            ruta=point.ruta if (multi and point) else (ruta or "otra"),
+            punto_id=pid,
+            km=km,
+            paraje=", ".join(sorted(p.places(text))),
+            causa=causa,
+            tipo_corte=tipo,
+            fuentes=[article.url],
+            n_medios=1,
+            metodo="reglas",
+            confianza="alta" if multi and causa != "otro" else ("media" if multi else confianza),
+            notas=notas,
+            lado=lado,
+        )
 
     @staticmethod
     def _cause(cleaned: str) -> Causa:
@@ -132,15 +186,16 @@ class RuleBasedExtractor(EventExtractor):
         specific = {k: v for k, v in found.items() if k != "meteo_generico"} or found
         return CAUSE_MAP[min(specific, key=lambda k: (specific[k], k))]
 
-    def _point(self, cleaned: str, causa: Causa) -> CriticalPoint | None:
-        matches = sorted((m.start(), m.group(0)) for m in p.PLACE.finditer(cleaned))
-        for _, place in matches:
-            pid = PLACE_POINTS.get(place)
+    def _points(self, cleaned: str, causa: Causa) -> list[CriticalPoint]:
+        """Distinct critical points named in the text, in order of appearance."""
+        out: list[CriticalPoint] = []
+        for m in p.PLACE.finditer(cleaned):
+            pid = PLACE_POINTS.get(m.group(0))
             if pid == "rn52_lipan_bajo" and causa == "nieve":
                 pid = LIPAN_SNOW_POINT
-            if pid is not None and pid in self._by_id:
-                return self._by_id[pid]
-        return None
+            if pid is not None and pid in self._by_id and self._by_id[pid] not in out:
+                out.append(self._by_id[pid])
+        return out
 
     @staticmethod
     def _km(cleaned: str) -> float | None:
