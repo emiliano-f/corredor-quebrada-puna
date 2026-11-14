@@ -104,7 +104,7 @@ run refreshes them).
 |---|---|
 | `archivo/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Parquet cache of the archive, keyed by (model, timezone, lat, lon, date range) with 5-decimal coordinates (a cached archive is reused when both coordinates are within 0.000015°, about 1.5 m, so re-rounded coordinates do not trigger a new download); `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. A later run reuses it and only fetches the last 7 days plus the missing ones. |
 | `pronostico/<model>/<tz>/<lat>_<lon>_<from>_<to>.parquet` | Forecast cache (one per hour window): the last 7 days plus the next `hours`. |
-| `pronostico_historico/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Cache of `OpenMeteoClient.historical_forecast` (Historical Forecast API, model passed per call; same key and columns as `archivo/`). Nothing is downloaded yet: day 2 uses it for the forecast model's own climatology (#26). |
+| `pronostico_historico/<model>/<tz>/<lat>_<lon>_<start>_<end>.parquet` | Cache of `OpenMeteoClient.historical_forecast` (Historical Forecast API, model passed per call; same key and columns as `archivo/`). `make tablero` downloads it for `clima.modelo_pronostico` (see "Dashboard bundle"). |
 | `horario.parquet` | All points, hourly: `punto_id`, `time`, `precipitacion_mm`, `nieve_cm`, `temp_c`. |
 | `antecedentes.parquet` | One row per point and day: `punto_id`, `fecha` and the antecedent features below. |
 | `grilla.parquet` | One row per point and grid model: `punto_id`, `modelo`, `lat_grilla`, `lon_grilla`, `elev_grilla_m`, `elev_punto_m`, `diferencia_m`, `comparte_celda_con`. |
@@ -172,7 +172,7 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 
 ## Report rows
 
-- `Threshold`: `causa`, `variable`, `umbral`, `unidad`.
+- `Threshold`: `causa`, `variable`, `umbral`, `unidad`, `grupo` (calibration group, e.g. `lluvia`; empty = `causa`).
 - `ValidationResult`: `threshold`, `periodo` (`train` \| `test`), `aciertos`, `fallos`,
   `falsas_alarmas`.
 
@@ -194,6 +194,39 @@ Source file: `snapshots/jama_estado.jsonl` on the `data-snapshots` branch (never
 | `reports/*.md` | Generated reports; each starts with the same lineage header. |
 | `reports/geo_verificacion.md` | Critical points: OSM-derived km, distance to the route, verified or not, match with `config.yaml`. |
 | `assets/geo/*.geojson` | Committed (needed offline by the dashboard). See "Geo data". |
+
+## Dashboard bundle (`tablero/dist/`, gitignored)
+
+`make tablero` refreshes `data/snapshots/jama_estado.jsonl` from `data-snapshots`, fetches
+the forecast and writes `tablero/dist/`: `index.html` (the whole site, with the bundle in a
+`<script type="application/json" id="datos">` block), `datos.json` (same bundle, for
+inspection) and `sw.js` (offline cache when served over http(s)). Budget: < 5 MB.
+`corredor tablero --sin-red` skips the download and marks the forecast as missing.
+
+| Key | Content (all from the tables, GeoJSON, config and Open-Meteo; missing = `null`) |
+|---|---|
+| `encabezado` | `bundle_version` (1), `version`, `git_commit`, `schema_version`, `generado` (local time, UTC-3), `pronostico_hora` (hour the forecast was fetched; `null` if none), `pronostico_modelo`, `pronostico_horas`, `climatologia_desde`, `modelo_historico`. |
+| `umbrales` | `config.yaml` `umbrales_elegidos` (`grupo`, `variable`, `umbral`, `es_percentil`). Empty → every point is "Umbral pendiente de definición", no risk colour. |
+| `puntos[]` | Point fields, `celda` (ERA5 cell shared with `comparte_con`, `diferencia_m`), `eventos` (count), `pronostico` (`horizontes` hoy/24h/72h → `hasta`, `estado`, `variables` {valor, percentil}, `evaluaciones`; `error`; `clima_desde`/`clima_hasta`). |
+| `eventos[]` | Every event: `fecha`, `ruta`, `punto_id`, `causa`, `tipo_corte`, `n_medios`, `notas`, `estable`, `notas_medios` (outlet, headline, URL; no lede, no body). |
+| `por_anio[]` | Events per year with at least one stable source vs only new sources. |
+| `jama` | `ultimos` (latest snapshot per source: allowlisted fields, age in hours, `vieja` if > 6 h at build time), `linea` (last 7 days), `vieja`. |
+| `limitaciones` | Counts for the Limitaciones view: 1 vs 2+ outlets, stable vs new, events without point, test event-days per weather group (after 2022-12-31), ERA5 elevation differences, points sharing a cell. |
+| `mapa` | SVG paths (equirectangular projection of `assets/geo/*.geojson`) and point/station positions. |
+| `uso` | `docs/USO.md` as text blocks. |
+| `fuentes`, `licencias` | Enabled outlets (linked) and licences (Open-Meteo CC BY 4.0, OSM ODbL). |
+
+Forecast → risk (`corredor.tablero.forecast`, #26): the forecast of
+`clima.modelo_pronostico` (`best_match`, the last 7 days + `clima.pronostico_horas` = 72 h)
+gives the same antecedent features for windows ending now (hoy), now + 24 h and now + 72 h.
+Each value becomes a percentile within THE SAME model's climatology: the Historical Forecast
+API (`historical_forecast`, same point, `clima.pronostico_historico_desde` = 2022-01-01 →
+yesterday, same season DJF/MAM/JJA/SON, daily end-of-day windows, mid-rank percentile as in
+the calibration). A percentile threshold alerts when percentile ≥ umbral and the raw value
+> 0; a threshold in mm/cm is shown as "no comparable (modelo distinto)". A point whose
+download failed (no network, daily call cap) shows "sin datos". `best_match` is Open-Meteo's
+blend of the best models for the location, so its climatology mixes model versions over
+those years.
 
 ## Geo data (`assets/geo/`, committed)
 

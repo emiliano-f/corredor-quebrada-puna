@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `make tablero`: offline mobile dashboard in `tablero/dist/` (single `index.html`, SVG map from
+  `assets/geo`, no external resources, CSP with hashes). Forecast risk as a percentile of the
+  forecast model's own climatology (Historical Forecast API, #26); `umbrales_elegidos` in
+  `config.yaml` (empty → "Umbral pendiente de definición"); `docs/USO.md`.
+
 ### Changed
 - Rules extractor (`PARSER_VERSION` 3): drug seizures / Gendarmería operations need a closure
   term next to a road word; health/administrative border closures (Covid…) get `causa=otro`
