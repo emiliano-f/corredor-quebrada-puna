@@ -29,7 +29,7 @@ def _rx(pattern: str) -> re.Pattern[str]:
 
 
 # "Ruta Nacional Nº 52" → "ruta nacional no 52"; also nro, n°, numero, nac., rn9, rn 52.
-_ROUTE_NUM_PREFIX: Final = r"(?:(?:n|no|nro|n°|numero)\.? ?)?"
+_ROUTE_NUM_PREFIX: Final = r"(?:(?:n|no|nro|n°|n\.o|numero)\.? ?)?"
 ROUTE: Final = _rx(
     r"\b(?:ruta (?:nacional |nac\.? )?" + _ROUTE_NUM_PREFIX + r"(?P<n1>9|52)"
     r"|rn ?(?P<n2>9|52))(?![\d])"

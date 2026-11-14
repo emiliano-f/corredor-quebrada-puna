@@ -328,16 +328,24 @@ def precision(
     archivo: Annotated[Path, typer.Option(help="CSV etiquetado.")] = REVIEW_CSV,
 ) -> None:
     """Lee reports/revision_manual.csv y reporta la precisión por campo."""
-    from corredor.catalog import precision_report
+    from corredor.catalog import frame_to_events, precision_report, refresh_labels
 
     if not archivo.exists():
         typer.echo(f"Falta {archivo}: corré `make reporte` y etiquetalo.", err=True)
         raise typer.Exit(1)
     settings = Settings()
     cfg = load_config(config or settings.config_path)
+    repo = DuckDBRepository(settings.db_path)
+    try:
+        events = frame_to_events(repo.read("eventos"))
+    finally:
+        repo.close()
+    changes = refresh_labels(archivo, events)
     out = REPORTS_DIR / "precision.md"
     out.write_text(
-        precision_report(archivo, report_header("Precisión de la extracción", lineage(cfg))),
+        precision_report(
+            archivo, report_header("Precisión de la extracción", lineage(cfg)), changes
+        ),
         encoding="utf-8",
     )
     typer.echo(f"Precisión → {out}")

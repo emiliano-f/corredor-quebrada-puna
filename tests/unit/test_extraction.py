@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from corredor.config import load_config
+from corredor.extraction import patterns as p
 from corredor.extraction.dedup import ArticleRef, EventDeduplicator, jaccard, tokens
 from corredor.extraction.llm import LLMExtractor
 from corredor.extraction.rules import RuleBasedExtractor
@@ -396,3 +397,56 @@ def test_dedup_keeps_the_most_informative_side() -> None:
     assert merged.lado == "CL"
     (both,) = EventDeduplicator().merge([a, b, c])
     assert both.lado == "ambos"
+
+
+@pytest.mark.parametrize(
+    "text", ["ruta nacional N°9", "Ruta Nacional Nº9", "ruta nacional N° 9", "ruta nacional N.º 9",
+             "Ruta N9", "ruta nro. 9"],
+)  # fmt: skip
+def test_route_number_variants(text: str) -> None:
+    assert p.routes(f"Corte en la {text}") == {"RN9"}
+
+
+def test_rules_media_calzada_is_partial_and_caution_alone_is_precaucion(
+    rules: RuleBasedExtractor,
+) -> None:
+    (e,) = rules.extract(art("Alud en Volcán: la ruta 9 sigue cortada, habilitan media calzada"))
+    assert e.tipo_corte == "parcial"
+    (c,) = rules.extract(art("Habilitaron la ruta 9 en Tumbaya: piden circular con precaución"))
+    assert c.tipo_corte == "precaucion"
+
+
+def test_rules_two_routes_without_place_give_one_event_per_route(
+    rules: RuleBasedExtractor,
+) -> None:
+    out = rules.extract(
+        art(
+            "Piden circular con precaución por la ruta nacional N°9: Tránsito por media calzada",
+            "Vialidad pudo habilitar media calzada en la ruta nacional N°9 mientras despejan "
+            "los caminos. Ruta nacional N°52: Corte Total por crecida de Arroyo",
+        )
+    )
+    by_route = {e.ruta: e for e in out}
+    assert set(by_route) == {"RN9", "RN52"}
+    assert by_route["RN9"].tipo_corte == "parcial"
+    assert (by_route["RN52"].tipo_corte, by_route["RN52"].causa) == ("total", "crecida")
+    assert len({e.evento_id for e in out}) == 2
+
+
+def test_dedup_point_less_follow_up_joins_the_larger_event() -> None:
+    refs = {"v1": ArticleRef("a", "Alud en Volcán corta la ruta 9"),
+            "v2": ArticleRef("b", "Sigue el alud en Volcán sobre la ruta 9"),
+            "l1": ArticleRef("c", "Alud en León sobre la ruta 9"),
+            "f": ArticleRef("d", "La ruta 9 no podría habilitarse hasta el domingo")}  # fmt: skip
+    events = [ev("1", 10, "rn9_leon", "l1"), ev("2", 10, "rn9_volcan", "v1"),
+              ev("3", 11, "rn9_volcan", "v2"), ev("4", 12, None, "f")]  # fmt: skip
+    merged = {e.punto_id: e for e in EventDeduplicator().merge(events, refs)}
+    assert "f" in merged["rn9_volcan"].fuentes
+    assert merged["rn9_leon"].fuentes == ["l1"]
+
+
+def test_dedup_republisher_only_event_is_low_confidence() -> None:
+    refs = {"u1": ArticleRef("rep", "Alud en Volcán corta la ruta 9")}
+    (e,) = EventDeduplicator(republishers=frozenset({"rep"})).merge([ev("1", 10, "p1", "u1")], refs)
+    assert (e.n_medios, e.confianza) == (0, "baja")
+    assert "solo fuente que republica" in e.notas

@@ -39,6 +39,7 @@ clima:
   modelo_pronostico: best_match
   modelos_grilla: [era5, era5_land] # era5 = precipitation/snowfall cell, era5_land = temperature cell
   max_llamadas_diarias: 1500
+  reserva_pronostico: 300  # calls the archive downloads leave for the forecast build
 
 # PROVISIONAL critical points. Coordinates looked up once on OpenStreetMap (Nominatim,
 # 2026-11-13); `osm` is the matched OSM object. Nothing here is verified: Child C

@@ -313,3 +313,12 @@ def test_history_splits_by_year_only_if_rejected(tmp_path: Path) -> None:
         ("2018-01-01", "2018-06-30"),
     ]
     assert len(df) == 8 * 24
+
+
+def test_ledger_keeps_the_forecast_reserve(tmp_path: Path) -> None:
+    ledger = CallLedger(tmp_path / "ledger.json", 10, today=lambda: date(2026, 11, 13))
+    ledger.reserve(6, keep=3)
+    with pytest.raises(CallBudgetExceeded, match="reservando 3 para el pronóstico"):
+        ledger.reserve(2, keep=3)
+    ledger.reserve(4)  # the forecast build may use the reserve
+    assert ledger.used_today() == 10

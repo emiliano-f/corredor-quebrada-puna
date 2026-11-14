@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
-from typing import Final
+from typing import Final, cast
 
 from corredor.extraction import patterns as p
 from corredor.extraction.base import EventExtractor
@@ -71,7 +71,8 @@ CAUSE_MAP: Final[Mapping[str, Causa]] = {
 KM: Final = re.compile(r"\b(?:km|kilometro) (\d{1,4}(?:[.,]\d+)?)\b")
 TOTAL: Final = re.compile(r"\b(?:total(?:mente)?|intransitables?|ambos carriles|ambas manos)\b")
 PARTIAL: Final = re.compile(
-    r"\b(?:parcial(?:mente)?|media calzada|un carril|una mano|intermitente|demoras)\b"
+    r"\b(?:parcial(?:mente)?|media calzada|un carril|una mano|mano unica|paso alternado"
+    r"|intermitente|demoras)\b"
 )
 CAUTION: Final = re.compile(r"\b(?:precaucion|cadenas|transitar con)\b")
 
@@ -82,7 +83,7 @@ def _first_position(rx: re.Pattern[str], text: str) -> int | None:
 
 
 class RuleBasedExtractor(EventExtractor):
-    PARSER_VERSION: Final = 4
+    PARSER_VERSION: Final = 5
 
     def __init__(self, points: Sequence[CriticalPoint]) -> None:
         self.points = list(points)
@@ -114,6 +115,8 @@ class RuleBasedExtractor(EventExtractor):
         if causa == "otro" and not admin and p.WIND.search(cleaned):
             notas = "viento"
         tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
+        if len(routes) > 1 and not found and self._km(cleaned) is None:
+            return self._per_route(article, causa, notas, cleaned, text)  # one event per route
         if len(found) > 1:
             return [
                 ev for pt in found
@@ -130,6 +133,28 @@ class RuleBasedExtractor(EventExtractor):
         ev = self._event(article, point, causa, tipo, notas, cleaned, text, ruta, km, confianza)
         return [ev] if ev else []
 
+    def _per_route(
+        self, article: Article, causa: Causa, notas: str, cleaned: str, text: str
+    ) -> list[ClosureEvent]:
+        """Several routes and no place: each route gets the cause and kind of its own clause."""
+        segments: dict[str, str] = {}
+        matches = list(p.ROUTE.finditer(cleaned))
+        for i, m in enumerate(matches):
+            ruta = "RN" + (m.group("n1") or m.group("n2"))
+            start = 0 if i == 0 else m.start()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(cleaned)
+            segments[ruta] = (segments.get(ruta, "") + " " + cleaned[start:end]).strip()
+        out = []
+        for ruta, seg in segments.items():
+            own = self._cause(seg)
+            ev = self._event(
+                article, None, causa if own == "otro" else own, self._kind(seg), notas, seg,
+                text, cast(Ruta, ruta), None, "media", tag=ruta,
+            )  # fmt: skip
+            if ev:
+                out.append(ev)
+        return out
+
     def _event(
         self,
         article: Article,
@@ -143,6 +168,7 @@ class RuleBasedExtractor(EventExtractor):
         km: float | None = None,
         confianza: Confianza = "alta",
         multi: bool = False,
+        tag: str = "",
     ) -> ClosureEvent | None:
         pid = point.id if point else None
         if causa == "accidente" and pid in TOTAL_ONLY_ACCIDENT and tipo != "total":
@@ -158,6 +184,7 @@ class RuleBasedExtractor(EventExtractor):
             ):
                 tipo = "total"  # the Chilean side closed: the corridor is closed
         key = f"{article.source_id}|{article.url}" + (f"|{pid}" if multi else "")
+        key += f"|{tag}" if tag else ""
         return ClosureEvent(
             evento_id=hashlib.sha1(key.encode()).hexdigest()[:16],  # noqa: S324 — identifier
             fecha=article.fecha,
