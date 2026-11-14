@@ -55,6 +55,9 @@ JAMA_POINT: Final = "rn52_paso_jama"
 # Yala–León stretch: accidents count only with a total closure of the route.
 TOTAL_ONLY_ACCIDENT: Final = frozenset({"rn9_yala_lozano", "rn9_leon"})
 KM_TOLERANCE: Final = 5.0
+# Jama closed "por condiciones climáticas" with no snow word: snow only in the snow season.
+SNOW_SEASON: Final = range(5, 10)  # May–September
+INFERRED_NOTE: Final = "causa inferida por temporada"
 # Clause breaks for per-route events; a period right before a route number ("nac. 9") is not.
 CLAUSE_BREAK: Final = re.compile(r"(?<=[;:])\s+|(?<=\.)\s+(?!(?:9|52)\b)")
 
@@ -119,6 +122,34 @@ class RuleBasedExtractor(EventExtractor):
         if causa == "otro" and not admin and p.WIND.search(cleaned):
             notas = "viento"
         tipo = self._kind(cleaned, p.is_reopening(text) and not p.is_closure(text))
+        infer = (
+            causa == "otro"
+            and not notas
+            and article.fecha.month in SNOW_SEASON
+            and bool(p.CLIMATE_IMPLICIT.search(cleaned))
+            and p.is_closure(text)
+        )
+        return [self._season(ev) if infer else ev for ev in self._build(
+            article, found, routes, causa, tipo, notas, cleaned, text
+        )]  # fmt: skip
+
+    @staticmethod
+    def _season(ev: ClosureEvent) -> ClosureEvent:
+        if ev.punto_id != JAMA_POINT or ev.causa != "otro":
+            return ev
+        return ev.model_copy(update={"causa": "nieve", "confianza": "baja", "notas": INFERRED_NOTE})
+
+    def _build(
+        self,
+        article: Article,
+        found: list[CriticalPoint],
+        routes: set[str],
+        causa: Causa,
+        tipo: TipoCorte,
+        notas: str,
+        cleaned: str,
+        text: str,
+    ) -> list[ClosureEvent]:
         if len(routes) > 1 and not found and self._km(cleaned) is None:
             return self._per_route(article, notas, cleaned, text)  # one event per route
         if len(found) > 1:

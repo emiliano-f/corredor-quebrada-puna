@@ -73,6 +73,11 @@ JAMA_DESTINATION: Final = _rx(
     r" (?:a|al|hacia) (?:el )?(?:paso (?:internacional )?(?:de )?)?jama\b"
 )
 WIND: Final = _rx(r"\b(?:vientos?|rafagas?)\b")
+# Weather named without a specific cause ("cerrado por condiciones climáticas").
+CLIMATE_IMPLICIT: Final = _rx(
+    r"\b(?:condiciones (?:climaticas|meteorologic\w*|del tiempo)|mal tiempo|temporal(?:es)?"
+    r"|inclemencias?(?: climaticas)?)\b"
+)
 REOPENING: Final = _rx(r"\b(?:habilit\w*|rehabilit\w*|reabr\w*|reapert\w*)\b")
 TRAFFIC: Final = _rx(r"\b(?:transitabilidad|transito|km \d+|kilometro \d+)\b")
 

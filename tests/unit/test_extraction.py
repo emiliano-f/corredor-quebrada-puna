@@ -538,3 +538,23 @@ def test_null_point_merge_needs_the_same_cause_family(rules: RuleBasedExtractor)
     by_cause = {e.causa: e.fuentes for e in merged}
     assert by_cause["crecida"] == ["https://x.test/b"]
     assert by_cause["nieve"] == ["https://x.test/a", "https://x.test/c"]
+
+
+@pytest.mark.parametrize(
+    ("fecha", "causa", "confianza", "notas"),
+    [
+        (date(2025, 7, 12), "nieve", "baja", "causa inferida por temporada"),
+        (date(2025, 12, 27), "otro", "media", ""),
+    ],
+)
+def test_jama_closed_by_weather_without_snow_word_infers_snow_in_season(
+    rules: RuleBasedExtractor, fecha: date, causa: str, confianza: str, notas: str
+) -> None:
+    titular = "El Paso de Jama está intransitable por condiciones climáticas: fue cerrado"
+    [ev] = rules.extract(art(titular, fecha=fecha))
+    assert (ev.punto_id, ev.causa, ev.confianza, ev.notas) == (
+        "rn52_paso_jama",
+        causa,
+        confianza,
+        notas,
+    )
