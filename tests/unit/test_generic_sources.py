@@ -646,6 +646,18 @@ def test_sitemap_403_storm_stops_the_source(make_fetcher: Factory) -> None:
 
 
 @respx.mock
+def test_sitemap_429_storm_stops_the_source(make_fetcher: Factory) -> None:
+    no_robots()
+    respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=_many(15))
+    pages = respx.get(url__startswith=f"{BASE}/jujuy/").respond(429)
+    options = GenericOptions(sample_months=("2024-02",), today=date(2026, 1, 1))
+    source = SitemapSource(sitemap_cfg(), make_fetcher(retries=0), options)
+    with pytest.raises(SourceBlocked, match="10 respuestas HTTP 429"):
+        list(source.list_articles(date(2016, 1, 1)))
+    assert pages.call_count == 10
+
+
+@respx.mock
 def test_sitemap_pages_without_metadata_stop_the_source(make_fetcher: Factory) -> None:
     no_robots()
     respx.get(f"{BASE}/sitemap-202402.xml.gz").respond(200, text=_many(60))

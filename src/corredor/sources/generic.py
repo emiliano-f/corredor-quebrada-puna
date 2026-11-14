@@ -209,17 +209,21 @@ class _GenericSource(NewsSource):
             result = self.fetcher.get(url, refresh=refresh)
         except DisallowedByRobots:
             raise
-        except FetchError:
+        except FetchError as exc:
             self.stats.requests += 1  # a failed request still counts against the cap
+            self._track_block(getattr(exc, "status", None), url)  # 429 after the retries
             raise
         if not result.from_cache:
             self.stats.requests += 1
-            self._blocked = self._blocked + 1 if result.status in (403, 429) else 0
-            if self._blocked >= BLOCK_STREAK:
-                raise SourceBlocked(
-                    f"{self._blocked} respuestas HTTP {result.status} seguidas (última: {url})"
-                )
+            self._track_block(result.status, url)
         return result
+
+    def _track_block(self, status: int | None, url: str) -> None:
+        self._blocked = self._blocked + 1 if status in (403, 429) else 0
+        if self._blocked >= BLOCK_STREAK:
+            raise SourceBlocked(
+                f"{self._blocked} respuestas HTTP {status} seguidas (última: {url})"
+            )
 
     def _error(self, message: str) -> None:
         self.stats.errors.append(message)
