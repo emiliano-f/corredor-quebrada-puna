@@ -53,6 +53,14 @@ CLOSURE: Final = _rx(
     r"|corto(?= (?:la ruta|el transito|el paso|la circulacion|el camino)))\b"
 )
 RAW_CERRO: Final = re.compile(r"\bcerró\b")
+# A suggested alternate route ("circular por ruta 52", "desvío por la ruta 9", "usar la
+# ruta 52") is not a closure of that route; "circular con precaución por la ruta 9" is.
+ALT_ROUTE: Final = _rx(
+    r"\b(?:(?:circular|circulen|desvios?|desviad[ao]s?|desvian|alternativa)"
+    r" (?:por|a traves de|via)|usar|utilizar|tomar) (?:(?:la|el) )?(?:ruta (?:nacional |nac\.? )?"
+    + _ROUTE_NUM_PREFIX
+    + r"(?:9|52)|rn ?(?:9|52))(?![\d])(?! con precaucion)"
+)
 # South of Yala (San Salvador de Jujuy, Alto Comedero, Palpalá): out of the corridor scope.
 SOUTH: Final = _rx(r"\b(?:san salvador de jujuy|alto comedero|palpala|chango mas)\b")
 # Paso de Jama side of the closure.
@@ -106,9 +114,14 @@ def _clean(text: str) -> str:
     return strip_negatives(norm(text))
 
 
+def without_alternates(normalized: str) -> str:
+    return ALT_ROUTE.sub(" ", normalized)
+
+
 def routes(text: str) -> set[str]:
+    """Routes named in the text, leaving out suggested alternate routes (ALT_ROUTE)."""
     found = set()
-    for m in ROUTE.finditer(_clean(text)):
+    for m in ROUTE.finditer(without_alternates(_clean(text))):
         found.add("RN" + (m.group("n1") or m.group("n2")))
     return found
 

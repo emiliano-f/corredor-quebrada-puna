@@ -101,7 +101,7 @@ class RuleBasedExtractor(EventExtractor):
         text = self.text_of(article)
         if not p.is_corridor(text) or not p.is_road_closure(text):
             return []
-        cleaned = p.strip_negatives(p.norm(text))
+        cleaned = p.without_alternates(p.strip_negatives(p.norm(text)))
         if p.SOUTH.search(cleaned) and not p.PLACE.search(cleaned):
             return []  # entirely south of Yala: out of scope
         causa = self._cause(cleaned)

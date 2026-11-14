@@ -494,3 +494,18 @@ def test_rules_per_route_sentence_starting_with_a_number(rules: RuleBasedExtract
 def test_rules_per_route_any_abbreviation_before_route_number(rules: RuleBasedExtractor) -> None:
     out = rules.extract(art("Ruta nac. 9 cortada por nieve. Ruta 52 cortada por obras"))
     assert {e.ruta: e.causa for e in out} == {"RN9": "nieve", "RN52": "obra"}
+
+
+@pytest.mark.parametrize(
+    ("titular", "expected"),
+    [
+        ("Ruta 9 cortada por nieve, circular por ruta 52", {"RN9"}),
+        ("Corte total en ruta 52 por alud: desvío por la ruta 9", {"RN52"}),
+        ("Ruta 9 cortada por un alud: usar la ruta nacional 52", {"RN9"}),
+        ("Piden circular con precaución por la ruta 9 y la ruta 52 cortada", {"RN9", "RN52"}),
+    ],
+)
+def test_alternate_route_is_not_a_closure(
+    rules: RuleBasedExtractor, titular: str, expected: set[str]
+) -> None:
+    assert {e.ruta for e in rules.extract(art(titular))} == expected
