@@ -1,6 +1,6 @@
 # Clima: modelo, celda de grilla y elevación por punto
 
-> Generado: 2026-11-13 22:59 UTC · versión `0.1.0.dev0` · commit `df74c71` · SCHEMA_VERSION 1 · fuentes `69a5852fb79566d2`
+> Generado: 2026-11-14 00:45 UTC · versión `0.1.0.dev0` · commit `664cfbe` · SCHEMA_VERSION 2 · fuentes `b3dab32ad1adf821`
 
 Datos: Open-Meteo Historical Weather API, modelo `era5_seamless` (ERA5 + ERA5-Land, ECMWF/Copernicus), licencia CC BY 4.0. Son datos de reanálisis en grilla, no mediciones de una estación en el punto.
 
