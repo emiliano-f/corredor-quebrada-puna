@@ -1,9 +1,9 @@
 {
- "clave": "AR=cerrado;CL=sin_dato",
- "publicado_at": "2026-11-25T12:01:48.576056+00:00",
+ "clave": "AR=abierto;CL=sin_dato",
+ "publicado_at": "2026-11-25T13:02:09.290783+00:00",
  "resumen_fecha": "2026-11-24",
  "suscriptores": 3,
- "suscriptores_at": "2026-11-25T12:01:48.576056+00:00",
+ "suscriptores_at": "2026-11-25T13:02:09.290783+00:00",
  "suscriptores_dia": {
   "2026-11-15": 3,
   "2026-11-16": 3,
